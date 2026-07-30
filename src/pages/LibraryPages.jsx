@@ -41,8 +41,6 @@ export function LibraryPage() {
 
 export function LikedPage() {
   const { liked, playlists, playList } = usePlayer();
-  // liked cuma nyimpen ID di context; detail track-nya kita ambil dari histori playlist/queue kalau ada,
-  // tapi sumber paling lengkap tetap dari endpoint /api/me/likes langsung.
   const [likedTracks, setLikedTracks] = React.useState(null);
   React.useEffect(() => {
     import("../lib/api.js").then(({ Api }) => Api.likes().then(setLikedTracks).catch(() => setLikedTracks([])));
@@ -68,9 +66,18 @@ export function LikedPage() {
 
 export function PlaylistPage() {
   const { params } = useRouter();
-  const { playlists, playList, removeFromPlaylist, deletePlaylist } = usePlayer();
+  const { playlists, playList, removeFromPlaylist, deletePlaylist, setPlaylistDetail } = usePlayer();
   const { navigate } = useRouter();
   const pl = playlists.find((p) => String(p.id) === String(params.id));
+  React.useEffect(() => {
+    if (!params.id) return;
+    import("../lib/api.js").then(({ Api }) =>
+      Api.playlist(params.id)
+        .then((detail) => setPlaylistDetail(detail))
+        .catch(() => {})
+    );
+  }, [params.id]);
+
   if (!pl) return <ViewNotFound label="Playlist" />;
   return (
     <div className="aivy-view-enter">

@@ -5,9 +5,6 @@ import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
 import { clamp, uid } from "./lib/utils.js";
 
-/* ================================================================
-   UI CONTEXT — auth, tema, toast, context menu, modal, settings
-   ================================================================ */
 const UICtx = createContext(null);
 export function useUI() { return useContext(UICtx); }
 
@@ -68,7 +65,7 @@ export function UIProvider({ children }) {
 
   const login = useCallback(() => { window.location.href = Api.discordLoginUrl(); }, []);
   const logout = useCallback(async () => {
-    try { await Api.logout(); } catch { /* tetap lanjut clear state lokal walau request gagal */ }
+    try { await Api.logout(); } catch { }
     setAuthUser(null);
     pushToast("Sampai ketemu lagi");
   }, [pushToast]);
@@ -82,7 +79,7 @@ export function UIProvider({ children }) {
   const resetSettings = useCallback(async () => {
     setSettings(DEFAULT_SETTINGS);
     setTheme("dark");
-    try { await Api.resetSettings(); } catch { /* biarin, state lokal udah kereset */ }
+    try { await Api.resetSettings(); } catch { }
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -105,15 +102,6 @@ export function UIProvider({ children }) {
   };
   return <UICtx.Provider value={value}>{children}</UICtx.Provider>;
 }
-
-/* ================================================================
-   PLAYER + ROOM CONTEXT
-   ----------------------------------------------------------------
-   Digabung sengaja: waktu lagi di dalam room, "apa yang lagi
-   diputar" itu dikontrol dari server (biar semua orang denger lagu
-   yang sama), jadi player & room saling butuh info satu sama lain
-   tiap saat — dipisah jadi dua context malah bikin sirkular.
-   ================================================================ */
 const PlayerCtx = createContext(null);
 export function usePlayer() { return useContext(PlayerCtx); }
 
@@ -152,8 +140,6 @@ export function PlayerProvider({ children }) {
   const [liked, setLiked] = useState(() => new Set());
   const [playlists, setPlaylists] = useState([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
-
-  // --- room ---
   const [room, setRoom] = useState(null);
   const [publicRooms, setPublicRooms] = useState([]);
   const [roomError, setRoomError] = useState(null);
@@ -168,9 +154,7 @@ export function PlayerProvider({ children }) {
   const currentKey = currentTrack ? currentTrack.id : null;
   const inRoom = !!room;
 
-  useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []); // eslint-disable-line
-
-  // muat likes & playlists user begitu login
+  useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []);
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
     Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.videoId || r.id))))).catch(() => {});
@@ -186,8 +170,6 @@ export function PlayerProvider({ children }) {
     const pct = dur > 0 ? clamp(t / dur, 0, 1) * 100 : 0;
     progressElsRef.current.forEach((el) => { if (el) el.style.width = `${pct}%`; });
   }, []);
-
-  // --- resolusi sumber audio ---
   const resolveAudioSrc = useCallback(async (track) => {
     if (!track) return null;
     const wantFull = settings.audioQuality === "full";
@@ -207,15 +189,12 @@ export function PlayerProvider({ children }) {
         }
       }
       if (videoId) return { src: Api.streamUrl(videoId), preview: false };
-      // ga ketemu versi penuhnya, turun ke preview kalau ada
     }
 
     if (track.preview) return { src: track.preview, preview: true };
     if (track.videoId) return { src: Api.streamUrl(track.videoId), preview: false };
     return null;
   }, [settings.audioQuality]);
-
-  // --- efek utama: ganti track / play-pause -> kendaliin elemen <audio> asli ---
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -235,27 +214,25 @@ export function PlayerProvider({ children }) {
       if (isPlaying) audio.play().catch(() => {});
     });
     return () => { cancelled = true; };
-  }, [currentKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentKey]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
     if (isPlaying) audio.play().catch(() => {});
     else audio.pause();
-  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isPlaying]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) audio.volume = muted ? 0 : volume;
   }, [volume, muted]);
-
-  // --- listener native audio element ---
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onLoaded = () => setClipDuration(audio.duration || 0);
     const onEnded = () => {
-      if (inRoom) return; // di room, "next" dikendaliin dari server
+      if (inRoom) return; 
       if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
       nextRef.current(true);
     };
@@ -268,9 +245,7 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
-  }, [repeat, inRoom]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // --- loop halus buat progress bar (baca waktu asli dari elemen audio) ---
+  }, [repeat, inRoom]);
   useEffect(() => {
     let raf; let lastState = 0;
     function tick(ts) {
@@ -300,7 +275,6 @@ export function PlayerProvider({ children }) {
     const list = rawList.map(normalizeTrack).filter(Boolean);
     if (!list.length) return;
     if (inRoom) {
-      // di room, "mulai muter daftar ini" berarti isi ulang antrean bareng
       list.forEach((t) => socketRef.current?.emit("queue-add", { roomId: room.id, song: t }));
       socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: startIndex } });
       return;
@@ -417,11 +391,23 @@ export function PlayerProvider({ children }) {
       return pl.id;
     } catch { pushToast("Gagal bikin playlist"); return null; }
   }, [authUser, pushToast]);
+  const setPlaylistDetail = useCallback((detail) => {
+    const songs = (detail.songs || []).map((s) => ({
+      id: s.video_id,
+      videoId: s.video_id,
+      title: s.title,
+      cover: s.thumbnail,
+      duration: s.duration,
+    }));
+    setPlaylists((list) =>
+      list.map((pl) => String(pl.id) === String(detail.id) ? { ...pl, ...detail, songs } : pl)
+    );
+  }, []);
 
   const addToPlaylist = useCallback(async (playlistId, rawTrack) => {
     const track = normalizeTrack(rawTrack);
     const key = track.videoId || track.id;
-    setPlaylists((list) => list.map((pl) => (pl.id === playlistId && !pl.songs?.some((s) => s.id === track.id)
+    setPlaylists((list) => list.map((pl) => (pl.id === playlistId && !pl.songs?.some((s) => (s.videoId || s.id) === key)
       ? { ...pl, songs: [...(pl.songs || []), track] } : pl)));
     try {
       await Api.addSong(playlistId, key, { title: track.title, thumbnail: track.cover, duration: track.duration });
@@ -438,8 +424,6 @@ export function PlayerProvider({ children }) {
     setPlaylists((list) => list.filter((p) => p.id !== playlistId));
     try { await Api.deletePlaylist(playlistId); pushToast("Playlist dihapus"); } catch { pushToast("Gagal hapus playlist"); }
   }, [pushToast]);
-
-  /* ---------------- ROOM ---------------- */
   const ensureSocket = useCallback(() => {
     if (socketRef.current) return socketRef.current;
     const socket = io(API_BASE, { withCredentials: true, autoConnect: true, transports: ["websocket", "polling"] });
@@ -510,7 +494,7 @@ export function PlayerProvider({ children }) {
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
-    createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
+    createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail,
     registerProgressEl,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
   };
