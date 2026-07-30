@@ -36,7 +36,7 @@ export function UIProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [theme, setTheme] = useState("dark");
   const [toasts, setToasts] = useState([]);
-  const [contextMenu, setContextMenu] = useState(null); // { x, y, items }
+  const [contextMenu, setContextMenu] = useState(null);
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
 
   useEffect(() => {
@@ -102,6 +102,7 @@ export function UIProvider({ children }) {
   };
   return <UICtx.Provider value={value}>{children}</UICtx.Provider>;
 }
+
 const PlayerCtx = createContext(null);
 export function usePlayer() { return useContext(PlayerCtx); }
 
@@ -140,6 +141,7 @@ export function PlayerProvider({ children }) {
   const [liked, setLiked] = useState(() => new Set());
   const [playlists, setPlaylists] = useState([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
+
   const [room, setRoom] = useState(null);
   const [publicRooms, setPublicRooms] = useState([]);
   const [roomError, setRoomError] = useState(null);
@@ -155,6 +157,7 @@ export function PlayerProvider({ children }) {
   const inRoom = !!room;
 
   useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []);
+
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
     Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.videoId || r.id))))).catch(() => {});
@@ -170,6 +173,7 @@ export function PlayerProvider({ children }) {
     const pct = dur > 0 ? clamp(t / dur, 0, 1) * 100 : 0;
     progressElsRef.current.forEach((el) => { if (el) el.style.width = `${pct}%`; });
   }, []);
+
   const resolveAudioSrc = useCallback(async (track) => {
     if (!track) return null;
     const wantFull = settings.audioQuality === "full";
@@ -195,6 +199,7 @@ export function PlayerProvider({ children }) {
     if (track.videoId) return { src: Api.streamUrl(track.videoId), preview: false };
     return null;
   }, [settings.audioQuality]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -227,12 +232,13 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (audio) audio.volume = muted ? 0 : volume;
   }, [volume, muted]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onLoaded = () => setClipDuration(audio.duration || 0);
     const onEnded = () => {
-      if (inRoom) return; 
+      if (inRoom) return;
       if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
       nextRef.current(true);
     };
@@ -246,6 +252,7 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("error", onError);
     };
   }, [repeat, inRoom]);
+
   useEffect(() => {
     let raf; let lastState = 0;
     function tick(ts) {
@@ -279,9 +286,10 @@ export function PlayerProvider({ children }) {
       socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: startIndex } });
       return;
     }
+    const safeStart = clamp(startIndex, 0, list.length - 1);
     setQueueList(list);
-    setOrder(buildOrder(list.length, clamp(startIndex, 0, list.length - 1), shuffle));
-    setPosInOrder(0);
+    setOrder(buildOrder(list.length, safeStart, shuffle));
+    setPosInOrder(shuffle ? 0 : safeStart);
     setIsPlaying(true);
     if (authUser && settings.historyEnabled !== false) {
       const t = list[clamp(startIndex, 0, list.length - 1)];
@@ -391,6 +399,7 @@ export function PlayerProvider({ children }) {
       return pl.id;
     } catch { pushToast("Gagal bikin playlist"); return null; }
   }, [authUser, pushToast]);
+
   const setPlaylistDetail = useCallback((detail) => {
     const songs = (detail.songs || []).map((s) => ({
       id: s.video_id,
@@ -424,6 +433,7 @@ export function PlayerProvider({ children }) {
     setPlaylists((list) => list.filter((p) => p.id !== playlistId));
     try { await Api.deletePlaylist(playlistId); pushToast("Playlist dihapus"); } catch { pushToast("Gagal hapus playlist"); }
   }, [pushToast]);
+
   const ensureSocket = useCallback(() => {
     if (socketRef.current) return socketRef.current;
     const socket = io(API_BASE, { withCredentials: true, autoConnect: true, transports: ["websocket", "polling"] });
