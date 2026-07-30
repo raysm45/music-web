@@ -11,10 +11,6 @@ import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, TendrilSpinner } from "./lib/brand.jsx";
 import { formatTime, relativeTime } from "./lib/utils.js";
 
-/* ================================================================
-   ERROR BOUNDARY — jaga-jaga kalau ada bug lolos: daripada layar
-   putih kosong, tampilin pesan yang bisa dipulihin sendiri.
-   ================================================================ */
 export class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
@@ -34,9 +30,6 @@ export class ErrorBoundary extends Component {
   }
 }
 
-/* ================================================================
-   SCRUBBER & VOLUME
-   ================================================================ */
 export function Scrubber({ getRatio, onSeekRatio, registerFill, className = "" }) {
   const trackRef = useRef(null);
   const [dragging, setDragging] = useState(false);
@@ -89,9 +82,6 @@ function useScrubberBinding() {
   return { fillRef, getRatio, onSeekRatio: seekRatio, currentTime, duration };
 }
 
-/* ================================================================
-   CONTEXT MENU — dipanggil lewat useUI().openContextMenu(x,y,items)
-   ================================================================ */
 export function GlobalContextMenu() {
   const { contextMenu, closeContextMenu } = useUI();
   const menuRef = useRef(null);
@@ -151,18 +141,15 @@ export function useTrackMenuItems(track, opts = {}) {
   return items;
 }
 
-/* ================================================================
-   TRACK ROW
-   ================================================================ */
 export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel }) {
-  const { currentTrack, isPlaying, togglePlay, playList, liked, toggleLike } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, playSingle, liked, toggleLike } = usePlayer();
   const { openContextMenu } = useUI();
   const { navigate } = useRouter();
   const isCurrent = currentTrack && currentTrack.id === track.id;
   const isLiked = liked.has(String(track.videoId || track.id));
   const items = useTrackMenuItems(track, { onRemove, removeLabel });
 
-  const handlePlay = () => { if (isCurrent) togglePlay(); else playList(list, index); };
+  const handlePlay = () => { if (isCurrent) togglePlay(); else playSingle(track); };
   const handleContext = (e) => { e.preventDefault(); openContextMenu(e.clientX, e.clientY, items); };
 
   return (
@@ -209,15 +196,12 @@ function EqBars({ playing }) {
   );
 }
 
-/* ================================================================
-   CARDS
-   ================================================================ */
 export function CardTrack({ track, list }) {
-  const { currentTrack, isPlaying, togglePlay, playList } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, playSingle } = usePlayer();
   const { openContextMenu } = useUI();
   const isCurrent = currentTrack && currentTrack.id === track.id;
   const items = useTrackMenuItems(track);
-  const handlePlay = () => { if (isCurrent) togglePlay(); else playList(list, list.findIndex((t) => t.id === track.id)); };
+  const handlePlay = () => { if (isCurrent) togglePlay(); else playSingle(track); };
   return (
     <div className="aivy-card" onContextMenu={(e) => { e.preventDefault(); openContextMenu(e.clientX, e.clientY, items); }}>
       <div className="art-wrap">
@@ -264,9 +248,6 @@ export function CardArtist({ artist }) {
   );
 }
 
-/* ================================================================
-   TOAST
-   ================================================================ */
 export function ToastHost({ isMobile }) {
   const { toasts } = useUI();
   if (!toasts.length) return null;
@@ -277,9 +258,6 @@ export function ToastHost({ isMobile }) {
   );
 }
 
-/* ================================================================
-   ADD TO PLAYLIST MODAL
-   ================================================================ */
 export function AddToPlaylistModal() {
   const { addToPlaylistTarget, closeAddToPlaylist } = useUI();
   const { playlists, addToPlaylist, createPlaylist } = usePlayer();
@@ -331,9 +309,6 @@ export function AddToPlaylistModal() {
   );
 }
 
-/* ================================================================
-   TRANSPORT
-   ================================================================ */
 export function TransportButtons({ big = false }) {
   const { isPlaying, togglePlay, next, prev, shuffle, toggleShuffle, repeat, cycleRepeat, currentTrack, room } = usePlayer();
   const { authUser } = useUI();
@@ -353,9 +328,6 @@ export function TransportButtons({ big = false }) {
   );
 }
 
-/* ================================================================
-   PLAYER BAR (desktop) + MINI PLAYER (mobile)
-   ================================================================ */
 export function PlayerBar() {
   const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio } = usePlayer();
   const { navigate } = useRouter();
@@ -454,13 +426,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   );
 }
 
-/* ================================================================
-   RIGHT PANEL — Now Playing / Antrean / Ruang, jadi satu sisi kanan
-   ================================================================ */
 export function RightPanel() {
   const { currentTrack, upNext, history, queueList, order, posInOrder, room } = usePlayer();
   const [tab, setTab] = useState("queue");
-  useEffect(() => { if (room) setTab("room"); }, [!!room]); // eslint-disable-line
+  useEffect(() => { if (room) setTab("room"); }, [!!room]); 
 
   return (
     <aside className="aivy-rightpanel">
@@ -532,9 +501,6 @@ function RoomPane() {
   );
 }
 
-/* ================================================================
-   SIDEBAR (desktop)
-   ================================================================ */
 const NAV_ITEMS = [
   { route: "home", label: "Beranda", icon: HomeIcon },
   { route: "search", label: "Cari", icon: Search },

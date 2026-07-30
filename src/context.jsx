@@ -36,7 +36,7 @@ export function UIProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [theme, setTheme] = useState("dark");
   const [toasts, setToasts] = useState([]);
-  const [contextMenu, setContextMenu] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null); 
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export function UIProvider({ children }) {
 
   const login = useCallback(() => { window.location.href = Api.discordLoginUrl(); }, []);
   const logout = useCallback(async () => {
-    try { await Api.logout(); } catch { }
+    try { await Api.logout(); } catch {  }
     setAuthUser(null);
     pushToast("Sampai ketemu lagi");
   }, [pushToast]);
@@ -79,7 +79,7 @@ export function UIProvider({ children }) {
   const resetSettings = useCallback(async () => {
     setSettings(DEFAULT_SETTINGS);
     setTheme("dark");
-    try { await Api.resetSettings(); } catch { }
+    try { await Api.resetSettings(); } catch {  }
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -142,6 +142,7 @@ export function PlayerProvider({ children }) {
   const [playlists, setPlaylists] = useState([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
 
+  
   const [room, setRoom] = useState(null);
   const [publicRooms, setPublicRooms] = useState([]);
   const [roomError, setRoomError] = useState(null);
@@ -156,8 +157,9 @@ export function PlayerProvider({ children }) {
   const currentKey = currentTrack ? currentTrack.id : null;
   const inRoom = !!room;
 
-  useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []);
+  useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []); 
 
+  
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
     Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.videoId || r.id))))).catch(() => {});
@@ -174,6 +176,7 @@ export function PlayerProvider({ children }) {
     progressElsRef.current.forEach((el) => { if (el) el.style.width = `${pct}%`; });
   }, []);
 
+  
   const resolveAudioSrc = useCallback(async (track) => {
     if (!track) return null;
     const wantFull = settings.audioQuality === "full";
@@ -193,6 +196,7 @@ export function PlayerProvider({ children }) {
         }
       }
       if (videoId) return { src: Api.streamUrl(videoId), preview: false };
+      
     }
 
     if (track.preview) return { src: track.preview, preview: true };
@@ -200,6 +204,7 @@ export function PlayerProvider({ children }) {
     return null;
   }, [settings.audioQuality]);
 
+  
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -219,26 +224,27 @@ export function PlayerProvider({ children }) {
       if (isPlaying) audio.play().catch(() => {});
     });
     return () => { cancelled = true; };
-  }, [currentKey]);
+  }, [currentKey]); 
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
     if (isPlaying) audio.play().catch(() => {});
     else audio.pause();
-  }, [isPlaying]);
+  }, [isPlaying]); 
 
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) audio.volume = muted ? 0 : volume;
   }, [volume, muted]);
 
+  
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onLoaded = () => setClipDuration(audio.duration || 0);
     const onEnded = () => {
-      if (inRoom) return;
+      if (inRoom) return; 
       if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
       nextRef.current(true);
     };
@@ -251,8 +257,9 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
-  }, [repeat, inRoom]);
+  }, [repeat, inRoom]); 
 
+  
   useEffect(() => {
     let raf; let lastState = 0;
     function tick(ts) {
@@ -282,6 +289,7 @@ export function PlayerProvider({ children }) {
     const list = rawList.map(normalizeTrack).filter(Boolean);
     if (!list.length) return;
     if (inRoom) {
+      
       list.forEach((t) => socketRef.current?.emit("queue-add", { roomId: room.id, song: t }));
       socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: startIndex } });
       return;
@@ -289,6 +297,8 @@ export function PlayerProvider({ children }) {
     const safeStart = clamp(startIndex, 0, list.length - 1);
     setQueueList(list);
     setOrder(buildOrder(list.length, safeStart, shuffle));
+    
+    
     setPosInOrder(shuffle ? 0 : safeStart);
     setIsPlaying(true);
     if (authUser && settings.historyEnabled !== false) {
@@ -296,6 +306,33 @@ export function PlayerProvider({ children }) {
       Api.addHistory(t.videoId || t.id, { title: t.title, thumbnail: t.cover, duration: t.duration }).catch(() => {});
     }
   }, [inRoom, room, buildOrder, shuffle, authUser, settings.historyEnabled]);
+
+  
+  
+  
+  const playSingle = useCallback((rawTrack) => {
+    const track = normalizeTrack(rawTrack);
+    if (!track) return;
+    if (inRoom) {
+      socketRef.current?.emit("queue-add", { roomId: room.id, song: track });
+      socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: 0 } });
+      return;
+    }
+    
+    const existingIdx = queueList.findIndex((t) => t.id === track.id);
+    if (existingIdx !== -1) {
+      const posInOrder = order.indexOf(existingIdx);
+      if (posInOrder !== -1) { setPosInOrder(posInOrder); setIsPlaying(true); return; }
+    }
+    
+    setQueueList([track]);
+    setOrder([0]);
+    setPosInOrder(0);
+    setIsPlaying(true);
+    if (authUser && settings.historyEnabled !== false) {
+      Api.addHistory(track.videoId || track.id, { title: track.title, thumbnail: track.cover, duration: track.duration }).catch(() => {});
+    }
+  }, [inRoom, room, queueList, order, authUser, settings.historyEnabled]);
 
   const togglePlay = useCallback(() => {
     if (!currentTrack) return;
@@ -400,7 +437,10 @@ export function PlayerProvider({ children }) {
     } catch { pushToast("Gagal bikin playlist"); return null; }
   }, [authUser, pushToast]);
 
+  
   const setPlaylistDetail = useCallback((detail) => {
+    
+    
     const songs = (detail.songs || []).map((s) => ({
       id: s.video_id,
       videoId: s.video_id,
@@ -416,6 +456,7 @@ export function PlayerProvider({ children }) {
   const addToPlaylist = useCallback(async (playlistId, rawTrack) => {
     const track = normalizeTrack(rawTrack);
     const key = track.videoId || track.id;
+    
     setPlaylists((list) => list.map((pl) => (pl.id === playlistId && !pl.songs?.some((s) => (s.videoId || s.id) === key)
       ? { ...pl, songs: [...(pl.songs || []), track] } : pl)));
     try {
@@ -434,6 +475,7 @@ export function PlayerProvider({ children }) {
     try { await Api.deletePlaylist(playlistId); pushToast("Playlist dihapus"); } catch { pushToast("Gagal hapus playlist"); }
   }, [pushToast]);
 
+  
   const ensureSocket = useCallback(() => {
     if (socketRef.current) return socketRef.current;
     const socket = io(API_BASE, { withCredentials: true, autoConnect: true, transports: ["websocket", "polling"] });
@@ -504,7 +546,7 @@ export function PlayerProvider({ children }) {
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
-    createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail,
+    playSingle, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail,
     registerProgressEl,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
   };
