@@ -40,11 +40,32 @@ export function LibraryPage() {
 }
 
 export function LikedPage() {
-  const { liked, playlists, playList } = usePlayer();
+  const { liked, toggleLike, playList } = usePlayer();
   const [likedTracks, setLikedTracks] = React.useState(null);
-  React.useEffect(() => {
-    import("../lib/api.js").then(({ Api }) => Api.likes().then(setLikedTracks).catch(() => setLikedTracks([])));
-  }, [liked.size]);
+
+  const normalizeLiked = (rows) => rows.map((r) => ({
+    id: r.video_id,
+    videoId: r.video_id,
+    title: r.title,
+    artist: r.artist_name ? { name: r.artist_name } : null,
+    cover: r.thumbnail,
+    duration: r.duration,
+  }));
+
+  const fetchLiked = () => {
+    import("../lib/api.js").then(({ Api }) =>
+      Api.likes()
+        .then((rows) => setLikedTracks(normalizeLiked(rows)))
+        .catch(() => setLikedTracks([]))
+    );
+  };
+
+  React.useEffect(() => { fetchLiked(); }, []);
+
+  const handleUnlike = async (track) => {
+    setLikedTracks((prev) => prev.filter((t) => t.id !== track.id));
+    await toggleLike(track);
+  };
 
   return (
     <div className="aivy-view-enter">
@@ -55,7 +76,7 @@ export function LikedPage() {
       {likedTracks === null ? null : likedTracks.length > 0 ? (
         <>
           <div className="aivy-hero-actions"><button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(likedTracks, 0)} aria-label="Putar semua"><Play size={22} fill="currentColor" /></button></div>
-          <div>{likedTracks.map((t, i) => <TrackRow key={t.videoId || t.id} track={{ ...t, id: t.videoId || t.id }} index={i} list={likedTracks} showAlbum />)}</div>
+          <div>{likedTracks.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={likedTracks} showAlbum onRemove={() => handleUnlike(t)} removeLabel="Hapus dari Disukai" />)}</div>
         </>
       ) : (
         <div className="aivy-empty"><Heart size={38} color="var(--ink-faint)" /><div className="title">Belum ada yang disukai</div><div className="sub">Tekan ikon hati di lagu mana pun buat nyimpen di sini.</div></div>
@@ -69,6 +90,7 @@ export function PlaylistPage() {
   const { playlists, playList, removeFromPlaylist, deletePlaylist, setPlaylistDetail } = usePlayer();
   const { navigate } = useRouter();
   const pl = playlists.find((p) => String(p.id) === String(params.id));
+
   React.useEffect(() => {
     if (!params.id) return;
     import("../lib/api.js").then(({ Api }) =>

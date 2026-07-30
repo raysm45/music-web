@@ -303,7 +303,7 @@ export function PlayerProvider({ children }) {
     setIsPlaying(true);
     if (authUser && settings.historyEnabled !== false) {
       const t = list[clamp(startIndex, 0, list.length - 1)];
-      Api.addHistory(t.videoId || t.id, { title: t.title, thumbnail: t.cover, duration: t.duration }).catch(() => {});
+      Api.addHistory(t.videoId || t.id, { title: t.title, artistName: t.artist?.name || null, thumbnail: t.cover, duration: t.duration }).catch(() => {});
     }
   }, [inRoom, room, buildOrder, shuffle, authUser, settings.historyEnabled]);
 
@@ -400,7 +400,7 @@ export function PlayerProvider({ children }) {
     setLiked((prev) => { const n = new Set(prev); willLike ? n.add(key) : n.delete(key); return n; });
     pushToast(willLike ? `Ditambahin ke Disukai — ${track.title}` : `Dihapus dari Disukai — ${track.title}`);
     try {
-      if (willLike) await Api.like(key, { title: track.title, thumbnail: track.cover, duration: track.duration });
+      if (willLike) await Api.like(key, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, duration: track.duration });
       else await Api.unlike(key);
     } catch { pushToast("Gagal nyimpen ke server, coba lagi"); }
   }, [authUser, liked, pushToast]);

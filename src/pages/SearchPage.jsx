@@ -35,7 +35,7 @@ export function SearchPage() {
       setSearching(false);
     }, 280);
     return () => clearTimeout(t);
-  }, [query]); // eslint-disable-line
+  }, [query]);
 
   const runSearch = (q) => {
     setQuery(q);
@@ -51,7 +51,7 @@ export function SearchPage() {
   };
 
   const showBrowse = !query.trim();
-  const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.thumbnail } : r));
+  const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.thumbnail, duration: r.duration || null, artist: null } : r));
 
   return (
     <div className="aivy-view-enter">
