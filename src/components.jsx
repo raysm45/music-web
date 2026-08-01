@@ -78,12 +78,18 @@ export function VolumeControl() {
 
 function useScrubberBinding() {
   const { currentTime, duration, seekRatio, registerProgressEl } = usePlayer();
-  const fillRef = useRef(null);
-  const thumbRef = useRef(null);
-  useEffect(() => registerProgressEl(fillRef.current, "width"), [registerProgressEl]);
-  useEffect(() => registerProgressEl(thumbRef.current, "left"), [registerProgressEl]);
+  const fillCleanupRef = useRef(null);
+  const thumbCleanupRef = useRef(null);
+  const registerFill = useCallback((el) => {
+    fillCleanupRef.current?.();
+    fillCleanupRef.current = el ? registerProgressEl(el, "width") : null;
+  }, [registerProgressEl]);
+  const registerThumb = useCallback((el) => {
+    thumbCleanupRef.current?.();
+    thumbCleanupRef.current = el ? registerProgressEl(el, "left") : null;
+  }, [registerProgressEl]);
   const getRatio = useCallback(() => (duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0), [currentTime, duration]);
-  return { fillRef, thumbRef, getRatio, onSeekRatio: seekRatio, currentTime, duration };
+  return { registerFill, registerThumb, getRatio, onSeekRatio: seekRatio, currentTime, duration };
 }
 
 export function GlobalContextMenu() {
@@ -385,7 +391,7 @@ export function PlayerBar() {
   const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics } = useUI();
-  const { fillRef, thumbRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
+  const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
 
@@ -416,7 +422,7 @@ export function PlayerBar() {
         <TransportButtons />
         <div className="aivy-scrubber-row">
           <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
-          <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={(el) => (fillRef.current = el)} registerThumb={(el) => (thumbRef.current = el)} />
+          <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
           <span className="aivy-time right font-mono">{formatTime(duration)}</span>
         </div>
       </div>
@@ -430,7 +436,7 @@ export function PlayerBar() {
 
 export function MiniPlayer({ onExpand }) {
   const { currentTrack, isPlaying, togglePlay, next } = usePlayer();
-  const { fillRef } = useScrubberBinding();
+  const { registerFill } = useScrubberBinding();
   if (!currentTrack) return null;
   return (
     <div className="aivy-mini-player" onClick={onExpand} role="button" tabIndex={0} aria-label="Buka now playing">
@@ -440,7 +446,7 @@ export function MiniPlayer({ onExpand }) {
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
       </button>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); next(false); }} aria-label="Berikutnya"><SkipForward size={18} fill="currentColor" /></button>
-      <div className="mini-progress"><div className="fill" ref={(el) => (fillRef.current = el)} /></div>
+      <div className="mini-progress"><div className="fill" ref={registerFill} /></div>
     </div>
   );
 }
@@ -449,7 +455,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const { currentTrack, liked, toggleLike, isPreviewClip, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics } = useUI();
-  const { fillRef, thumbRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
+  const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   return (
@@ -476,7 +482,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             </div>
             <div className="aivy-scrubber-row">
               <span className="aivy-time font-mono">{formatTime(currentTime)}</span>
-              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={(el) => (fillRef.current = el)} registerThumb={(el) => (thumbRef.current = el)} />
+              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
               <span className="aivy-time right font-mono">{formatTime(duration)}</span>
             </div>
             <TransportButtons big />
@@ -915,7 +921,7 @@ export function LyricsOverlay() {
               <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}>
                 <LeafMark size={34} color="var(--ink-faint)" />
                 <div className="title">Lirik belum ketemu</div>
-                <div className="sub">Coba lagu lain, atau lirik buat versi ini emang belum tersedia di database.</div>
+                <div className="sub">laka nyik, lagu sing liane coba.</div>
               </div>
             )}
           </div>
