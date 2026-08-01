@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { hashStr } from "./utils.js";
 
 export const LEAF_PATH =
@@ -122,16 +123,14 @@ export function CoverArt({ seed, size = 160, radius = 14, style = {} }) {
 // Cover "cerdas": pakai gambar asli kalau ada, jatuh balik ke CoverArt
 // generatif kalau kosong atau gagal dimuat.
 export function SmartCover({ src, seed, size = 160, radius = 14, style = {}, alt = "" }) {
-  if (!src) return <CoverArt seed={seed} size={size} radius={radius} style={style} />;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [src]);
+  if (!src || failed) return <CoverArt seed={seed} size={size} radius={radius} style={style} />;
   return (
     <img
       src={src} alt={alt} width={size} height={size} loading="lazy"
       style={{ borderRadius: radius, objectFit: "cover", display: "block", background: "var(--bg-elev-2)", ...style }}
-      onError={(e) => {
-        e.currentTarget.style.display = "none";
-        const fallback = e.currentTarget.nextSibling;
-        if (fallback) fallback.style.display = "block";
-      }}
+      onError={() => setFailed(true)}
     />
   );
 }

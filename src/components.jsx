@@ -822,7 +822,9 @@ export function LyricsOverlay() {
         <div className="aivy-lyrics-main">
           <div className="aivy-lyrics-side">
             <div className="aivy-lyrics-track">
-              <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={120} radius={8} style={{ width: "100%", height: "auto" }} />
+              <div className="cover">
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={120} radius={8} style={{ width: "100%", height: "100%" }} />
+              </div>
               <div className="meta">
                 <div className="t">{currentTrack.title}</div>
                 <div className="a">{currentTrack.artist?.name}</div>
