@@ -151,7 +151,14 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
 
   const handlePlay = () => {
     if (isCurrent) { togglePlay(); return; }
+    // "context": klik lagu di dalam playlist/album/koleksi -> seluruh
+    // koleksi itu yang jadi antrean (mulai dari lagu yang diklik), biar
+    // shuffle & repeat kerja buat semua lagu di koleksi itu, bukan cuma
+    // 1 lagu doang.
     if (queueMode === "context" && list && list.length) { playList(list, index); return; }
+    // "radio": klik lagu dari hasil PENCARIAN -> jangan numpahin sisa
+    // hasil pencarian ke antrean (isinya belum tentu nyambung), tapi
+    // putar lagu itu terus isi antrean pakai lagu-lagu yang MIRIP.
     if (queueMode === "radio") { playRadio(track); return; }
     playSingle(track);
   };
@@ -313,6 +320,9 @@ export function AddToPlaylistModal() {
     </div>
   );
 }
+
+// Dialog konfirmasi generik - dipakai a.l. buat "yakin mau hapus playlist?"
+// biar ga kepencet ke-delete tanpa sengaja.
 export function ConfirmDialog({ open, title, message, confirmLabel = "Hapus", cancelLabel = "Batal", danger = true, onConfirm, onCancel }) {
   if (!open) return null;
   return (
@@ -329,6 +339,10 @@ export function ConfirmDialog({ open, title, message, confirmLabel = "Hapus", ca
     </div>
   );
 }
+
+// ---------- skeleton loading (dipakai pas nunggu hasil pencarian) ----------
+// Ganti "Mencari..." polos jadi kerangka baris lagu yang shimmer, biar
+// keliatan lebih cepet & jelas kontennya bakal berbentuk apa.
 export function SkeletonTrackRow() {
   return (
     <div className="aivy-skel-row">
@@ -643,9 +657,12 @@ export function TopBar({ isMobile }) {
       {!isMobile && <button className="aivy-navbtn" onClick={toggleTheme} aria-label="Ganti tema" title="Ganti tema">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>}
       {isMobile && (
         <>
-          {}
+          {/* FIX: dulu di mobile ga ada cara sama sekali buat ganti tema atau
+              buka halaman Setting (cuma ada di sidebar desktop & sidebar-nya
+              disembunyiin pas mobile) - sekarang ditaro di topbar */}
           <button className="aivy-navbtn" onClick={toggleTheme} aria-label="Ganti tema" title="Ganti tema">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
-          {}
+          {/* FIX: kalau udah login, avatar di bawah ini udah jadi satu-satunya
+              pintu ke Setting - jangan dobel sama ikon gear ini */}
           {!authUser && <Link to="settings" className="aivy-navbtn" aria-label="Setting" title="Setting"><SettingsIcon size={15} /></Link>}
         </>
       )}
@@ -661,6 +678,14 @@ export function ViewLoading() {
 export function ViewNotFound({ label }) {
   return <div className="aivy-empty" style={{ paddingTop: 90 }}><LeafMark size={40} color="var(--ink-faint)" /><div className="title">{label} ga ketemu</div></div>;
 }
+
+// ---------- layar lirik ----------
+// Overlay full-screen, muncul di atas apapun (mirip NowPlayingSheet tapi
+// global & bisa dibuka dari mana aja - PlayerBar, NowPlayingSheet, atau
+// panel Now Playing). Nyari lirik ke /api/lyrics, kalau dapet versi
+// bersinkron (LRC) baris yang lagi diputar di-highlight & auto-scroll
+// (efek karaoke); kalau cuma dapet lirik polos, ditampilin apa adanya;
+// kalau ga ketemu sama sekali, kasih pesan yang jelas alih-alih kosong.
 const LYRICS_FONT_SIZES = {
   sm: "clamp(15px, 2.8vw, 19px)",
   md: "clamp(19px, 3.6vw, 26px)",
@@ -695,17 +720,23 @@ export function LyricsOverlay() {
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
+
   useEffect(() => {
     if (!lyricsOpen) return;
     const scrollEl = document.getElementById("aivy-content-scroll");
-    if (!scrollEl) return;
-    const prevOverflow = scrollEl.style.overflow;
-    const prevTouchAction = scrollEl.style.touchAction;
-    scrollEl.style.overflow = "hidden";
-    scrollEl.style.touchAction = "none";
+    const prevOverflow = scrollEl ? scrollEl.style.overflow : "";
+    if (scrollEl) scrollEl.style.overflow = "hidden";
+
+    const ALLOWED_SCROLL_SELECTOR = ".aivy-lyrics-body, .aivy-lyrics-plain, .aivy-lyrics-side";
+    const onTouchMove = (e) => {
+      if (e.target.closest(ALLOWED_SCROLL_SELECTOR)) return;
+      e.preventDefault();
+    };
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+
     return () => {
-      scrollEl.style.overflow = prevOverflow;
-      scrollEl.style.touchAction = prevTouchAction;
+      if (scrollEl) scrollEl.style.overflow = prevOverflow;
+      document.removeEventListener("touchmove", onTouchMove);
     };
   }, [lyricsOpen]);
 
@@ -726,7 +757,7 @@ export function LyricsOverlay() {
         });
     });
     return () => { cancelled = true; };
-  }, [lyricsOpen, trackKey]);
+  }, [lyricsOpen, trackKey]); // eslint-disable-line
 
   const activeIndex = useMemo(() => {
     if (!state.synced.length) return -1;
@@ -739,7 +770,11 @@ export function LyricsOverlay() {
 
   useEffect(() => {
     if (activeIndex < 0) return;
-    lineRefs.current[activeIndex]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const el = lineRefs.current[activeIndex];
+    const container = el?.closest(".aivy-lyrics-body");
+    if (!el || !container) return;
+    const target = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
+    container.scrollTo({ top: target, behavior: "smooth" });
   }, [activeIndex]);
 
   const activeLineText = useMemo(() => {
