@@ -43,6 +43,7 @@ export function Scrubber({ getRatio, onSeekRatio, registerFill, className = "" }
       onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging(true); onSeekRatio(ratioFromEvent(e)); }}
       onPointerMove={(e) => { if (dragging) onSeekRatio(ratioFromEvent(e)); }}
       onPointerUp={(e) => { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
+      onPointerCancel={(e) => { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
       role="slider" aria-label="Posisi lagu" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((getRatio ? getRatio() : 0) * 100)}
     >
       <div className="track"><div className="fill" ref={registerFill} /></div>
@@ -66,6 +67,7 @@ export function VolumeControl() {
         onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging(true); setVolume(ratioFromEvent(e)); }}
         onPointerMove={(e) => { if (dragging) setVolume(ratioFromEvent(e)); }}
         onPointerUp={(e) => { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
+        onPointerCancel={(e) => { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
         role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(effective * 100)}
       >
         <div className="fill" style={{ width: `${effective * 100}%` }} />
