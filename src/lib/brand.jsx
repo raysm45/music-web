@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { hashStr } from "./utils.js";
+import { API_BASE } from "./api.js";
 
 export const LEAF_PATH =
   "M16,28 C13.4,25.3 9.6,23.6 7,20.4 C4.6,17.5 4.3,13.2 6.6,10.2 " +
@@ -44,11 +46,6 @@ export function TendrilSpinner({ size = 28, color = "currentColor", spin = true 
     </svg>
   );
 }
-
-// Animasi loading "daun ivy gugur" - dipakai gantiin spinner puter-puter
-// polos di seluruh app (boot, load home, nyari lirik, dst). Beberapa daun
-// (pakai bentuk LEAF_PATH yg sama kayak logo) jatuh + muter pelan, loop
-// terus-terusan dengan delay beda-beda tiap daun biar keliatan alami.
 export function IvyFallLoader({ size = 48, color = "var(--moss-strong)", label }) {
   const leaves = [
     { x: 3, delay: "0s", scale: 0.52 },
@@ -118,20 +115,22 @@ export function CoverArt({ seed, size = 160, radius = 14, style = {} }) {
     </svg>
   );
 }
+function resolveThumbSrc(src) {
+  if (!src) return src;
+  if (/^(https?:)?\/\//i.test(src) || src.startsWith("data:") || src.startsWith("blob:")) return src;
+  return `${API_BASE}${src.startsWith("/") ? src : `/${src}`}`;
+}
 
-// Cover "cerdas": pakai gambar asli kalau ada, jatuh balik ke CoverArt
-// generatif kalau kosong atau gagal dimuat.
 export function SmartCover({ src, seed, size = 160, radius = 14, style = {}, alt = "" }) {
-  if (!src) return <CoverArt seed={seed} size={size} radius={radius} style={style} />;
+  const resolved = resolveThumbSrc(src);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [resolved]); // reset tiap ganti lagu/src, biar ga "kejebak" gagal terus
+  if (!resolved || failed) return <CoverArt seed={seed} size={size} radius={radius} style={style} />;
   return (
     <img
-      src={src} alt={alt} width={size} height={size} loading="lazy"
+      src={resolved} alt={alt} width={size} height={size} loading="lazy"
       style={{ borderRadius: radius, objectFit: "cover", display: "block", background: "var(--bg-elev-2)", ...style }}
-      onError={(e) => {
-        e.currentTarget.style.display = "none";
-        const fallback = e.currentTarget.nextSibling;
-        if (fallback) fallback.style.display = "block";
-      }}
+      onError={() => setFailed(true)}
     />
   );
 }
