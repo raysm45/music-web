@@ -27,6 +27,13 @@ export const Api = {
   track: (id) => apiGet(`/api/track/${id}`),
   similar: (args) =>
     apiGet(`/api/similar?${args.trackId ? `trackId=${encodeURIComponent(args.trackId)}` : `title=${encodeURIComponent(args.title)}&artist=${encodeURIComponent(args.artist || "")}`}`),
+  lyrics: ({ title, artist, album, duration }) => {
+    const qs = new URLSearchParams({ title: title || "" });
+    if (artist) qs.set("artist", artist);
+    if (album) qs.set("album", album);
+    if (duration) qs.set("duration", String(Math.round(duration)));
+    return apiGet(`/api/lyrics?${qs.toString()}`);
+  },
 
   // --- audio ---
   // Sumber utama: preview 30 detik RESMI dari Deezer (track.preview),

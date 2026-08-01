@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { Api } from "../lib/api.js";
 import { usePlayer } from "../context.jsx";
 import { CardTrack, CardAlbum, CardArtist } from "../components.jsx";
-import { TendrilSpinner } from "../lib/brand.jsx";
+import { IvyFallLoader } from "../lib/brand.jsx";
 import { uid } from "../lib/utils.js";
 
 function greetingText() {
@@ -27,7 +27,7 @@ function useDiscoverRow(seed, limit = 14) {
 function Row({ title, items, render }) {
   if (items === null) return (
     <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{title}</h2></div>
-      <div className="aivy-hrow"><TendrilSpinner size={24} color="var(--ink-faint)" /></div>
+      <div className="aivy-hrow"><IvyFallLoader size={26} /></div>
     </section>
   );
   if (!items.length) return null;
@@ -122,7 +122,7 @@ export function HomePage() {
           })}
         </div>
         <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", padding: "26px 0" }}>
-          {loading && <TendrilSpinner size={26} color="var(--ink-faint)" />}
+          {loading && <IvyFallLoader size={28} />}
           {done && items.length > 0 && <span className="eyebrow">Kamu udah sampai ujung jelajahan hari ini</span>}
         </div>
       </section>

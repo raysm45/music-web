@@ -38,6 +38,7 @@ export function UIProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [contextMenu, setContextMenu] = useState(null); 
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
 
   useEffect(() => {
     Api.me()
@@ -92,6 +93,10 @@ export function UIProvider({ children }) {
   const openAddToPlaylist = useCallback((track) => setAddToPlaylistTarget(track), []);
   const closeAddToPlaylist = useCallback(() => setAddToPlaylistTarget(null), []);
 
+  const openLyrics = useCallback(() => setLyricsOpen(true), []);
+  const closeLyrics = useCallback(() => setLyricsOpen(false), []);
+  const toggleLyrics = useCallback(() => setLyricsOpen((o) => !o), []);
+
   const value = {
     authUser, authChecked, login, logout,
     settings, updateSettings, resetSettings,
@@ -99,6 +104,7 @@ export function UIProvider({ children }) {
     toasts, pushToast,
     contextMenu, openContextMenu, closeContextMenu,
     addToPlaylistTarget, openAddToPlaylist, closeAddToPlaylist,
+    lyricsOpen, openLyrics, closeLyrics, toggleLyrics,
   };
   return <UICtx.Provider value={value}>{children}</UICtx.Provider>;
 }
@@ -239,35 +245,69 @@ export function PlayerProvider({ children }) {
   }, [volume, muted]);
 
   
+  // FIX bug "durasi di mobile stuck": sebelumnya update waktu (currentTime,
+  // durasi total) CUMA lewat requestAnimationFrame loop. Masalahnya browser
+  // (apalagi di HP) OTOMATIS MENGHENTIKAN rAF waktu tab disembunyikan / layar
+  // dikunci sambil lagu masih diputar di background - jadinya scrubber &
+  // angka durasi keliatan "nyangkut"/berhenti walau lagu sebenernya jalan
+  // terus. Sekarang sumber utamanya dipindah ke event native <audio>
+  // ('timeupdate' & 'durationchange'), yang tetep jalan dari mesin audio
+  // browser walau rendering-nya lagi di-throttle. rAF loop di bawah tetep
+  // dipertahankan buat isian progress bar yang halus pas tab keliatan, tapi
+  // bukan lagi satu-satunya sumber kebenaran.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onLoaded = () => setClipDuration(audio.duration || 0);
+    const syncDuration = () => {
+      const d = audio.duration;
+      if (isFinite(d) && d > 0) setClipDuration(d);
+    };
+    const onTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      writeProgress(audio.currentTime, audio.duration || clipDuration);
+    };
     const onEnded = () => {
       if (inRoom) return; 
       if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
       nextRef.current(true);
     };
     const onError = () => { setLoadingAudio(false); };
-    audio.addEventListener("loadedmetadata", onLoaded);
+    audio.addEventListener("loadedmetadata", syncDuration);
+    audio.addEventListener("durationchange", syncDuration);
+    audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onError);
     return () => {
-      audio.removeEventListener("loadedmetadata", onLoaded);
+      audio.removeEventListener("loadedmetadata", syncDuration);
+      audio.removeEventListener("durationchange", syncDuration);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
-  }, [repeat, inRoom]); 
+  }, [repeat, inRoom, writeProgress]); 
+
+  // Pas balik dari background (kunci layar/ganti app dibuka lagi), paksa
+  // resync sekali biar angka & scrubber langsung "kekejar" bukan nunggu
+  // event berikutnya - ini yang bikin transisinya kerasa "smooth", ga nyendat.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const audio = audioRef.current;
+      if (!audio) return;
+      setCurrentTime(audio.currentTime);
+      writeProgress(audio.currentTime, audio.duration || clipDuration);
+      if (isFinite(audio.duration) && audio.duration > 0) setClipDuration(audio.duration);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [writeProgress, clipDuration]);
 
   
   useEffect(() => {
-    let raf; let lastState = 0;
-    function tick(ts) {
+    let raf;
+    function tick() {
       const audio = audioRef.current;
-      if (audio && !audio.paused) {
-        writeProgress(audio.currentTime, audio.duration || clipDuration);
-        if (ts - lastState > 220) { lastState = ts; setCurrentTime(audio.currentTime); }
-      }
+      if (audio && !audio.paused) writeProgress(audio.currentTime, audio.duration || clipDuration);
       raf = requestAnimationFrame(tick);
     }
     raf = requestAnimationFrame(tick);
@@ -371,6 +411,19 @@ export function PlayerProvider({ children }) {
     if (!audio) return;
     const dur = audio.duration || clipDuration || 0;
     const t = clamp(ratio, 0, 1) * dur;
+    if (inRoom) { socketRef.current?.emit("playback-control", { roomId: room.id, action: "seek", payload: { position: t } }); return; }
+    audio.currentTime = t;
+    setCurrentTime(t);
+    writeProgress(t, dur);
+  }, [inRoom, room, clipDuration, writeProgress]);
+
+  // seek ke detik absolut - dipakai buat klik-baris-lirik biar lompat ke
+  // posisi lagu yang sesuai (fitur "tap lirik buat lompat")
+  const seekTo = useCallback((seconds) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const dur = audio.duration || clipDuration || 0;
+    const t = clamp(seconds, 0, dur || seconds);
     if (inRoom) { socketRef.current?.emit("playback-control", { roomId: room.id, action: "seek", payload: { position: t } }); return; }
     audio.currentTime = t;
     setCurrentTime(t);
@@ -544,7 +597,7 @@ export function PlayerProvider({ children }) {
     queueList, order, posInOrder, currentTrack, upNext, history,
     isPlaying, currentTime, duration: clipDuration, isPreviewClip, loadingAudio,
     volume, muted, shuffle, repeat, liked, playlists,
-    playList, togglePlay, next, prev, seekRatio, toggleShuffle, cycleRepeat,
+    playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
     playSingle, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail,
     registerProgressEl,

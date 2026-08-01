@@ -3,7 +3,7 @@ import { RouterProvider, useRouter } from "./router.jsx";
 import { UIProvider, PlayerProvider, useUI, usePlayer } from "./context.jsx";
 import {
   ErrorBoundary, Sidebar, MobileTabBar, TopBar, PlayerBar, MiniPlayer, NowPlayingSheet,
-  RightPanel, GlobalContextMenu, AddToPlaylistModal, ToastHost, ViewLoading,
+  RightPanel, GlobalContextMenu, AddToPlaylistModal, ToastHost, ViewLoading, LyricsOverlay,
 } from "./components.jsx";
 import { LandingPage, LoginPage } from "./pages/AuthPages.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
@@ -72,6 +72,7 @@ function AppInner() {
       {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => setNowPlayingOpen(false)} />}
 
       <AddToPlaylistModal />
+      <LyricsOverlay />
       <GlobalContextMenu />
       <ToastHost isMobile={isMobile} />
     </div>

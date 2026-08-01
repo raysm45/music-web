@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Heart, Play, Library as LibraryIcon } from "lucide-react";
 import { usePlayer } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
-import { TrackRow, ViewNotFound } from "../components.jsx";
+import { TrackRow, ViewNotFound, ConfirmDialog } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
 export function LibraryPage() {
@@ -89,6 +89,7 @@ export function PlaylistPage() {
   const { params } = useRouter();
   const { playlists, playList, removeFromPlaylist, deletePlaylist, setPlaylistDetail } = usePlayer();
   const { navigate } = useRouter();
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
   const pl = playlists.find((p) => String(p.id) === String(params.id));
 
   React.useEffect(() => {
@@ -113,8 +114,16 @@ export function PlaylistPage() {
       </div>
       <div className="aivy-hero-actions">
         {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0)} aria-label="Putar semua"><Play size={22} fill="currentColor" /></button>}
-        <button className="aivy-btn-ghost" onClick={() => { deletePlaylist(pl.id); navigate("library"); }}>Hapus playlist</button>
+        <button className="aivy-btn-ghost" onClick={() => setConfirmDelete(true)}>Hapus playlist</button>
       </div>
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Hapus "${pl.name}"?`}
+        message="Playlist ini bakal dihapus permanen dan ga bisa dibalikin lagi. Lagu-lagunya sendiri ga akan kehapus dari koleksi kamu."
+        confirmLabel="Ya, hapus"
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => { setConfirmDelete(false); deletePlaylist(pl.id); navigate("library"); }}
+      />
       {pl.songs?.length > 0 ? (
         <div>{pl.songs.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, t.id)} removeLabel="Hapus dari playlist ini" />)}</div>
       ) : (

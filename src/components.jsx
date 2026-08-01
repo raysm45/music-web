@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback, Component } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from "react";
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume2, Volume1,
   VolumeX, Heart, Search, Home as HomeIcon, Library, ListMusic, ChevronDown,
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
-  Lock, Globe, Crown,
+  Lock, Globe, Crown, Mic2, AlertTriangle,
 } from "lucide-react";
 import { usePlayer, useUI } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
-import { CoverArt, SmartCover, LeafMark, TendrilSpinner } from "./lib/brand.jsx";
-import { formatTime, relativeTime } from "./lib/utils.js";
+import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
+import { formatTime, formatDuration, relativeTime, parseLRC } from "./lib/utils.js";
 
 export class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -180,7 +180,7 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
           <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={() => toggleLike(track)} aria-label="Suka"><Heart size={15} fill={isLiked ? "currentColor" : "none"} /></button>
           <button className="aivy-icon-btn sm" onClick={handleContext} aria-label="Menu lainnya"><MoreHorizontal size={15} /></button>
         </div>
-        <span className="dur font-mono">{track.duration ? formatTime(track.duration) : "\u2013"}</span>
+        <span className="dur font-mono">{formatDuration(track.duration)}</span>
       </div>
     </div>
   );
@@ -309,6 +309,43 @@ export function AddToPlaylistModal() {
   );
 }
 
+// Dialog konfirmasi generik - dipakai a.l. buat "yakin mau hapus playlist?"
+// biar ga kepencet ke-delete tanpa sengaja.
+export function ConfirmDialog({ open, title, message, confirmLabel = "Hapus", cancelLabel = "Batal", danger = true, onConfirm, onCancel }) {
+  if (!open) return null;
+  return (
+    <div className="aivy-modal-backdrop" onClick={onCancel}>
+      <div className="aivy-modal aivy-confirm-modal" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true">
+        <div className="aivy-confirm-icon"><AlertTriangle size={22} color="var(--berry)" /></div>
+        <div className="aivy-modal-title">{title}</div>
+        {message && <p className="aivy-confirm-msg">{message}</p>}
+        <div className="aivy-confirm-actions">
+          <button className="aivy-btn-ghost" onClick={onCancel}>{cancelLabel}</button>
+          <button className={`aivy-btn-primary ${danger ? "danger" : ""}`} onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- skeleton loading (dipakai pas nunggu hasil pencarian) ----------
+// Ganti "Mencari..." polos jadi kerangka baris lagu yang shimmer, biar
+// keliatan lebih cepet & jelas kontennya bakal berbentuk apa.
+export function SkeletonTrackRow() {
+  return (
+    <div className="aivy-skel-row">
+      <div className="aivy-skel-thumb aivy-skeleton" />
+      <div className="aivy-skel-lines">
+        <div className="aivy-skel-line w60 aivy-skeleton" />
+        <div className="aivy-skel-line w35 aivy-skeleton" />
+      </div>
+    </div>
+  );
+}
+export function SkeletonList({ count = 8 }) {
+  return <div>{Array.from({ length: count }).map((_, i) => <SkeletonTrackRow key={i} />)}</div>;
+}
+
 export function TransportButtons({ big = false }) {
   const { isPlaying, togglePlay, next, prev, shuffle, toggleShuffle, repeat, cycleRepeat, currentTrack, room } = usePlayer();
   const { authUser } = useUI();
@@ -331,6 +368,7 @@ export function TransportButtons({ big = false }) {
 export function PlayerBar() {
   const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio } = usePlayer();
   const { navigate } = useRouter();
+  const { toggleLyrics } = useUI();
   const { fillRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
 
@@ -366,6 +404,7 @@ export function PlayerBar() {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: "min(20%, 220px)", justifyContent: "flex-end" }}>
+        <button className="aivy-icon-btn sm" onClick={toggleLyrics} disabled={!currentTrack} aria-label="Lirik" title="Lirik"><Mic2 size={16} /></button>
         <VolumeControl />
       </div>
     </div>
@@ -392,6 +431,7 @@ export function MiniPlayer({ onExpand }) {
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const { currentTrack, liked, toggleLike, isPreviewClip } = usePlayer();
   const { navigate } = useRouter();
+  const { toggleLyrics } = useUI();
   const { fillRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   return (
@@ -401,7 +441,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         <div className="aivy-sheet-head">
           <button className="aivy-icon-btn" onClick={onClose} aria-label="Tutup"><ChevronDown size={22} /></button>
           <span className="eyebrow">{isPreviewClip ? "Pratinjau 30 detik" : "Sedang diputar"}</span>
-          <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label="Buka antrean"><ListMusic size={19} /></button>
+          <div style={{ display: "flex", gap: 2 }}>
+            <button className="aivy-icon-btn" onClick={toggleLyrics} aria-label="Lirik" title="Lirik"><Mic2 size={19} /></button>
+            <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label="Buka antrean"><ListMusic size={19} /></button>
+          </div>
         </div>
         {currentTrack && (
           <div className="aivy-sheet-body aivy-scroll">
@@ -462,6 +505,7 @@ export function RightPanel() {
 
 function NowPlayingPane() {
   const { currentTrack, isPreviewClip } = usePlayer();
+  const { toggleLyrics } = useUI();
   if (!currentTrack) return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">Belum ada yang diputar</div></div>;
   return (
     <div className="aivy-nowplaying-pane">
@@ -469,6 +513,7 @@ function NowPlayingPane() {
       <div className="t">{currentTrack.title}</div>
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>Pratinjau resmi 30 detik dari Deezer</div>}
+      <button className="aivy-btn-ghost" style={{ marginTop: 16 }} onClick={toggleLyrics}><Mic2 size={14} /> Lihat lirik</button>
     </div>
   );
 }
@@ -596,15 +641,122 @@ export function TopBar({ isMobile }) {
       )}
       <div className="aivy-topbar-spacer" />
       {!isMobile && <button className="aivy-navbtn" onClick={toggleTheme} aria-label="Ganti tema" title="Ganti tema">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>}
+      {isMobile && (
+        <>
+          {/* FIX: dulu di mobile ga ada cara sama sekali buat ganti tema atau
+              buka halaman Setting (cuma ada di sidebar desktop & sidebar-nya
+              disembunyiin pas mobile) - sekarang ditaro di topbar */}
+          <button className="aivy-navbtn" onClick={toggleTheme} aria-label="Ganti tema" title="Ganti tema">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
+          <Link to="settings" className="aivy-navbtn" aria-label="Setting" title="Setting"><SettingsIcon size={15} /></Link>
+        </>
+      )}
       {isMobile && !authUser && <button className="aivy-btn-ghost" style={{ padding: "7px 14px", fontSize: 12.5 }} onClick={login}>Masuk</button>}
-      {isMobile && authUser && <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>}
+      {isMobile && authUser && <Link to="settings" className="aivy-avatar" aria-label="Akun">{authUser.username?.slice(0, 1).toUpperCase()}</Link>}
     </div>
   );
 }
 
 export function ViewLoading() {
-  return <div className="aivy-empty" style={{ paddingTop: 90 }}><TendrilSpinner size={34} color="var(--ink-faint)" /></div>;
+  return <div className="aivy-empty" style={{ paddingTop: 90 }}><IvyFallLoader size={40} /></div>;
 }
 export function ViewNotFound({ label }) {
   return <div className="aivy-empty" style={{ paddingTop: 90 }}><LeafMark size={40} color="var(--ink-faint)" /><div className="title">{label} ga ketemu</div></div>;
+}
+
+// ---------- layar lirik ----------
+// Overlay full-screen, muncul di atas apapun (mirip NowPlayingSheet tapi
+// global & bisa dibuka dari mana aja - PlayerBar, NowPlayingSheet, atau
+// panel Now Playing). Nyari lirik ke /api/lyrics, kalau dapet versi
+// bersinkron (LRC) baris yang lagi diputar di-highlight & auto-scroll
+// (efek karaoke); kalau cuma dapet lirik polos, ditampilin apa adanya;
+// kalau ga ketemu sama sekali, kasih pesan yang jelas alih-alih kosong.
+export function LyricsOverlay() {
+  const { lyricsOpen, closeLyrics } = useUI();
+  const { currentTrack, currentTime, seekTo } = usePlayer();
+  const [state, setState] = useState({ loading: false, synced: [], plain: "", checkedFor: null });
+  const lineRefs = useRef([]);
+  const trackKey = currentTrack?.id;
+
+  useEffect(() => {
+    if (!lyricsOpen || !currentTrack) return;
+    if (state.checkedFor === trackKey) return;
+    let cancelled = false;
+    setState((s) => ({ ...s, loading: true }));
+    import("./lib/api.js").then(({ Api }) => {
+      Api.lyrics({ title: currentTrack.title, artist: currentTrack.artist?.name, duration: currentTrack.duration })
+        .then((res) => {
+          if (cancelled) return;
+          setState({ loading: false, synced: parseLRC(res.synced), plain: res.plain || "", checkedFor: trackKey });
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setState({ loading: false, synced: [], plain: "", checkedFor: trackKey });
+        });
+    });
+    return () => { cancelled = true; };
+  }, [lyricsOpen, trackKey]); // eslint-disable-line
+
+  const activeIndex = useMemo(() => {
+    if (!state.synced.length) return -1;
+    let idx = -1;
+    for (let i = 0; i < state.synced.length; i++) {
+      if (state.synced[i].time <= currentTime + 0.15) idx = i; else break;
+    }
+    return idx;
+  }, [state.synced, currentTime]);
+
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    lineRefs.current[activeIndex]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [activeIndex]);
+
+  if (!lyricsOpen) return null;
+
+  return (
+    <div className={`aivy-lyrics-overlay ${lyricsOpen ? "open" : ""}`}>
+      {currentTrack?.cover && <div className="aivy-lyrics-bg" style={{ backgroundImage: `url(${currentTrack.cover})` }} />}
+      <div className="aivy-lyrics-scrim" />
+      <div className="aivy-lyrics-head">
+        <button className="aivy-icon-btn" onClick={closeLyrics} aria-label="Tutup"><ChevronDown size={22} /></button>
+        <div className="meta">
+          <div className="t">{currentTrack?.title || "Lirik"}</div>
+          <div className="a">{currentTrack?.artist?.name}</div>
+        </div>
+      </div>
+
+      {!currentTrack ? (
+        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">Belum ada yang diputar</div></div>
+      ) : state.loading ? (
+        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">Nyari lirik\u2026</div></div>
+      ) : state.synced.length > 0 ? (
+        <div className="aivy-lyrics-body aivy-scroll">
+          <div style={{ height: "38vh" }} />
+          {state.synced.map((line, i) => (
+            <div
+              key={i} ref={(el) => (lineRefs.current[i] = el)}
+              className={`aivy-lyrics-line ${i === activeIndex ? "active" : Math.abs(i - activeIndex) === 1 ? "near" : ""}`}
+              onClick={() => seekTo(line.time)}
+            >
+              {line.text || "\u266a"}
+            </div>
+          ))}
+          <div style={{ height: "38vh" }} />
+        </div>
+      ) : state.plain ? (
+        <div className="aivy-lyrics-plain aivy-scroll">{state.plain}</div>
+      ) : (
+        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}>
+          <LeafMark size={34} color="var(--ink-faint)" />
+          <div className="title">Lirik belum ketemu</div>
+          <div className="sub">Coba lagu lain, atau lirik buat versi ini emang belum tersedia di database.</div>
+        </div>
+      )}
+
+      {currentTrack && (
+        <div className="aivy-lyrics-footer">
+          <TransportButtons />
+        </div>
+      )}
+    </div>
+  );
 }

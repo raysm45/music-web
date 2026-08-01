@@ -45,6 +45,29 @@ export function TendrilSpinner({ size = 28, color = "currentColor", spin = true 
   );
 }
 
+// Animasi loading "daun ivy gugur" - dipakai gantiin spinner puter-puter
+// polos di seluruh app (boot, load home, nyari lirik, dst). Beberapa daun
+// (pakai bentuk LEAF_PATH yg sama kayak logo) jatuh + muter pelan, loop
+// terus-terusan dengan delay beda-beda tiap daun biar keliatan alami.
+export function IvyFallLoader({ size = 48, color = "var(--moss-strong)", label }) {
+  const leaves = [
+    { x: 3, delay: "0s", scale: 0.52 },
+    { x: 13, delay: "-0.9s", scale: 0.4 },
+    { x: 22, delay: "-1.8s", scale: 0.46 },
+  ];
+  return (
+    <div className="aivy-ivyloader" style={{ width: size, height: size }} role="status" aria-label={label || "Memuat"}>
+      <svg viewBox="0 0 32 32" width={size} height={size} style={{ overflow: "visible" }} aria-hidden="true" focusable="false">
+        {leaves.map((leaf, i) => (
+          <g key={i} className="aivy-ivyleaf" style={{ animationDelay: leaf.delay }}>
+            <path d={LEAF_PATH} fill={color} opacity="0.92" transform={`translate(${leaf.x},-6) scale(${leaf.scale})`} />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 const DUOTONES = [
   ["#37452F", "#B7C7A3"], ["#2E3A28", "#8CA37C"], ["#4A2F2A", "#C97B6B"],
   ["#33362A", "#D3C08C"], ["#243026", "#7FA88F"], ["#3B2E3B", "#B98FA0"],

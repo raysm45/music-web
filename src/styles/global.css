@@ -204,7 +204,7 @@ svg{ display: block; }
 .aivy-row .meta .a:hover{ color: var(--ink-dim); text-decoration: underline; }
 .aivy-row .col-album{ min-width: 0; flex: 1; font-size: 12.5px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: none; }
 .aivy-row .right{ display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.aivy-row .dur{ font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); width: 40px; text-align: right; flex-shrink: 0; }
+.aivy-row .dur{ font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); min-width: 40px; text-align: right; flex-shrink: 0; white-space: nowrap; }
 .aivy-row .row-actions{ display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity var(--dur-fast) var(--ease); }
 .aivy-row:hover .row-actions{ opacity: 1; }
 .aivy-row .row-actions.liked{ opacity: 1; }
@@ -404,3 +404,72 @@ svg{ display: block; }
 /* ---------- responsive ---------- */
 @media (max-width: 1240px){ :root{ --rightpanel-w: 0px; } .aivy-shell{ grid-template-columns: var(--sidebar-w) 1fr; grid-template-areas: "side main" "player player"; } .aivy-rightpanel{ display: none; } }
 @media (max-width: 1080px){ :root{ --sidebar-w: 208px; } .aivy-grid{ grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); } }
+
+/* ---------- ivy fall loader (ganti spinner puter-puter) ---------- */
+.aivy-ivyloader{ position: relative; display: inline-block; }
+.aivy-ivyleaf{ animation: aivy-leaf-fall 2.6s ease-in infinite; transform-origin: 16px 16px; opacity: 0; }
+@keyframes aivy-leaf-fall{
+  0%{ transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+  10%{ opacity: 1; }
+  50%{ transform: translateY(15px) translateX(-3px) rotate(150deg); }
+  85%{ opacity: 1; }
+  100%{ transform: translateY(30px) translateX(2px) rotate(300deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce){ .aivy-ivyleaf{ animation: none; opacity: .85; } }
+
+/* ---------- skeleton (shimmer) buat loading hasil pencarian ---------- */
+.aivy-skeleton{ position: relative; overflow: hidden; background: var(--bg-elev-2); }
+.aivy-skeleton::after{
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 16%, transparent), transparent);
+  animation: aivy-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes aivy-shimmer{ 100%{ transform: translateX(100%); } }
+.aivy-skel-row{ display: flex; align-items: center; gap: 12px; padding: 8px 10px; }
+.aivy-skel-thumb{ width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; }
+.aivy-skel-lines{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.aivy-skel-line{ height: 11px; border-radius: 4px; }
+.aivy-skel-line.w60{ width: 60%; }
+.aivy-skel-line.w35{ width: 35%; }
+
+/* ---------- confirm dialog ---------- */
+.aivy-confirm-modal{ text-align: center; }
+.aivy-confirm-icon{ width: 44px; height: 44px; border-radius: 50%; background: color-mix(in srgb, var(--berry) 16%, transparent); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+.aivy-confirm-modal .aivy-modal-title{ justify-content: center; }
+.aivy-confirm-msg{ font-size: 13.5px; color: var(--ink-faint); line-height: 1.6; margin: 4px 0 18px; }
+.aivy-confirm-actions{ display: flex; gap: 10px; }
+.aivy-confirm-actions button{ flex: 1; }
+.aivy-btn-primary.danger{ background: var(--berry); color: #fff; }
+.aivy-btn-primary.danger:hover{ background: var(--berry-strong); }
+
+/* ---------- layar lirik ---------- */
+.aivy-lyrics-overlay{
+  position: fixed; inset: 0; z-index: 75; background: var(--bg);
+  display: flex; flex-direction: column; overflow: hidden;
+  opacity: 0; pointer-events: none; transform: translateY(18px) scale(.99);
+  transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+}
+.aivy-lyrics-overlay.open{ opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+.aivy-lyrics-bg{
+  position: absolute; inset: -60px; background-size: cover; background-position: center;
+  filter: blur(60px) brightness(.55) saturate(1.35); transform: scale(1.15); opacity: .6; z-index: 0;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+.aivy-lyrics-scrim{ position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 45%, transparent) 0%, var(--bg) 85%); }
+.aivy-lyrics-head{ position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: calc(16px + env(safe-area-inset-top,0px)) 20px 8px; flex-shrink: 0; }
+.aivy-lyrics-head .meta{ min-width: 0; flex: 1; }
+.aivy-lyrics-head .t{ font-family: var(--font-display); font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-lyrics-head .a{ font-size: 12px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+.aivy-lyrics-body{ position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; }
+.aivy-lyrics-line{
+  padding: 9px 28px; font-family: var(--font-display); font-size: clamp(19px, 3.6vw, 26px); font-weight: 560; line-height: 1.4;
+  color: var(--ink-faint); opacity: .35; filter: blur(1.5px); transform: scale(1); transform-origin: left center;
+  transition: opacity .5s var(--ease), color .5s var(--ease), transform .5s var(--ease), filter .5s var(--ease);
+  cursor: pointer; max-width: 680px;
+}
+.aivy-lyrics-line:hover{ opacity: .75; filter: blur(0); }
+.aivy-lyrics-line.near{ opacity: .58; filter: blur(.5px); }
+.aivy-lyrics-line.active{ color: var(--moss-strong); opacity: 1; filter: blur(0); transform: scale(1.045); }
+.aivy-lyrics-plain{ position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; padding: 12px 28px 30vh; font-size: 16px; line-height: 2; color: var(--ink-dim); white-space: pre-line; max-width: 680px; }
+.aivy-lyrics-footer{ position: relative; z-index: 1; flex-shrink: 0; display: flex; justify-content: center; padding: 10px 24px calc(20px + var(--safe-b)); }
+@media (max-width: 640px){ .aivy-lyrics-line{ padding: 8px 22px; } .aivy-lyrics-plain{ padding: 12px 22px 30vh; } }

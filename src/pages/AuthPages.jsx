@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { LogIn, Users, Radio, Heart, Share2, Sparkles } from "lucide-react";
-import { LeafMark, TendrilSpinner } from "../lib/brand.jsx";
+import { LeafMark, IvyFallLoader } from "../lib/brand.jsx";
 import { useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
 
@@ -85,7 +85,7 @@ export function LoginPage() {
         <h1 className="font-display">Masuk ke AIVY</h1>
         <p>Pakai akun Discord kamu buat nyimpen lagu, bikin playlist, dan dengerin bareng temen di ruang.</p>
         {!authChecked ? (
-          <div style={{ padding: "18px 0" }}><TendrilSpinner size={28} color="var(--ink-faint)" /></div>
+          <div style={{ padding: "18px 0" }}><IvyFallLoader size={30} /></div>
         ) : (
           <button className="aivy-btn-primary lg" onClick={login}><LogIn size={17} /> Lanjut dengan Discord</button>
         )}
