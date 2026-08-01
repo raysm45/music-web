@@ -76,7 +76,7 @@ export function LikedPage() {
       {likedTracks === null ? null : likedTracks.length > 0 ? (
         <>
           <div className="aivy-hero-actions"><button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(likedTracks, 0)} aria-label="Putar semua"><Play size={22} fill="currentColor" /></button></div>
-          <div>{likedTracks.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={likedTracks} showAlbum onRemove={() => handleUnlike(t)} removeLabel="Hapus dari Disukai" />)}</div>
+          <div>{likedTracks.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={likedTracks} showAlbum onRemove={() => handleUnlike(t)} removeLabel="Hapus dari Disukai" queueMode="context" />)}</div>
         </>
       ) : (
         <div className="aivy-empty"><Heart size={38} color="var(--ink-faint)" /><div className="title">Belum ada yang disukai</div><div className="sub">Tekan ikon hati di lagu mana pun buat nyimpen di sini.</div></div>
@@ -125,7 +125,7 @@ export function PlaylistPage() {
         onConfirm={() => { setConfirmDelete(false); deletePlaylist(pl.id); navigate("library"); }}
       />
       {pl.songs?.length > 0 ? (
-        <div>{pl.songs.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, t.id)} removeLabel="Hapus dari playlist ini" />)}</div>
+        <div>{pl.songs.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, t.id)} removeLabel="Hapus dari playlist ini" queueMode="context" />)}</div>
       ) : (
         <div className="aivy-empty"><div className="title">Playlist ini masih kosong</div><div className="sub">Cari lagu, lalu pilih "Tambah ke playlist" dari menu lagu.</div></div>
       )}

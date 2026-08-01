@@ -48,7 +48,7 @@ export function ArtistPage() {
       {tracks?.length > 0 && (
         <section className="aivy-section">
           <div className="aivy-section-head"><h2 className="aivy-section-title">Lagu Populer</h2></div>
-          <div>{tracks.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={artist.topTracks} showAlbum />)}</div>
+          <div>{tracks.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={artist.topTracks} showAlbum queueMode="context" />)}</div>
           {artist.topTracks.length > 5 && <button className="aivy-chip" style={{ marginTop: 10 }} onClick={() => setShowAllTracks((s) => !s)}>{showAllTracks ? "Tampilkan lebih sedikit" : `Tampilkan ${artist.topTracks.length - 5} lagi`}</button>}
         </section>
       )}
@@ -104,7 +104,7 @@ export function AlbumPage() {
         <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(album.tracks, 0)} aria-label="Putar album"><Play size={22} fill="currentColor" /></button>
         <button className="aivy-icon-btn" onClick={() => { toggleShuffle(); playList(album.tracks, 0); }} aria-label="Acak & putar"><Shuffle size={18} /></button>
       </div>
-      <div>{(album.tracks || []).map((t, i) => <TrackRow key={t.id} track={t} index={i} list={album.tracks} />)}</div>
+      <div>{(album.tracks || []).map((t, i) => <TrackRow key={t.id} track={t} index={i} list={album.tracks} queueMode="context" />)}</div>
     </div>
   );
 }

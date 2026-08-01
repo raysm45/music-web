@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Search, X, Clock, TrendingUp } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { useUI } from "../context.jsx";
@@ -16,6 +16,7 @@ export function SearchPage() {
   const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [lyricsMap, setLyricsMap] = useState({}); // { [trackId]: true | false } - dipakai buat naikin lagu yang ada liriknya ke atas
   const inputRef = useRef(null);
 
   // Cuma buat dropdown saran ketikan (typeahead) - ringan, bukan hasil
@@ -86,6 +87,41 @@ export function SearchPage() {
   const showBrowse = !query.trim() && !hasSearched;
   const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.thumbnail, duration: r.duration || null, artist: null } : r));
 
+  // Cek ketersediaan lirik buat tiap hasil pencarian (lewat /api/lyrics),
+  // lalu naikin lagu-lagu yang liriknya ketemu ke paling atas. Jalan
+  // paralel dengan concurrency dibatasin biar ga nembak API kebanyakan
+  // request bareng, dan hasil urutan barunya baru di-apply sekali abis
+  // SEMUA lagu keceked - biar list-nya ga lompat-lompat urutan tiap
+  // sebentar-sebentar pas lagi discroll.
+  useEffect(() => {
+    if (!results.length) { setLyricsMap({}); return; }
+    let cancelled = false;
+    setLyricsMap({});
+    const items = results.map((r) => (r.videoId ? { id: r.videoId, title: r.title, artist: null, duration: r.duration || null } : r));
+    const found = {};
+    const CONCURRENCY = 5;
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < items.length) {
+        const t = items[cursor++];
+        try {
+          const res = await Api.lyrics({ title: t.title, artist: t.artist?.name, duration: t.duration });
+          found[t.id] = !!(res?.synced || res?.plain);
+        } catch {
+          found[t.id] = false;
+        }
+      }
+    };
+    Promise.all(Array.from({ length: Math.min(CONCURRENCY, items.length) }, worker)).then(() => {
+      if (!cancelled) setLyricsMap({ ...found });
+    });
+    return () => { cancelled = true; };
+  }, [results]);
+
+  const sortedList = useMemo(() => {
+    return [...list].sort((a, b) => (lyricsMap[a.id] ? 0 : 1) - (lyricsMap[b.id] ? 0 : 1));
+  }, [list, lyricsMap]);
+
   return (
     <div className="aivy-view-enter">
       <div className="aivy-search-head">
@@ -145,7 +181,7 @@ export function SearchPage() {
 
       {hasSearched && (
         searching ? <SkeletonList count={8} /> : (
-          list.length ? <div>{list.map((t, i) => <TrackRow key={t.id + i} track={t} index={i} list={list} />)}</div> : (
+          sortedList.length ? <div>{sortedList.map((t, i) => <TrackRow key={t.id + i} track={t} index={i} list={sortedList} queueMode="radio" />)}</div> : (
             <div className="aivy-empty"><Search size={34} color="var(--ink-faint)" /><div className="title">Ga ketemu apa-apa</div><div className="sub">Coba kata kunci lain, atau cek ejaannya.</div></div>
           )
         )

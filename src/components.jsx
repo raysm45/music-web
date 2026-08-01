@@ -141,15 +141,27 @@ export function useTrackMenuItems(track, opts = {}) {
   return items;
 }
 
-export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel }) {
-  const { currentTrack, isPlaying, togglePlay, playSingle, liked, toggleLike } = usePlayer();
+export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single" }) {
+  const { currentTrack, isPlaying, togglePlay, playSingle, playList, playRadio, liked, toggleLike } = usePlayer();
   const { openContextMenu } = useUI();
   const { navigate } = useRouter();
   const isCurrent = currentTrack && currentTrack.id === track.id;
   const isLiked = liked.has(String(track.videoId || track.id));
   const items = useTrackMenuItems(track, { onRemove, removeLabel });
 
-  const handlePlay = () => { if (isCurrent) togglePlay(); else playSingle(track); };
+  const handlePlay = () => {
+    if (isCurrent) { togglePlay(); return; }
+    // "context": klik lagu di dalam playlist/album/koleksi -> seluruh
+    // koleksi itu yang jadi antrean (mulai dari lagu yang diklik), biar
+    // shuffle & repeat kerja buat semua lagu di koleksi itu, bukan cuma
+    // 1 lagu doang.
+    if (queueMode === "context" && list && list.length) { playList(list, index); return; }
+    // "radio": klik lagu dari hasil PENCARIAN -> jangan numpahin sisa
+    // hasil pencarian ke antrean (isinya belum tentu nyambung), tapi
+    // putar lagu itu terus isi antrean pakai lagu-lagu yang MIRIP.
+    if (queueMode === "radio") { playRadio(track); return; }
+    playSingle(track);
+  };
   const handleContext = (e) => { e.preventDefault(); openContextMenu(e.clientX, e.clientY, items); };
 
   return (
@@ -366,11 +378,12 @@ export function TransportButtons({ big = false }) {
 }
 
 export function PlayerBar() {
-  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio } = usePlayer();
+  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics } = useUI();
   const { fillRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
+  const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
 
   return (
     <div className="aivy-player">
@@ -404,7 +417,7 @@ export function PlayerBar() {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: "min(20%, 220px)", justifyContent: "flex-end" }}>
-        <button className="aivy-icon-btn sm" onClick={toggleLyrics} disabled={!currentTrack} aria-label="Lirik" title="Lirik"><Mic2 size={16} /></button>
+        <button className="aivy-icon-btn sm" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label="Lirik" title={lyricsDisabled && currentTrack ? "Lirik ga tersedia buat lagu ini" : "Lirik"}><Mic2 size={16} /></button>
         <VolumeControl />
       </div>
     </div>
@@ -429,11 +442,12 @@ export function MiniPlayer({ onExpand }) {
 }
 
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
-  const { currentTrack, liked, toggleLike, isPreviewClip } = usePlayer();
+  const { currentTrack, liked, toggleLike, isPreviewClip, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics } = useUI();
   const { fillRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
+  const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
@@ -442,7 +456,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
           <button className="aivy-icon-btn" onClick={onClose} aria-label="Tutup"><ChevronDown size={22} /></button>
           <span className="eyebrow">{isPreviewClip ? "Pratinjau 30 detik" : "Sedang diputar"}</span>
           <div style={{ display: "flex", gap: 2 }}>
-            <button className="aivy-icon-btn" onClick={toggleLyrics} aria-label="Lirik" title="Lirik"><Mic2 size={19} /></button>
+            <button className="aivy-icon-btn" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label="Lirik" title={lyricsDisabled && currentTrack ? "Lirik ga tersedia buat lagu ini" : "Lirik"}><Mic2 size={19} /></button>
             <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label="Buka antrean"><ListMusic size={19} /></button>
           </div>
         </div>
@@ -504,7 +518,7 @@ export function RightPanel() {
 }
 
 function NowPlayingPane() {
-  const { currentTrack, isPreviewClip } = usePlayer();
+  const { currentTrack, isPreviewClip, currentTrackHasLyrics } = usePlayer();
   const { toggleLyrics } = useUI();
   if (!currentTrack) return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">Belum ada yang diputar</div></div>;
   return (
@@ -513,7 +527,7 @@ function NowPlayingPane() {
       <div className="t">{currentTrack.title}</div>
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>Pratinjau resmi 30 detik dari Deezer</div>}
-      <button className="aivy-btn-ghost" style={{ marginTop: 16 }} onClick={toggleLyrics}><Mic2 size={14} /> Lihat lirik</button>
+      <button className="aivy-btn-ghost" style={{ marginTop: 16 }} onClick={toggleLyrics} disabled={!currentTrackHasLyrics} title={!currentTrackHasLyrics ? "Lirik ga tersedia buat lagu ini" : undefined}><Mic2 size={14} /> {currentTrackHasLyrics ? "Lihat lirik" : "Lirik ga tersedia"}</button>
     </div>
   );
 }
@@ -670,12 +684,40 @@ export function ViewNotFound({ label }) {
 // bersinkron (LRC) baris yang lagi diputar di-highlight & auto-scroll
 // (efek karaoke); kalau cuma dapet lirik polos, ditampilin apa adanya;
 // kalau ga ketemu sama sekali, kasih pesan yang jelas alih-alih kosong.
+const LYRICS_FONT_SIZES = {
+  sm: "clamp(15px, 2.8vw, 19px)",
+  md: "clamp(19px, 3.6vw, 26px)",
+  lg: "clamp(23px, 4.4vw, 32px)",
+};
+
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = String(text || "").split(" ");
+  let line = "";
+  let lines = [];
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+}
+
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics } = useUI();
-  const { currentTrack, currentTime, seekTo } = usePlayer();
+  const { lyricsOpen, closeLyrics, pushToast } = useUI();
+  const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext } = usePlayer();
   const [state, setState] = useState({ loading: false, synced: [], plain: "", checkedFor: null });
+  const [fontSize, setFontSize] = useState("md");
+  const [shareOpen, setShareOpen] = useState(false);
   const lineRefs = useRef([]);
   const trackKey = currentTrack?.id;
+  const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
+  const nextTrack = upNext?.[0];
 
   useEffect(() => {
     if (!lyricsOpen || !currentTrack) return;
@@ -710,46 +752,147 @@ export function LyricsOverlay() {
     lineRefs.current[activeIndex]?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [activeIndex]);
 
+  const activeLineText = useMemo(() => {
+    if (state.synced[activeIndex]?.text) return state.synced[activeIndex].text;
+    if (state.plain) return state.plain.split("\n").find((l) => l.trim()) || "";
+    return "";
+  }, [state, activeIndex]);
+
+  const handleSaveImage = useCallback(() => {
+    if (!currentTrack) return;
+    const line = activeLineText || currentTrack.title;
+    const canvas = document.createElement("canvas");
+    canvas.width = 800; canvas.height = 800;
+    const ctx = canvas.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, "#21251A");
+    grad.addColorStop(1, "#12140F");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ADC79C";
+    ctx.font = "600 42px Georgia, serif";
+    ctx.textAlign = "center";
+    wrapCanvasText(ctx, line, canvas.width / 2, 380, 680, 54);
+    ctx.fillStyle = "#676B57";
+    ctx.font = "500 22px sans-serif";
+    ctx.fillText(`${currentTrack.artist?.name || ""} \u00b7 ${currentTrack.title || ""}`, canvas.width / 2, canvas.height - 80);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lirik-${(currentTrack.title || "lagu").replace(/\s+/g, "-").toLowerCase()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      pushToast("Gambar lirik disimpan");
+    });
+  }, [currentTrack, activeLineText, pushToast]);
+
   if (!lyricsOpen) return null;
 
   return (
     <div className={`aivy-lyrics-overlay ${lyricsOpen ? "open" : ""}`}>
       {currentTrack?.cover && <div className="aivy-lyrics-bg" style={{ backgroundImage: `url(${currentTrack.cover})` }} />}
       <div className="aivy-lyrics-scrim" />
+
       <div className="aivy-lyrics-head">
         <button className="aivy-icon-btn" onClick={closeLyrics} aria-label="Tutup"><ChevronDown size={22} /></button>
-        <div className="meta">
-          <div className="t">{currentTrack?.title || "Lirik"}</div>
-          <div className="a">{currentTrack?.artist?.name}</div>
+        <span className="eyebrow">{isPreviewClip ? "Pratinjau 30 detik" : "Sedang diputar"}</span>
+        <div className="aivy-lyrics-head-actions">
+          <button
+            className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`}
+            onClick={() => currentTrack && toggleLike(currentTrack)}
+            disabled={!currentTrack}
+            aria-label="Suka"
+          >
+            <Heart size={17} fill={isLiked ? "currentColor" : "none"} />
+          </button>
+          <button
+            className="aivy-icon-btn sm"
+            onClick={() => setShareOpen((v) => !v)}
+            disabled={!currentTrack}
+            aria-label="Bagikan"
+          >
+            <Share2 size={17} />
+          </button>
         </div>
       </div>
 
-      {!currentTrack ? (
-        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">Belum ada yang diputar</div></div>
-      ) : state.loading ? (
-        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">Nyari lirik\u2026</div></div>
-      ) : state.synced.length > 0 ? (
-        <div className="aivy-lyrics-body aivy-scroll">
-          <div style={{ height: "38vh" }} />
-          {state.synced.map((line, i) => (
-            <div
-              key={i} ref={(el) => (lineRefs.current[i] = el)}
-              className={`aivy-lyrics-line ${i === activeIndex ? "active" : Math.abs(i - activeIndex) === 1 ? "near" : ""}`}
-              onClick={() => seekTo(line.time)}
-            >
-              {line.text || "\u266a"}
+      {currentTrack && (
+        <div className="aivy-lyrics-main">
+          <div className="aivy-lyrics-side">
+            <div className="aivy-lyrics-track">
+              <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={120} radius={8} style={{ width: "100%", height: "auto" }} />
+              <div className="meta">
+                <div className="t">{currentTrack.title}</div>
+                <div className="a">{currentTrack.artist?.name}</div>
+              </div>
             </div>
-          ))}
-          <div style={{ height: "38vh" }} />
+
+            <div className="aivy-lyrics-fontctrl">
+              <span>Ukuran</span>
+              {["sm", "md", "lg"].map((sz) => (
+                <button
+                  key={sz}
+                  className={fontSize === sz ? "active" : ""}
+                  onClick={() => setFontSize(sz)}
+                  aria-label={`Ukuran ${sz}`}
+                >A</button>
+              ))}
+            </div>
+
+            {shareOpen && (
+              <div className="aivy-lyrics-share">
+                <div className="cover-mini">
+                  <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={72} radius={8} style={{ width: "100%", height: "100%" }} />
+                </div>
+                <div className="line">{activeLineText || "\u266a"}</div>
+                <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
+                <button onClick={handleSaveImage}>Simpan sebagai gambar</button>
+              </div>
+            )}
+
+            {nextTrack && (
+              <div className="aivy-lyrics-next">
+                <ListMusic size={14} />
+                <span className="label">Berikutnya</span>
+                <span className="name">{nextTrack.title} &mdash; {nextTrack.artist?.name}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
+            {state.loading ? (
+              <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">Nyari lirik\u2026</div></div>
+            ) : state.synced.length > 0 ? (
+              <div className="aivy-lyrics-body aivy-scroll">
+                <div style={{ height: "38vh" }} />
+                {state.synced.map((line, i) => (
+                  <div
+                    key={i} ref={(el) => (lineRefs.current[i] = el)}
+                    className={`aivy-lyrics-line ${i === activeIndex ? "active" : Math.abs(i - activeIndex) === 1 ? "near" : ""}`}
+                    onClick={() => seekTo(line.time)}
+                  >
+                    {line.text || "\u266a"}
+                  </div>
+                ))}
+                <div style={{ height: "38vh" }} />
+              </div>
+            ) : state.plain ? (
+              <div className="aivy-lyrics-plain aivy-scroll">{state.plain}</div>
+            ) : (
+              <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}>
+                <LeafMark size={34} color="var(--ink-faint)" />
+                <div className="title">Lirik belum ketemu</div>
+                <div className="sub">Coba lagu lain, atau lirik buat versi ini emang belum tersedia di database.</div>
+              </div>
+            )}
+          </div>
         </div>
-      ) : state.plain ? (
-        <div className="aivy-lyrics-plain aivy-scroll">{state.plain}</div>
-      ) : (
-        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}>
-          <LeafMark size={34} color="var(--ink-faint)" />
-          <div className="title">Lirik belum ketemu</div>
-          <div className="sub">Coba lagu lain, atau lirik buat versi ini emang belum tersedia di database.</div>
-        </div>
+      )}
+
+      {!currentTrack && (
+        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">Belum ada yang diputar</div></div>
       )}
 
       {currentTrack && (

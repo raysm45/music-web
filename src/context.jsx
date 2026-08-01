@@ -165,6 +165,29 @@ export function PlayerProvider({ children }) {
 
   useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []); 
 
+  // Cek ketersediaan lirik buat lagu yang lagi diputar - dipakai buat
+  // otomatis mati-in tombol "Lirik" (Mic2) di PlayerBar / NowPlayingSheet /
+  // NowPlayingPane kalau ternyata lagunya emang ga ada liriknya sama
+  // sekali. Default-nya optimis (true) selagi masih ngecek, biar tombol
+  // ga kedip mati-nyala tiap ganti lagu - baru beneran di-nonaktifin
+  // begitu request /api/lyrics balik kosong.
+  const [currentTrackHasLyrics, setCurrentTrackHasLyrics] = useState(true);
+  const lyricsCheckSeqRef = useRef(0);
+  useEffect(() => {
+    if (!currentTrack) { setCurrentTrackHasLyrics(true); return; }
+    const seq = ++lyricsCheckSeqRef.current;
+    setCurrentTrackHasLyrics(true);
+    Api.lyrics({ title: currentTrack.title, artist: currentTrack.artist?.name, duration: currentTrack.duration })
+      .then((res) => {
+        if (seq !== lyricsCheckSeqRef.current) return; // response basi, lagu udah ganti
+        setCurrentTrackHasLyrics(!!(res?.synced || res?.plain));
+      })
+      .catch(() => {
+        if (seq !== lyricsCheckSeqRef.current) return;
+        setCurrentTrackHasLyrics(true); // gagal ngecek (network dll) - biarin nyala, jangan asumsi ga ada
+      });
+  }, [currentKey]); // eslint-disable-line
+
   
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
@@ -373,6 +396,57 @@ export function PlayerProvider({ children }) {
       Api.addHistory(track.videoId || track.id, { title: track.title, thumbnail: track.cover, duration: track.duration }).catch(() => {});
     }
   }, [inRoom, room, queueList, order, authUser, settings.historyEnabled]);
+
+  // Khusus buat "putar dari pencarian": hasil pencarian isinya macem-macem
+  // & belum tentu nyambung satu sama lain (beda genre/mood), jadi ga cocok
+  // langsung dijadiin antrean utuh kayak playlist. Di sini kita putar lagu
+  // yang diklik doang, terus nyusul isi "radio" - lagu-lagu MIRIP dari
+  // /api/similar - buat ngisi antrean setelahnya. radioSeqRef nolak hasil
+  // similar yang basi kalau user keburu pindah lagu/radio lain sebelum
+  // request kelar (sama pola-nya kayak requestSeqRef di pencarian).
+  const radioSeqRef = useRef(0);
+  const playRadio = useCallback((rawTrack) => {
+    const track = normalizeTrack(rawTrack);
+    if (!track) return;
+    if (inRoom) { playSingle(track); return; } // di ruang, antrean dishare bareng - ga cocok buat radio personal
+
+    const seq = ++radioSeqRef.current;
+    setQueueList([track]);
+    setOrder([0]);
+    setPosInOrder(0);
+    setIsPlaying(true);
+    if (authUser && settings.historyEnabled !== false) {
+      Api.addHistory(track.videoId || track.id, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, duration: track.duration }).catch(() => {});
+    }
+
+    const similarArgs = track.source === "deezer"
+      ? { trackId: track.id }
+      : { title: track.title, artist: track.artist?.name || "" };
+
+    Api.similar(similarArgs).then((res) => {
+      if (seq !== radioSeqRef.current) return; // radio/lagu udah ganti, buang
+      const items = (res?.items || []).map(normalizeTrack).filter(Boolean).filter((t) => t.id !== track.id);
+      if (!items.length) return;
+      setQueueList((list) => {
+        // Cuma nambahin kalau antrean masih persis [lagu ini] doang - kalau
+        // user udah sempet nge-skip / nambah manual sebelum radio kelar
+        // di-fetch, jangan ganggu antrean yang udah berubah itu.
+        if (seq !== radioSeqRef.current || !(list.length === 1 && list[0].id === track.id)) return list;
+        setOrder((ord) => {
+          if (!(ord.length === 1 && ord[0] === 0)) return ord;
+          const rest = items.map((_, i) => i + 1);
+          if (shuffle) {
+            for (let i = rest.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [rest[i], rest[j]] = [rest[j], rest[i]];
+            }
+          }
+          return [0, ...rest];
+        });
+        return [...list, ...items];
+      });
+    }).catch(() => {});
+  }, [inRoom, playSingle, authUser, settings.historyEnabled, shuffle]);
 
   const togglePlay = useCallback(() => {
     if (!currentTrack) return;
@@ -595,11 +669,12 @@ export function PlayerProvider({ children }) {
 
   const value = {
     queueList, order, posInOrder, currentTrack, upNext, history,
+    currentTrackHasLyrics,
     isPlaying, currentTime, duration: clipDuration, isPreviewClip, loadingAudio,
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
-    playSingle, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail,
+    playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail,
     registerProgressEl,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
   };
