@@ -156,7 +156,7 @@ export function PlayerProvider({ children }) {
   const applyingRemoteRef = useRef(false);
 
   const audioRef = useRef(typeof Audio !== "undefined" ? new Audio() : null);
-  const progressElsRef = useRef(new Set());
+  const progressElsRef = useRef(new Map());
   const resolvedFullCache = useRef(new Map());
 
   const currentTrack = queueList.length && order.length ? queueList[order[posInOrder]] : null;
@@ -195,14 +195,18 @@ export function PlayerProvider({ children }) {
     Api.playlists().then(setPlaylists).catch(() => {});
   }, [authUser]);
 
-  const registerProgressEl = useCallback((el) => {
+  const registerProgressEl = useCallback((el, mode = "width") => {
     if (!el) return;
-    progressElsRef.current.add(el);
+    progressElsRef.current.set(el, mode);
     return () => progressElsRef.current.delete(el);
   }, []);
   const writeProgress = useCallback((t, dur) => {
     const pct = dur > 0 ? clamp(t / dur, 0, 1) * 100 : 0;
-    progressElsRef.current.forEach((el) => { if (el) el.style.width = `${pct}%`; });
+    progressElsRef.current.forEach((mode, el) => {
+      if (!el) return;
+      if (mode === "left") el.style.left = `${pct}%`;
+      else el.style.width = `${pct}%`;
+    });
   }, []);
 
   

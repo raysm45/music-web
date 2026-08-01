@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component {
   }
 }
 
-export function Scrubber({ getRatio, onSeekRatio, registerFill, className = "" }) {
+export function Scrubber({ getRatio, onSeekRatio, registerFill, registerThumb, className = "" }) {
   const trackRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const ratioFromEvent = (e) => {
@@ -47,7 +47,7 @@ export function Scrubber({ getRatio, onSeekRatio, registerFill, className = "" }
       role="slider" aria-label="Posisi lagu" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((getRatio ? getRatio() : 0) * 100)}
     >
       <div className="track"><div className="fill" ref={registerFill} /></div>
-      <div className="thumb" />
+      <div className="thumb" ref={registerThumb} />
     </div>
   );
 }
@@ -79,9 +79,11 @@ export function VolumeControl() {
 function useScrubberBinding() {
   const { currentTime, duration, seekRatio, registerProgressEl } = usePlayer();
   const fillRef = useRef(null);
-  useEffect(() => registerProgressEl(fillRef.current), [registerProgressEl]);
+  const thumbRef = useRef(null);
+  useEffect(() => registerProgressEl(fillRef.current, "width"), [registerProgressEl]);
+  useEffect(() => registerProgressEl(thumbRef.current, "left"), [registerProgressEl]);
   const getRatio = useCallback(() => (duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0), [currentTime, duration]);
-  return { fillRef, getRatio, onSeekRatio: seekRatio, currentTime, duration };
+  return { fillRef, thumbRef, getRatio, onSeekRatio: seekRatio, currentTime, duration };
 }
 
 export function GlobalContextMenu() {
@@ -383,7 +385,7 @@ export function PlayerBar() {
   const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics } = useUI();
-  const { fillRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
+  const { fillRef, thumbRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
 
@@ -414,7 +416,7 @@ export function PlayerBar() {
         <TransportButtons />
         <div className="aivy-scrubber-row">
           <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
-          <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={(el) => (fillRef.current = el)} />
+          <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={(el) => (fillRef.current = el)} registerThumb={(el) => (thumbRef.current = el)} />
           <span className="aivy-time right font-mono">{formatTime(duration)}</span>
         </div>
       </div>
@@ -447,7 +449,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const { currentTrack, liked, toggleLike, isPreviewClip, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics } = useUI();
-  const { fillRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
+  const { fillRef, thumbRef, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   return (
@@ -474,7 +476,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             </div>
             <div className="aivy-scrubber-row">
               <span className="aivy-time font-mono">{formatTime(currentTime)}</span>
-              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={(el) => (fillRef.current = el)} />
+              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={(el) => (fillRef.current = el)} registerThumb={(el) => (thumbRef.current = el)} />
               <span className="aivy-time right font-mono">{formatTime(duration)}</span>
             </div>
             <TransportButtons big />
