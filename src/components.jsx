@@ -700,9 +700,12 @@ export function LyricsOverlay() {
     const scrollEl = document.getElementById("aivy-content-scroll");
     if (!scrollEl) return;
     const prevOverflow = scrollEl.style.overflow;
+    const prevTouchAction = scrollEl.style.touchAction;
     scrollEl.style.overflow = "hidden";
+    scrollEl.style.touchAction = "none";
     return () => {
       scrollEl.style.overflow = prevOverflow;
+      scrollEl.style.touchAction = prevTouchAction;
     };
   }, [lyricsOpen]);
 
