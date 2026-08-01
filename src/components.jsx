@@ -661,7 +661,9 @@ export function TopBar({ isMobile }) {
               buka halaman Setting (cuma ada di sidebar desktop & sidebar-nya
               disembunyiin pas mobile) - sekarang ditaro di topbar */}
           <button className="aivy-navbtn" onClick={toggleTheme} aria-label="Ganti tema" title="Ganti tema">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
-          <Link to="settings" className="aivy-navbtn" aria-label="Setting" title="Setting"><SettingsIcon size={15} /></Link>
+          {/* FIX: kalau udah login, avatar di bawah ini udah jadi satu-satunya
+              pintu ke Setting - jangan dobel sama ikon gear ini */}
+          {!authUser && <Link to="settings" className="aivy-navbtn" aria-label="Setting" title="Setting"><SettingsIcon size={15} /></Link>}
         </>
       )}
       {isMobile && !authUser && <button className="aivy-btn-ghost" style={{ padding: "7px 14px", fontSize: 12.5 }} onClick={login}>Masuk</button>}
@@ -718,6 +720,31 @@ export function LyricsOverlay() {
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
+
+  // FIX: pas overlay lirik dibuka di mobile, halaman di belakangnya masih
+  // bisa ke-scroll bareng gesture di dalam lirik - bikin bagian atas
+  // (tombol tutup/like/share) keliatan ketutup/kegeser dan ga bisa balik.
+  // Kunci scroll body selama overlay ini kebuka.
+  useEffect(() => {
+    if (!lyricsOpen) return;
+    const { body } = document;
+    const prevOverflow = body.style.overflow;
+    const prevPosition = body.style.position;
+    const prevTop = body.style.top;
+    const prevWidth = body.style.width;
+    const scrollY = window.scrollY;
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.position = prevPosition;
+      body.style.top = prevTop;
+      body.style.width = prevWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [lyricsOpen]);
 
   useEffect(() => {
     if (!lyricsOpen || !currentTrack) return;
