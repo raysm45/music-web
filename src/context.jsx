@@ -353,6 +353,20 @@ export function PlayerProvider({ children }) {
     graph?.ctx?.resume?.().catch(() => {});
   }, [ensureAudioGraph]);
 
+  // Jaring pengaman tambahan: begitu user ngeklik/nge-tap APAPUN di
+  // halaman buat pertama kalinya, coba resume AudioContext juga. Ini
+  // nutupin kemungkinan ada jalur "mulai putar" yang kelewat dari titik-
+  // titik eksplisit di atas (playList/playSingle/playRadio/togglePlay).
+  useEffect(() => {
+    const unlock = () => resumeAudioCtx();
+    window.addEventListener("pointerdown", unlock, { once: true, passive: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [resumeAudioCtx]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -501,6 +515,13 @@ export function PlayerProvider({ children }) {
   }, []);
 
   const playList = useCallback((rawList, startIndex = 0) => {
+    // FIX bug "ga ada suara": AudioContext cuma boleh di-resume() dalem
+    // rangkaian sinkron dari user gesture (klik) di browser yang strict
+    // (khususnya Safari/iOS) - manggilnya belakangan di dalem .then()
+    // promise udah keburu "lepas" dari gesture-nya jadi resume() gagal
+    // diem-diem & audio ga pernah bunyi. Makanya di-panggil paling awal,
+    // sinkron, di titik-titik yang beneran dipicu klik user.
+    resumeAudioCtx();
     const list = rawList.map(normalizeTrack).filter(Boolean);
     if (!list.length) return;
     if (inRoom) {
@@ -520,12 +541,13 @@ export function PlayerProvider({ children }) {
       const t = list[clamp(startIndex, 0, list.length - 1)];
       Api.addHistory(t.videoId || t.id, { title: t.title, artistName: t.artist?.name || null, thumbnail: t.cover, duration: t.duration }).catch(() => {});
     }
-  }, [inRoom, room, buildOrder, shuffle, authUser, settings.historyEnabled]);
+  }, [inRoom, room, buildOrder, shuffle, authUser, settings.historyEnabled, resumeAudioCtx]);
 
   
   
   
   const playSingle = useCallback((rawTrack) => {
+    resumeAudioCtx();
     const track = normalizeTrack(rawTrack);
     if (!track) return;
     if (inRoom) {
@@ -547,7 +569,7 @@ export function PlayerProvider({ children }) {
     if (authUser && settings.historyEnabled !== false) {
       Api.addHistory(track.videoId || track.id, { title: track.title, thumbnail: track.cover, duration: track.duration }).catch(() => {});
     }
-  }, [inRoom, room, queueList, order, authUser, settings.historyEnabled]);
+  }, [inRoom, room, queueList, order, authUser, settings.historyEnabled, resumeAudioCtx]);
 
   // Khusus buat "putar dari pencarian": hasil pencarian isinya macem-macem
   // & belum tentu nyambung satu sama lain (beda genre/mood), jadi ga cocok
@@ -558,6 +580,7 @@ export function PlayerProvider({ children }) {
   // request kelar (sama pola-nya kayak requestSeqRef di pencarian).
   const radioSeqRef = useRef(0);
   const playRadio = useCallback((rawTrack) => {
+    resumeAudioCtx();
     const track = normalizeTrack(rawTrack);
     if (!track) return;
     if (inRoom) { playSingle(track); return; } // di ruang, antrean dishare bareng - ga cocok buat radio personal
@@ -598,16 +621,17 @@ export function PlayerProvider({ children }) {
         return [...list, ...items];
       });
     }).catch(() => {});
-  }, [inRoom, playSingle, authUser, settings.historyEnabled, shuffle]);
+  }, [inRoom, playSingle, authUser, settings.historyEnabled, shuffle, resumeAudioCtx]);
 
   const togglePlay = useCallback(() => {
     if (!currentTrack) return;
+    resumeAudioCtx();
     if (inRoom) {
       socketRef.current?.emit("playback-control", { roomId: room.id, action: isPlaying ? "pause" : "play" });
       return;
     }
     setIsPlaying((p) => !p);
-  }, [currentTrack, inRoom, room, isPlaying]);
+  }, [currentTrack, inRoom, room, isPlaying, resumeAudioCtx]);
 
   const next = useCallback((auto = false) => {
     if (inRoom) { socketRef.current?.emit("playback-control", { roomId: room.id, action: "next" }); return; }

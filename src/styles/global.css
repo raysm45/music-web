@@ -402,12 +402,16 @@ svg{ display: block; }
 .aivy-range{ accent-color: var(--moss); width: 110px; }
 
 /* ---------- equalizer (Setting > Equalizer) ---------- */
-.aivy-eq-bands{ display: flex; justify-content: space-between; gap: 6px; padding: 6px 4px 2px; }
-.aivy-eq-band{ display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.aivy-eq-bands{ display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 4px 2px; }
+.aivy-eq-band{ display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .aivy-eq-val{ font-size: 10px; color: var(--ink-faint); }
 .aivy-eq-freq{ font-size: 10px; color: var(--ink-faint); }
-.aivy-eq-slider{ accent-color: var(--moss); width: 96px; height: 20px; margin: 34px 0; }
-@media (max-width: 640px){ .aivy-eq-bands{ overflow-x: auto; } .aivy-eq-band{ flex: 0 0 32px; } }
+/* FIX bug "slider band pendek banget": pas writing-mode di-set vertikal,
+   sumbu "panjang" slider itu HEIGHT, bukan width (width jadi ketebalan
+   track) - sebelumnya kebalik (height:20px bikin slidernya pendek),
+   sekarang dibenerin + ditambahin fallback buat Firefox/WebKit lama. */
+.aivy-eq-slider{ accent-color: var(--moss); width: 22px; height: 150px; writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical; appearance: slider-vertical; touch-action: none; }
+@media (max-width: 640px){ .aivy-eq-bands{ overflow-x: auto; } .aivy-eq-band{ flex: 0 0 34px; } }
 
 /* ---------- badge "E" buat lagu explicit di TrackRow ---------- */
 .aivy-explicit-badge{ display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-right: 6px; border-radius: 3px; background: var(--ink-faint); color: var(--bg); font-size: 9px; font-weight: 800; line-height: 1; vertical-align: middle; }

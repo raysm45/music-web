@@ -96,7 +96,7 @@ function EqualizerPanel({ eq, onChange, t }) {
                 value={bands[i] ?? 0} disabled={!eq.enabled}
                 onChange={(e) => setBand(i, Number(e.target.value))}
                 aria-label={`${freqLabel(hz)}Hz`}
-                style={{ writingMode: "vertical-lr", direction: "rtl" }}
+                orient="vertical"
               />
               <span className="aivy-eq-freq font-mono">{freqLabel(hz)}</span>
             </div>
