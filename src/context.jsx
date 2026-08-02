@@ -194,7 +194,21 @@ export function PlayerProvider({ children }) {
   const socketRef = useRef(null);
   const applyingRemoteRef = useRef(false);
 
-  const audioRef = useRef(typeof Audio !== "undefined" ? new Audio() : null);
+  // FIX bug "ga ada suara pas play": <audio> ini dicolokin ke Web Audio API
+  // lewat createMediaElementSource() (buat equalizer/compressor/crossfade -
+  // lihat ensureAudioGraph di bawah). Begitu elemen media dikaitkan ke Web
+  // Audio graph, browser WAJIB ambil sumbernya lewat mode CORS - kalau
+  // "crossOrigin" ga diset, elemen dianggap "tainted" dan Web Audio bakal
+  // nge-nolin outputnya jadi BISU TOTAL, walaupun <audio>-nya sendiri
+  // kelihatan jalan normal (durasi & timeupdate tetep jalan, cuma suaranya
+  // yang ilang). Harus diset SEBELUM audio.src pertama kali di-set, jadi
+  // paling aman langsung pas elemennya dibikin di sini.
+  const audioRef = useRef((() => {
+    if (typeof Audio === "undefined") return null;
+    const a = new Audio();
+    a.crossOrigin = "anonymous";
+    return a;
+  })());
   const progressElsRef = useRef(new Map());
   const resolvedFullCache = useRef(new Map());
 
