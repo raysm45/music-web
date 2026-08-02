@@ -3,11 +3,9 @@ import React, {
 } from "react";
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
-import { clamp, uid } from "./lib/utils.js";
+import { clamp, uid, debounce } from "./lib/utils.js";
 import { makeT } from "./lib/i18n.js";
 
-// 10-band graphic equalizer - frekuensi standar (Hz) yang dipakai hampir
-// semua pemutar musik. Setiap band gain-nya dalam dB (-12..12).
 export const EQ_BANDS_HZ = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 export const EQ_PRESETS = {
   flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -72,10 +70,6 @@ export function UIProvider({ children }) {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // FIX: compactRows / reducedMotion / highContrast dulu kesimpen doang di
-  // settings tapi ga pernah dibaca komponen manapun. Sekarang ketiganya
-  // di-refleksiin sebagai data-attribute di <html>, dan global.css punya
-  // aturan buat masing-masing atribut itu.
   useEffect(() => {
     document.documentElement.dataset.compact = settings.compactRows ? "true" : "false";
   }, [settings.compactRows]);
@@ -86,8 +80,6 @@ export function UIProvider({ children }) {
     document.documentElement.dataset.contrast = settings.highContrast ? "high" : "normal";
   }, [settings.highContrast]);
 
-  // FIX bug "ganti bahasa belum bisa": t() sekarang beneran dipakai di
-  // seluruh app, lookup ke kamus lib/i18n.js sesuai settings.language.
   const t = useCallback((key, fallback) => makeT(settings.language)(key, fallback), [settings.language]);
 
   const pushToast = useCallback((message) => {
@@ -103,10 +95,22 @@ export function UIProvider({ children }) {
     pushToast(t("toastByeSee"));
   }, [pushToast, t]);
 
-  const updateSettings = useCallback(async (patch) => {
+  const pendingSettingsPatchRef = useRef({});
+  const flushSettingsRef = useRef(null);
+  if (!flushSettingsRef.current) {
+    flushSettingsRef.current = debounce(async (onError) => {
+      const patch = pendingSettingsPatchRef.current;
+      if (!Object.keys(patch).length) return;
+      pendingSettingsPatchRef.current = {};
+      try { await Api.putSettings(patch); } catch { onError(); }
+    }, 600);
+  }
+
+  const updateSettings = useCallback((patch) => {
     setSettings((s) => ({ ...s, ...patch }));
     if (patch.theme) setTheme(patch.theme === "light" ? "light" : "dark");
-    try { await Api.putSettings(patch); } catch { pushToast(t("toastSettingsSaveFailed")); }
+    pendingSettingsPatchRef.current = { ...pendingSettingsPatchRef.current, ...patch };
+    flushSettingsRef.current(() => pushToast(t("toastSettingsSaveFailed")));
   }, [pushToast, t]);
 
   const resetSettings = useCallback(async () => {
@@ -180,10 +184,6 @@ export function PlayerProvider({ children }) {
   const [playlists, setPlaylists] = useState([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
 
-  // Graf Web Audio (equalizer 10-band + preamp + compressor buat "ratakan
-  // volume") - dibikin sekali (lazy) pas lagu pertama mulai diputar, terus
-  // dipakai terus buat sepanjang sesi karena MediaElementSourceNode cuma
-  // boleh dibikin SEKALI per elemen <audio>.
   const audioGraphRef = useRef(null);
   const fadeTimerRef = useRef(null);
   const wasFadedOutRef = useRef(false);
@@ -194,15 +194,6 @@ export function PlayerProvider({ children }) {
   const socketRef = useRef(null);
   const applyingRemoteRef = useRef(false);
 
-  // FIX bug "ga ada suara pas play": <audio> ini dicolokin ke Web Audio API
-  // lewat createMediaElementSource() (buat equalizer/compressor/crossfade -
-  // lihat ensureAudioGraph di bawah). Begitu elemen media dikaitkan ke Web
-  // Audio graph, browser WAJIB ambil sumbernya lewat mode CORS - kalau
-  // "crossOrigin" ga diset, elemen dianggap "tainted" dan Web Audio bakal
-  // nge-nolin outputnya jadi BISU TOTAL, walaupun <audio>-nya sendiri
-  // kelihatan jalan normal (durasi & timeupdate tetep jalan, cuma suaranya
-  // yang ilang). Harus diset SEBELUM audio.src pertama kali di-set, jadi
-  // paling aman langsung pas elemennya dibikin di sini.
   const audioRef = useRef((() => {
     if (typeof Audio === "undefined") return null;
     const a = new Audio();
@@ -212,11 +203,6 @@ export function PlayerProvider({ children }) {
   const progressElsRef = useRef(new Map());
   const resolvedFullCache = useRef(new Map());
 
-  // Bikin (sekali) graf Web Audio: <audio> -> preamp -> 10x biquad filter
-  // (equalizer) -> compressor ("ratakan volume") -> gain fade (crossfade)
-  // -> speaker. Equalizer & normalize dikontrol dengan cara nyetel .value
-  // node yang relevan, BUKAN bongkar-pasang koneksi, biar aman dipanggil
-  // berkali-kali tanpa bikin graf dobel.
   const ensureAudioGraph = useCallback(() => {
     if (audioGraphRef.current) return audioGraphRef.current;
     const audio = audioRef.current;
@@ -255,13 +241,10 @@ export function PlayerProvider({ children }) {
       audioGraphRef.current = graph;
       return graph;
     } catch {
-      return null; // browser lawas / ga dukung Web Audio - putar tetap jalan tanpa EQ
+      return null;
     }
   }, []);
 
-  // Terapin nilai equalizer (aktif/nonaktif, preamp, tiap band) ke graf.
-  // Kalau equalizer dimatiin, semua gain di-nolin (bypass) tanpa perlu
-  // bongkar koneksi node.
   useEffect(() => {
     const graph = ensureAudioGraph();
     if (!graph) return;
@@ -271,8 +254,6 @@ export function PlayerProvider({ children }) {
     graph.bands.forEach((band, i) => { band.gain.value = enabled ? (eq.bands?.[i] ?? 0) : 0; });
   }, [settings.equalizer, ensureAudioGraph]);
 
-  // "Ratakan volume": nyalain/matiin compressor lewat threshold-nya - kalau
-  // dimatiin, threshold dinaikin ke 0dB jadi praktis transparan (bypass).
   useEffect(() => {
     const graph = ensureAudioGraph();
     if (!graph) return;
@@ -286,12 +267,6 @@ export function PlayerProvider({ children }) {
 
   useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []); 
 
-  // Cek ketersediaan lirik buat lagu yang lagi diputar - dipakai buat
-  // otomatis mati-in tombol "Lirik" (Mic2) di PlayerBar / NowPlayingSheet /
-  // NowPlayingPane kalau ternyata lagunya emang ga ada liriknya sama
-  // sekali. Default-nya optimis (true) selagi masih ngecek, biar tombol
-  // ga kedip mati-nyala tiap ganti lagu - baru beneran di-nonaktifin
-  // begitu request /api/lyrics balik kosong.
   const [currentTrackHasLyrics, setCurrentTrackHasLyrics] = useState(true);
   const lyricsCheckSeqRef = useRef(0);
   useEffect(() => {
@@ -300,14 +275,14 @@ export function PlayerProvider({ children }) {
     setCurrentTrackHasLyrics(true);
     Api.lyrics({ title: currentTrack.title, artist: currentTrack.artist?.name, duration: currentTrack.duration })
       .then((res) => {
-        if (seq !== lyricsCheckSeqRef.current) return; // response basi, lagu udah ganti
+        if (seq !== lyricsCheckSeqRef.current) return;
         setCurrentTrackHasLyrics(!!(res?.synced || res?.plain));
       })
       .catch(() => {
         if (seq !== lyricsCheckSeqRef.current) return;
-        setCurrentTrackHasLyrics(true); // gagal ngecek (network dll) - biarin nyala, jangan asumsi ga ada
+        setCurrentTrackHasLyrics(true);
       });
-  }, [currentKey]); // eslint-disable-line
+  }, [currentKey]);
 
   
   useEffect(() => {
@@ -359,18 +334,11 @@ export function PlayerProvider({ children }) {
   }, [settings.audioQuality]);
 
   
-  // Nyalain lagi AudioContext kalau kebrowser lagi disuspend (kebijakan
-  // autoplay browser - AudioContext cuma boleh jalan abis ada user gesture,
-  // jadi kita coba resume tiap kali ada aksi "putar").
   const resumeAudioCtx = useCallback(() => {
     const graph = ensureAudioGraph();
     graph?.ctx?.resume?.().catch(() => {});
   }, [ensureAudioGraph]);
 
-  // Jaring pengaman tambahan: begitu user ngeklik/nge-tap APAPUN di
-  // halaman buat pertama kalinya, coba resume AudioContext juga. Ini
-  // nutupin kemungkinan ada jalur "mulai putar" yang kelewat dari titik-
-  // titik eksplisit di atas (playList/playSingle/playRadio/togglePlay).
   useEffect(() => {
     const unlock = () => resumeAudioCtx();
     window.addEventListener("pointerdown", unlock, { once: true, passive: true });
@@ -398,9 +366,6 @@ export function PlayerProvider({ children }) {
       if (audio.src !== resolved.src) audio.src = resolved.src;
       audio.volume = muted ? 0 : volume;
       wasFadedOutRef.current = false;
-      // Crossfade "masuk": kalau crossfadeSeconds > 0, lagu baru mulai dari
-      // gain 0 terus di-ramp naik pelan-pelan ke 1 - berasa nyambung mulus
-      // dari lagu sebelumnya yang tadi di-fade keluar (lihat onTimeUpdate).
       const graph = ensureAudioGraph();
       if (graph && settings.crossfadeSeconds > 0) {
         graph.fadeGain.gain.cancelScheduledValues(graph.ctx.currentTime);
@@ -428,16 +393,6 @@ export function PlayerProvider({ children }) {
   }, [volume, muted]);
 
   
-  // FIX bug "durasi di mobile stuck": sebelumnya update waktu (currentTime,
-  // durasi total) CUMA lewat requestAnimationFrame loop. Masalahnya browser
-  // (apalagi di HP) OTOMATIS MENGHENTIKAN rAF waktu tab disembunyikan / layar
-  // dikunci sambil lagu masih diputar di background - jadinya scrubber &
-  // angka durasi keliatan "nyangkut"/berhenti walau lagu sebenernya jalan
-  // terus. Sekarang sumber utamanya dipindah ke event native <audio>
-  // ('timeupdate' & 'durationchange'), yang tetep jalan dari mesin audio
-  // browser walau rendering-nya lagi di-throttle. rAF loop di bawah tetep
-  // dipertahankan buat isian progress bar yang halus pas tab keliatan, tapi
-  // bukan lagi satu-satunya sumber kebenaran.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -448,10 +403,6 @@ export function PlayerProvider({ children }) {
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
       writeProgress(audio.currentTime, audio.duration || clipDuration);
-      // Crossfade "keluar": begitu sisa waktu lagu <= crossfadeSeconds,
-      // ramp turunin gain ke hampir 0 - lagu berikutnya bakal fade masuk
-      // (lihat efek loadCurrentTrack di atas). Ga dipakai kalau lagi di
-      // ruang bareng (playback disinkron dari server) atau repeat "one".
       const cf = settings.crossfadeSeconds || 0;
       if (cf > 0 && !inRoom && repeat !== "one" && !wasFadedOutRef.current) {
         const dur = audio.duration || clipDuration;
@@ -469,8 +420,6 @@ export function PlayerProvider({ children }) {
     const onEnded = () => {
       if (inRoom) return; 
       if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
-      // Setting "Putar otomatis": kalau dimatiin, berhenti di lagu ini aja
-      // alih-alih otomatis lanjut ke lagu berikutnya.
       if (settings.autoplay === false) { setIsPlaying(false); pushToast(t("toastAutoplayOff")); return; }
       nextRef.current(true);
     };
@@ -489,9 +438,6 @@ export function PlayerProvider({ children }) {
     };
   }, [repeat, inRoom, writeProgress, settings.crossfadeSeconds, settings.autoplay, pushToast, t, clipDuration]); 
 
-  // Pas balik dari background (kunci layar/ganti app dibuka lagi), paksa
-  // resync sekali biar angka & scrubber langsung "kekejar" bukan nunggu
-  // event berikutnya - ini yang bikin transisinya kerasa "smooth", ga nyendat.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
@@ -529,12 +475,6 @@ export function PlayerProvider({ children }) {
   }, []);
 
   const playList = useCallback((rawList, startIndex = 0) => {
-    // FIX bug "ga ada suara": AudioContext cuma boleh di-resume() dalem
-    // rangkaian sinkron dari user gesture (klik) di browser yang strict
-    // (khususnya Safari/iOS) - manggilnya belakangan di dalem .then()
-    // promise udah keburu "lepas" dari gesture-nya jadi resume() gagal
-    // diem-diem & audio ga pernah bunyi. Makanya di-panggil paling awal,
-    // sinkron, di titik-titik yang beneran dipicu klik user.
     resumeAudioCtx();
     const list = rawList.map(normalizeTrack).filter(Boolean);
     if (!list.length) return;
@@ -585,19 +525,12 @@ export function PlayerProvider({ children }) {
     }
   }, [inRoom, room, queueList, order, authUser, settings.historyEnabled, resumeAudioCtx]);
 
-  // Khusus buat "putar dari pencarian": hasil pencarian isinya macem-macem
-  // & belum tentu nyambung satu sama lain (beda genre/mood), jadi ga cocok
-  // langsung dijadiin antrean utuh kayak playlist. Di sini kita putar lagu
-  // yang diklik doang, terus nyusul isi "radio" - lagu-lagu MIRIP dari
-  // /api/similar - buat ngisi antrean setelahnya. radioSeqRef nolak hasil
-  // similar yang basi kalau user keburu pindah lagu/radio lain sebelum
-  // request kelar (sama pola-nya kayak requestSeqRef di pencarian).
   const radioSeqRef = useRef(0);
   const playRadio = useCallback((rawTrack) => {
     resumeAudioCtx();
     const track = normalizeTrack(rawTrack);
     if (!track) return;
-    if (inRoom) { playSingle(track); return; } // di ruang, antrean dishare bareng - ga cocok buat radio personal
+    if (inRoom) { playSingle(track); return; }
 
     const seq = ++radioSeqRef.current;
     setQueueList([track]);
@@ -613,13 +546,10 @@ export function PlayerProvider({ children }) {
       : { title: track.title, artist: track.artist?.name || "" };
 
     Api.similar(similarArgs).then((res) => {
-      if (seq !== radioSeqRef.current) return; // radio/lagu udah ganti, buang
+      if (seq !== radioSeqRef.current) return;
       const items = (res?.items || []).map(normalizeTrack).filter(Boolean).filter((t) => t.id !== track.id);
       if (!items.length) return;
       setQueueList((list) => {
-        // Cuma nambahin kalau antrean masih persis [lagu ini] doang - kalau
-        // user udah sempet nge-skip / nambah manual sebelum radio kelar
-        // di-fetch, jangan ganggu antrean yang udah berubah itu.
         if (seq !== radioSeqRef.current || !(list.length === 1 && list[0].id === track.id)) return list;
         setOrder((ord) => {
           if (!(ord.length === 1 && ord[0] === 0)) return ord;
@@ -681,8 +611,6 @@ export function PlayerProvider({ children }) {
     writeProgress(t, dur);
   }, [inRoom, room, clipDuration, writeProgress]);
 
-  // seek ke detik absolut - dipakai buat klik-baris-lirik biar lompat ke
-  // posisi lagu yang sesuai (fitur "tap lirik buat lompat")
   const seekTo = useCallback((seconds) => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -793,9 +721,6 @@ export function PlayerProvider({ children }) {
   }, [pushToast, t]);
 
   
-  // Refs biar handler socket (dibikin sekali lewat ensureSocket) selalu
-  // baca settings/authUser/t TERBARU tanpa perlu bongkar-pasang koneksi
-  // socket tiap kali settings berubah.
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const authUserRef = useRef(authUser);
@@ -803,9 +728,6 @@ export function PlayerProvider({ children }) {
   const tRef = useRef(t);
   useEffect(() => { tRef.current = t; }, [t]);
   const prevMemberCountRef = useRef(0);
-  // Nandain sinkronisasi PERTAMA setelah gabung/bikin ruang - dipakai buat
-  // setting "Auto-gabung audio waktu masuk ruang". Sinkronisasi berikutnya
-  // (pas host pencet play/pause di tengah sesi) tetep normal ngikutin live.
   const firstSyncPendingRef = useRef(false);
 
   const ensureSocket = useCallback(() => {
@@ -814,9 +736,6 @@ export function PlayerProvider({ children }) {
     socket.on("members-updated", (members) => {
       setRoom((r) => {
         if (!r) return r;
-        // Notifikasi "Undangan ke ruang": kasih tau HOST kalau ada member
-        // baru gabung ke ruangnya - proxy paling deket buat "invite"
-        // karena AIVY belum punya sistem undangan formal.
         const isHost = authUserRef.current && r.hostId === authUserRef.current.id;
         if (isHost && settingsRef.current.notifyRoomInvite !== false && members.length > prevMemberCountRef.current && prevMemberCountRef.current > 0) {
           const joined = members.find((m) => !r.members?.some((old) => old.id === m.id));
