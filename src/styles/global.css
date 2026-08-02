@@ -366,17 +366,69 @@ svg{ display: block; }
 @media (max-width: 640px){ .aivy-room-grid{ grid-template-columns: 1fr; } }
 
 /* ---------- landing / login ---------- */
-.aivy-landing{ min-height: 100dvh; overflow-y: auto; }
-.aivy-landing-topbar{ position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; transition: background var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease); border-bottom: 1px solid transparent; }
-.aivy-landing-topbar.solid{ background: color-mix(in srgb, var(--bg) 90%, transparent); border-bottom-color: var(--line); backdrop-filter: none; }
-.aivy-landing-hero{ display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px; padding: 90px 24px 70px; max-width: 720px; margin: 0 auto; }
-.aivy-landing-hero h1{ font-family: var(--font-display); font-size: clamp(32px, 6vw, 54px); font-weight: 600; line-height: 1.08; letter-spacing: -0.01em; }
-.aivy-landing-hero p{ font-size: 16px; color: var(--ink-dim); line-height: 1.65; max-width: 56ch; }
-.aivy-landing-features{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; max-width: 1040px; margin: 0 auto; padding: 20px 32px 90px; }
-.aivy-feature-card{ border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+.aivy-landing{ min-height: 100dvh; overflow-y: auto; position: relative; isolation: isolate; }
+.aivy-landing-topbar{ position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; transition: background var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease); border-bottom: 1px solid transparent; }
+.aivy-landing-topbar.solid{ background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom-color: var(--line); backdrop-filter: blur(10px); }
+
+/* ambient blooms drifting behind hero + quote — quiet, never louder than content */
+.aivy-landing-blobs{ position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.aivy-blob{ position: absolute; border-radius: 50%; filter: blur(64px); opacity: .32; }
+.aivy-blob.b1{ width: 460px; height: 460px; top: -120px; left: 8%; background: radial-gradient(circle, var(--moss) 0%, transparent 70%); }
+.aivy-blob.b2{ width: 380px; height: 380px; top: 260px; right: 4%; background: radial-gradient(circle, var(--gold) 0%, transparent 72%); opacity: .2; }
+.aivy-blob.b3{ width: 420px; height: 420px; bottom: -160px; left: 30%; background: radial-gradient(circle, var(--berry) 0%, transparent 72%); opacity: .18; }
+
+.aivy-landing-story{ position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 0 32px; }
+
+/* the vine — a spine that grows down the page as you scroll, in step with the brand: "tumbuh pelan tapi menjalar ke mana-mana" */
+.aivy-vine-rail{ position: absolute; left: -30px; top: 0; bottom: 0; width: 2px; display: none; }
+.aivy-vine-track{ position: absolute; inset: 0; width: 2px; background: var(--line); border-radius: 2px; }
+.aivy-vine-fill{ position: absolute; top: 0; left: 0; width: 2px; height: 100%; background: linear-gradient(180deg, var(--moss-strong), var(--gold) 55%, var(--berry) 100%); border-radius: 2px; transform-origin: top; }
+.aivy-vine-node{ position: absolute; left: 50%; transform: translateX(-50%); width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+
+.aivy-landing-hero{ display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px; padding: 110px 0 84px; position: relative; }
+.aivy-landing-hero h1{ font-family: var(--font-display); font-size: clamp(34px, 6vw, 58px); font-weight: 600; line-height: 1.06; letter-spacing: -0.01em; }
+.aivy-landing-hero p{ font-size: 16px; color: var(--ink-dim); line-height: 1.65; max-width: 54ch; }
+
+/* cara kerja — real sequence, so numbering earns its place */
+.aivy-landing-steps{ position: relative; padding: 30px 0 70px; display: flex; flex-direction: column; gap: 0; }
+.aivy-step{ display: flex; gap: 22px; padding: 26px 0; border-bottom: 1px solid var(--line-soft); }
+.aivy-step:last-child{ border-bottom: none; }
+.aivy-step-index{ font-family: var(--font-display); font-style: italic; font-size: 32px; color: var(--moss-strong); opacity: .55; width: 52px; flex-shrink: 0; line-height: 1; }
+.aivy-step-body h3{ font-family: var(--font-display); font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+.aivy-step-body p{ font-size: 13.5px; color: var(--ink-faint); line-height: 1.65; max-width: 52ch; }
+
+.aivy-landing-features{ position: relative; z-index: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; max-width: 1040px; margin: 0 auto; padding: 10px 32px 90px; }
+.aivy-feature-card{ border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--bg-elev) 60%, transparent); }
 .aivy-feature-card h3{ font-family: var(--font-display); font-size: 17px; font-weight: 600; }
 .aivy-feature-card p{ font-size: 13.5px; color: var(--ink-faint); line-height: 1.6; }
-.aivy-landing-footer{ display: flex; align-items: center; justify-content: center; gap: 10px; padding: 30px; color: var(--ink-faint); font-size: 12.5px; border-top: 1px solid var(--line-soft); }
+
+/* philosophy quote — the one place we let the serif get loud */
+.aivy-landing-quote{ position: relative; text-align: center; max-width: 780px; margin: 0 auto; padding: 40px 32px 100px; }
+.aivy-landing-quote blockquote{ font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(22px, 3.4vw, 34px); line-height: 1.4; color: var(--ink); }
+.aivy-landing-quote cite{ display: block; margin-top: 18px; font-style: normal; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+
+/* footer / credits */
+.aivy-landing-footer-v2{ position: relative; z-index: 1; border-top: 1px solid var(--line-soft); padding: 56px 32px 0; }
+.aivy-footer-grid{ max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 40px; padding-bottom: 44px; }
+.aivy-footer-brand{ display: flex; flex-direction: column; gap: 12px; max-width: 34ch; }
+.aivy-footer-brand .aivy-brand{ gap: 8px; }
+.aivy-footer-brand p{ font-size: 13px; color: var(--ink-faint); line-height: 1.65; }
+.aivy-footer-col h4{ font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 14px; }
+.aivy-footer-col ul{ display: flex; flex-direction: column; gap: 10px; }
+.aivy-footer-col li{ font-size: 13.5px; color: var(--ink-dim); }
+.aivy-footer-col li span{ display: block; font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.aivy-footer-bottom{ max-width: 1040px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 0 30px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--ink-faint); flex-wrap: wrap; }
+.aivy-footer-bottom .mark{ display: flex; align-items: center; gap: 8px; }
+
+@media (min-width: 900px){
+  .aivy-vine-rail{ display: block; }
+  .aivy-landing-story{ padding: 0 32px 0 62px; }
+}
+@media (max-width: 720px){
+  .aivy-footer-grid{ grid-template-columns: 1fr; gap: 28px; }
+  .aivy-step{ gap: 14px; }
+  .aivy-step-index{ width: 36px; font-size: 24px; }
+}
 
 .aivy-login{ min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .aivy-login-card{ width: min(420px, 100%); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 40px 32px; border: 1px solid var(--line); border-radius: var(--radius-lg); }
@@ -386,7 +438,7 @@ svg{ display: block; }
 .aivy-login-back:hover{ color: var(--ink-dim); }
 
 /* ---------- settings ---------- */
-.aivy-settings-page{ max-width: 720px; padding-bottom: 40px; }
+.aivy-settings-page{ max-width: 720px; padding-bottom: 40px; margin: 0 auto; }
 .aivy-settings-section{ margin: 26px 0; }
 .aivy-settings-title{ font-family: var(--font-display); font-size: 17px; font-weight: 600; margin-bottom: 10px; }
 .aivy-settings-group{ border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
