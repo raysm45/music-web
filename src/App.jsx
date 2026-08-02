@@ -9,7 +9,7 @@ import { LandingPage, LoginPage } from "./pages/AuthPages.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
 import { SearchPage } from "./pages/SearchPage.jsx";
 import { ArtistPage, AlbumPage } from "./pages/CatalogPages.jsx";
-import { LibraryPage, LikedPage, PlaylistPage } from "./pages/LibraryPages.jsx";
+import { LibraryPage, LikedPage, PlaylistPage, ImportPage } from "./pages/LibraryPages.jsx";
 import { RoomLobbyPage, RoomPage } from "./pages/RoomPages.jsx";
 import { SettingsPage } from "./pages/SettingsPage.jsx";
 
@@ -28,6 +28,7 @@ const PAGE_BY_ROUTE = {
   home: HomePage,
   search: SearchPage,
   library: LibraryPage,
+  libraryImport: ImportPage,
   liked: LikedPage,
   playlist: PlaylistPage,
   artist: ArtistPage,

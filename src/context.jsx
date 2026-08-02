@@ -291,6 +291,10 @@ export function PlayerProvider({ children }) {
     Api.playlists().then(setPlaylists).catch(() => {});
   }, [authUser]);
 
+  const refreshPlaylists = useCallback(async () => {
+    try { const rows = await Api.playlists(); setPlaylists(rows); } catch { }
+  }, []);
+
   const registerProgressEl = useCallback((el, mode = "width") => {
     if (!el) return;
     progressElsRef.current.set(el, mode);
@@ -819,7 +823,7 @@ export function PlayerProvider({ children }) {
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
-    playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail,
+    playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, refreshPlaylists,
     registerProgressEl,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
   };

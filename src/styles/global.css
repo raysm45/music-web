@@ -453,6 +453,60 @@ svg{ display: block; }
 .aivy-select{ background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; color: var(--ink); }
 .aivy-range{ accent-color: var(--moss); width: 110px; }
 
+/* ---------- import playlist (Koleksi > Import) ---------- */
+.aivy-import-page{ max-width: 640px; margin: 0 auto; padding-bottom: 48px; }
+.aivy-import-back{ display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-faint); margin-bottom: 18px; }
+.aivy-import-back:hover{ color: var(--ink-dim); }
+
+.aivy-import-steps{ display: flex; align-items: center; gap: 8px; margin-bottom: 30px; }
+.aivy-import-step-dot{ width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-family: var(--font-mono); background: var(--bg-elev-2); color: var(--ink-faint); border: 1px solid var(--line); flex-shrink: 0; transition: all var(--dur-base) var(--ease); }
+.aivy-import-step-dot.active{ background: var(--moss); color: var(--moss-ink); border-color: var(--moss); }
+.aivy-import-step-dot.done{ background: var(--moss-strong); color: var(--moss-ink); border-color: var(--moss-strong); }
+.aivy-import-step-label{ font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+.aivy-import-step-label.active{ color: var(--ink); font-weight: 600; }
+.aivy-import-step-line{ flex: 1; height: 1px; background: var(--line); transition: background var(--dur-base) var(--ease); }
+.aivy-import-step-line.done{ background: var(--moss-strong); }
+
+.aivy-import-tabs{ display: flex; gap: 10px; margin-bottom: 18px; }
+.aivy-import-tab{ flex: 1; padding: 14px 12px; border-radius: var(--radius-md); border: 1px solid var(--line); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.aivy-import-tab .name{ font-weight: 700; font-size: 13.5px; }
+.aivy-import-tab.active{ border-color: var(--moss-strong); background: color-mix(in srgb, var(--moss) 10%, transparent); }
+.aivy-import-tab.locked{ opacity: .55; cursor: not-allowed; }
+.aivy-import-tab .badge{ font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+
+.aivy-import-tutorial{ background: var(--bg-elev-2); border: 1px solid var(--line-soft); border-radius: var(--radius-md); padding: 16px 18px; margin-top: 16px; font-size: 13px; color: var(--ink-dim); line-height: 1.7; }
+.aivy-import-tutorial .head{ display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+.aivy-import-tutorial ol{ margin: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
+.aivy-import-tutorial li::marker{ color: var(--moss-strong); font-weight: 700; }
+
+.aivy-import-error{ color: var(--berry-strong); font-size: 13px; margin-top: 4px; }
+
+.aivy-import-summary{ display: flex; gap: 16px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-lg); margin-bottom: 22px; }
+.aivy-import-summary .thumb{ width: 88px; height: 88px; border-radius: var(--radius-md); object-fit: cover; flex-shrink: 0; }
+.aivy-import-summary .thumb-fallback{ width: 88px; height: 88px; border-radius: var(--radius-md); flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-elev-2); }
+.aivy-import-summary .meta .title{ font-family: var(--font-display); font-weight: 600; font-size: 16px; margin-bottom: 4px; line-height: 1.3; }
+.aivy-import-summary .meta .sub{ font-size: 12.5px; color: var(--ink-faint); }
+
+.aivy-import-option{ display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-md); margin-bottom: 10px; cursor: pointer; }
+.aivy-import-option.active{ border-color: var(--moss-strong); background: color-mix(in srgb, var(--moss) 8%, transparent); }
+.aivy-import-option .radio{ width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); flex-shrink: 0; margin-top: 2px; position: relative; }
+.aivy-import-option.active .radio{ border-color: var(--moss-strong); }
+.aivy-import-option.active .radio::after{ content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--moss-strong); }
+.aivy-import-option .body{ flex: 1; }
+.aivy-import-option .label{ font-weight: 600; font-size: 13.5px; margin-bottom: 8px; }
+
+.aivy-import-progress-wrap{ text-align: center; padding: 60px 20px; }
+.aivy-import-progress-track{ height: 8px; border-radius: 999px; background: var(--bg-elev-3); overflow: hidden; margin: 22px auto 10px; max-width: 320px; }
+.aivy-import-progress-fill{ height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--moss-strong), var(--gold)); transition: width .25s ease; }
+
+.aivy-import-success{ text-align: center; padding: 40px 20px; }
+.aivy-import-success .icon{ display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: color-mix(in srgb, var(--moss) 18%, transparent); margin-bottom: 18px; }
+.aivy-import-success h2{ font-family: var(--font-display); font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+.aivy-import-success p{ font-size: 13.5px; color: var(--ink-faint); }
+.aivy-import-success .actions{ display: flex; gap: 10px; justify-content: center; margin-top: 24px; }
+
+.aivy-import-actions{ display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
 /* ---------- equalizer (Setting > Equalizer) ---------- */
 .aivy-eq-bands{ display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 4px 2px; }
 .aivy-eq-band{ display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 0; }

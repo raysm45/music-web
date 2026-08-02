@@ -1,13 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 
-// Daftar route resmi AIVY. Urutan ga masalah karena tiap pattern beda
-// jumlah segmen atau segmen literalnya beda, jadi ga ada yang tabrakan.
 const ROUTES = [
   ["landing", "/"],
   ["login", "/login"],
   ["home", "/beranda"],
   ["search", "/cari"],
   ["library", "/koleksi"],
+  ["libraryImport", "/koleksi/import"],
   ["liked", "/liked"],
   ["settings", "/setting"],
   ["roomLobby", "/ruang"],

@@ -1,8 +1,17 @@
 export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.cosmicx.fun";
 
+async function throwApiError(res) {
+  let message = `${res.status} ${res.statusText}`;
+  try {
+    const data = await res.json();
+    if (data?.error) message = data.error;
+  } catch { }
+  throw new Error(message);
+}
+
 async function apiGet(path) {
   const res = await fetch(`${API_BASE}${path}`, { credentials: "include" });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) await throwApiError(res);
   return res.json();
 }
 async function apiSend(path, method, body) {
@@ -12,7 +21,7 @@ async function apiSend(path, method, body) {
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) await throwApiError(res);
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
@@ -71,6 +80,10 @@ export const Api = {
   addSong: (id, videoId, meta) => apiSend(`/api/playlists/${id}/songs`, "POST", { videoId, ...meta }),
   removeSong: (id, videoId) => apiSend(`/api/playlists/${id}/songs/${encodeURIComponent(videoId)}`, "DELETE"),
   deletePlaylist: (id) => apiSend(`/api/playlists/${id}`, "DELETE"),
+
+  // --- import playlist YouTube ---
+  resolveYoutubeImport: (url) => apiSend("/api/import/youtube/resolve", "POST", { url }),
+  commitYoutubeImport: (body) => apiSend("/api/import/youtube/commit", "POST", body),
 
   // --- rooms (daftar publik lewat REST; create/join/sync lewat socket) ---
   publicRooms: () => apiGet("/api/rooms"),
