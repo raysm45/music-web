@@ -28,7 +28,7 @@ export function LibraryPage() {
           <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-card" style={{ textAlign: "left" }}>
             <div className="art-wrap">
               {pl.songs?.[0]?.cover ? (
-                <SmartCover src={pl.songs[0].cover} seed={"pl" + pl.id} size={160} radius={10} style={{ width: "100%", height: "auto" }} />
+                <SmartCover src={pl.songs[0].cover} seed={"pl" + pl.id} size={160} radius={10} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
               ) : (
                 <div style={{ width: "100%", aspectRatio: "1", borderRadius: "var(--radius-md)", background: "var(--bg-elev-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <LibraryIcon size={26} color="var(--ink-faint)" />
