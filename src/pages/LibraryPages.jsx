@@ -1,15 +1,16 @@
 import React, { useMemo } from "react";
 import { Heart, Play, Library as LibraryIcon } from "lucide-react";
-import { usePlayer } from "../context.jsx";
+import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
 import { TrackRow, ViewNotFound, ConfirmDialog } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
 export function LibraryPage() {
   const { playlists, liked } = usePlayer();
+  const { t } = useUI();
   return (
     <div className="aivy-view-enter">
-      <div className="aivy-greet" style={{ paddingBottom: 10 }}><h1 className="font-display" style={{ fontSize: "clamp(22px,3vw,28px)" }}>Koleksi kamu</h1></div>
+      <div className="aivy-greet" style={{ paddingBottom: 10 }}><h1 className="font-display" style={{ fontSize: "clamp(22px,3vw,28px)" }}>{t("yourLibrary")}</h1></div>
       <div className="aivy-grid">
         <Link to="liked" className="aivy-card" style={{ textAlign: "left" }}>
           <div className="art-wrap">
@@ -17,7 +18,7 @@ export function LibraryPage() {
               <Heart size={30} color="var(--moss-ink)" fill="var(--moss-ink)" />
             </div>
           </div>
-          <div className="title">Lagu Disukai</div><div className="sub">{liked.size} lagu</div>
+          <div className="title">{t("navLikedSongs")}</div><div className="sub">{liked.size} {t("songsCount")}</div>
         </Link>
         {playlists.map((pl) => (
           <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-card" style={{ textAlign: "left" }}>
@@ -30,17 +31,18 @@ export function LibraryPage() {
                 </div>
               )}
             </div>
-            <div className="title">{pl.name}</div><div className="sub">{pl.songs?.length || 0} lagu</div>
+            <div className="title">{pl.name}</div><div className="sub">{pl.songs?.length || 0} {t("songsCount")}</div>
           </Link>
         ))}
       </div>
-      {playlists.length === 0 && <p className="eyebrow" style={{ padding: "8px 2px" }}>{"Belum ada playlist \u2014 bikin dari sidebar, atau lewat menu klik-kanan lagu."}</p>}
+      {playlists.length === 0 && <p className="eyebrow" style={{ padding: "8px 2px" }}>{t("noPlaylistsYetLong")}</p>}
     </div>
   );
 }
 
 export function LikedPage() {
   const { liked, toggleLike, playList } = usePlayer();
+  const { t } = useUI();
   const [likedTracks, setLikedTracks] = React.useState(null);
 
   const normalizeLiked = (rows) => rows.map((r) => ({
@@ -63,7 +65,7 @@ export function LikedPage() {
   React.useEffect(() => { fetchLiked(); }, []);
 
   const handleUnlike = async (track) => {
-    setLikedTracks((prev) => prev.filter((t) => t.id !== track.id));
+    setLikedTracks((prev) => prev.filter((tr) => tr.id !== track.id));
     await toggleLike(track);
   };
 
@@ -71,15 +73,15 @@ export function LikedPage() {
     <div className="aivy-view-enter">
       <div className="aivy-hero">
         <div className="art"><div style={{ width: 176, height: 176, borderRadius: "var(--radius-lg)", background: "linear-gradient(150deg, var(--berry), var(--bg-elev-3))", display: "flex", alignItems: "center", justifyContent: "center" }}><Heart size={54} color="var(--moss-ink)" fill="var(--moss-ink)" /></div></div>
-        <div className="aivy-hero-meta"><div className="eyebrow">Playlist</div><h1 className="font-display">Lagu Disukai</h1><div className="stats"><span>{liked.size} lagu</span></div></div>
+        <div className="aivy-hero-meta"><div className="eyebrow">{t("playlistLabel")}</div><h1 className="font-display">{t("navLikedSongs")}</h1><div className="stats"><span>{liked.size} {t("songsCount")}</span></div></div>
       </div>
       {likedTracks === null ? null : likedTracks.length > 0 ? (
         <>
-          <div className="aivy-hero-actions"><button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(likedTracks, 0)} aria-label="Putar semua"><Play size={22} fill="currentColor" /></button></div>
-          <div>{likedTracks.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={likedTracks} showAlbum onRemove={() => handleUnlike(t)} removeLabel="Hapus dari Disukai" queueMode="context" />)}</div>
+          <div className="aivy-hero-actions"><button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(likedTracks, 0)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button></div>
+          <div>{likedTracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={likedTracks} showAlbum onRemove={() => handleUnlike(tr)} removeLabel={t("menuRemoveLiked")} queueMode="context" />)}</div>
         </>
       ) : (
-        <div className="aivy-empty"><Heart size={38} color="var(--ink-faint)" /><div className="title">Belum ada yang disukai</div><div className="sub">Tekan ikon hati di lagu mana pun buat nyimpen di sini.</div></div>
+        <div className="aivy-empty"><Heart size={38} color="var(--ink-faint)" /><div className="title">{t("noLikedYet")}</div><div className="sub">{t("noLikedYetSub")}</div></div>
       )}
     </div>
   );
@@ -89,6 +91,7 @@ export function PlaylistPage() {
   const { params } = useRouter();
   const { playlists, playList, removeFromPlaylist, deletePlaylist, setPlaylistDetail } = usePlayer();
   const { navigate } = useRouter();
+  const { t } = useUI();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const pl = playlists.find((p) => String(p.id) === String(params.id));
 
@@ -101,7 +104,7 @@ export function PlaylistPage() {
     );
   }, [params.id]);
 
-  if (!pl) return <ViewNotFound label="Playlist" />;
+  if (!pl) return <ViewNotFound label={t("playlistLabel")} />;
   return (
     <div className="aivy-view-enter">
       <div className="aivy-hero">
@@ -110,24 +113,24 @@ export function PlaylistPage() {
             <div style={{ width: 176, height: 176, borderRadius: "var(--radius-lg)", background: "var(--bg-elev-2)", display: "flex", alignItems: "center", justifyContent: "center" }}><LibraryIcon size={40} color="var(--ink-faint)" /></div>
           )}
         </div>
-        <div className="aivy-hero-meta"><div className="eyebrow">Playlist</div><h1 className="font-display">{pl.name}</h1><div className="stats"><span>{pl.songs?.length || 0} lagu</span></div></div>
+        <div className="aivy-hero-meta"><div className="eyebrow">{t("playlistLabel")}</div><h1 className="font-display">{pl.name}</h1><div className="stats"><span>{pl.songs?.length || 0} {t("songsCount")}</span></div></div>
       </div>
       <div className="aivy-hero-actions">
-        {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0)} aria-label="Putar semua"><Play size={22} fill="currentColor" /></button>}
-        <button className="aivy-btn-ghost" onClick={() => setConfirmDelete(true)}>Hapus playlist</button>
+        {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
+        <button className="aivy-btn-ghost" onClick={() => setConfirmDelete(true)}>{t("deletePlaylistBtn")}</button>
       </div>
       <ConfirmDialog
         open={confirmDelete}
-        title={`Hapus "${pl.name}"?`}
-        message="Playlist ini bakal dihapus permanen dan ga bisa dibalikin lagi. Lagu-lagunya sendiri ga akan kehapus dari koleksi kamu."
-        confirmLabel="Ya, hapus"
+        title={`${t("deletePlaylistConfirmTitle")} "${pl.name}"?`}
+        message={t("deletePlaylistConfirmMsg")}
+        confirmLabel={t("yesDelete")}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => { setConfirmDelete(false); deletePlaylist(pl.id); navigate("library"); }}
       />
       {pl.songs?.length > 0 ? (
-        <div>{pl.songs.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, t.id)} removeLabel="Hapus dari playlist ini" queueMode="context" />)}</div>
+        <div>{pl.songs.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, tr.id)} removeLabel={t("removeFromThisPlaylist")} queueMode="context" />)}</div>
       ) : (
-        <div className="aivy-empty"><div className="title">Playlist ini masih kosong</div><div className="sub">Cari lagu, lalu pilih "Tambah ke playlist" dari menu lagu.</div></div>
+        <div className="aivy-empty"><div className="title">{t("playlistEmpty")}</div><div className="sub">{t("playlistEmptySub")}</div></div>
       )}
     </div>
   );

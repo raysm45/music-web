@@ -8,7 +8,7 @@ import { debounce } from "../lib/utils.js";
 const GENRE_SHORTCUTS = ["Pop", "Hip-Hop", "R&B", "Indie", "Rock", "Electronic", "Jazz", "Dangdut", "K-Pop", "Reggae", "Klasik", "Akustik"];
 
 export function SearchPage() {
-  const { authUser, settings } = useUI();
+  const { authUser, settings, t } = useUI();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -103,12 +103,12 @@ export function SearchPage() {
     let cursor = 0;
     const worker = async () => {
       while (cursor < items.length) {
-        const t = items[cursor++];
+        const item = items[cursor++];
         try {
-          const res = await Api.lyrics({ title: t.title, artist: t.artist?.name, duration: t.duration });
-          found[t.id] = !!(res?.synced || res?.plain);
+          const res = await Api.lyrics({ title: item.title, artist: item.artist?.name, duration: item.duration });
+          found[item.id] = !!(res?.synced || res?.plain);
         } catch {
-          found[t.id] = false;
+          found[item.id] = false;
         }
       }
     };
@@ -128,12 +128,12 @@ export function SearchPage() {
         <div className="aivy-search-box">
           <Search size={16} />
           <input
-            ref={inputRef} className="aivy-input" placeholder="Cari lagu atau artist, lalu tekan Enter"
+            ref={inputRef} className="aivy-input" placeholder={t("searchPlaceholder")}
             value={query} onChange={(e) => onChangeQuery(e.target.value)}
             onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)}
             onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) runSearch(query.trim()); }}
           />
-          {query && <button className="aivy-icon-btn sm" style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)" }} onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); }} aria-label="Bersihin"><X size={14} /></button>}
+          {query && <button className="aivy-icon-btn sm" style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)" }} onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); }} aria-label={t("clear")}><X size={14} /></button>}
         </div>
 
         {focused && query.trim() && suggestions.length > 0 && (
@@ -151,8 +151,8 @@ export function SearchPage() {
         <>
           {recent.length > 0 && (
             <section className="aivy-section" style={{ marginTop: 0 }}>
-              <div className="aivy-section-head"><h2 className="aivy-section-title">Pencarian terakhir</h2>
-                <button className="aivy-section-link" onClick={() => { Api.clearSearchHistory().catch(() => {}); setRecent([]); }}>Bersihin semua</button>
+              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("recentSearches")}</h2>
+                <button className="aivy-section-link" onClick={() => { Api.clearSearchHistory().catch(() => {}); setRecent([]); }}>{t("clearAll")}</button>
               </div>
               <div className="aivy-recent-list">
                 {recent.map((r) => (
@@ -165,7 +165,7 @@ export function SearchPage() {
             </section>
           )}
           <section className="aivy-section" style={{ marginTop: 4 }}>
-            <div className="aivy-section-head"><h2 className="aivy-section-title">Jelajahi genre</h2></div>
+            <div className="aivy-section-head"><h2 className="aivy-section-title">{t("exploreGenre")}</h2></div>
             <div className="aivy-genre-chips">
               {GENRE_SHORTCUTS.map((g) => <button key={g} className="aivy-chip" onClick={() => runSearch(g)}>{g}</button>)}
             </div>
@@ -175,14 +175,14 @@ export function SearchPage() {
 
       {hasSearched && (
         <div style={{ padding: "4px 2px 12px" }}>
-          {searching ? <span className="eyebrow">Nyari\u2026</span> : <span className="eyebrow">{results.length} hasil buat "{query}"</span>}
+          {searching ? <span className="eyebrow">{t("searching")}</span> : <span className="eyebrow">{results.length} {t("resultsFor")} "{query}"</span>}
         </div>
       )}
 
       {hasSearched && (
         searching ? <SkeletonList count={8} /> : (
-          sortedList.length ? <div>{sortedList.map((t, i) => <TrackRow key={t.id + i} track={t} index={i} list={sortedList} queueMode="radio" />)}</div> : (
-            <div className="aivy-empty"><Search size={34} color="var(--ink-faint)" /><div className="title">Ga ketemu apa-apa</div><div className="sub">Coba kata kunci lain, atau cek ejaannya.</div></div>
+          sortedList.length ? <div>{sortedList.map((tr, i) => <TrackRow key={tr.id + i} track={tr} index={i} list={sortedList} queueMode="radio" />)}</div> : (
+            <div className="aivy-empty"><Search size={34} color="var(--ink-faint)" /><div className="title">{t("noResults")}</div><div className="sub">{t("noResultsSub")}</div></div>
           )
         )
       )}

@@ -401,6 +401,34 @@ svg{ display: block; }
 .aivy-select{ background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; color: var(--ink); }
 .aivy-range{ accent-color: var(--moss); width: 110px; }
 
+/* ---------- equalizer (Setting > Equalizer) ---------- */
+.aivy-eq-bands{ display: flex; justify-content: space-between; gap: 6px; padding: 6px 4px 2px; }
+.aivy-eq-band{ display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.aivy-eq-val{ font-size: 10px; color: var(--ink-faint); }
+.aivy-eq-freq{ font-size: 10px; color: var(--ink-faint); }
+.aivy-eq-slider{ accent-color: var(--moss); width: 96px; height: 20px; margin: 34px 0; }
+@media (max-width: 640px){ .aivy-eq-bands{ overflow-x: auto; } .aivy-eq-band{ flex: 0 0 32px; } }
+
+/* ---------- badge "E" buat lagu explicit di TrackRow ---------- */
+.aivy-explicit-badge{ display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-right: 6px; border-radius: 3px; background: var(--ink-faint); color: var(--bg); font-size: 9px; font-weight: 800; line-height: 1; vertical-align: middle; }
+
+/* ---------- Setting "Baris lebih rapat" ---------- */
+:root[data-compact="true"] .aivy-row{ padding-top: 4px; padding-bottom: 4px; }
+:root[data-compact="true"] .aivy-row .thumb{ width: 32px; height: 32px; }
+:root[data-compact="true"] .aivy-row .thumb :is(img, svg){ width: 32px; height: 32px; }
+:root[data-compact="true"] .aivy-skel-thumb{ width: 32px; height: 32px; }
+
+/* ---------- Setting "Kurangi animasi" ---------- */
+:root[data-reduced-motion="true"] *,
+:root[data-reduced-motion="true"] *::before,
+:root[data-reduced-motion="true"] *::after{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+
+/* ---------- Setting "Kontras tinggi" ---------- */
+:root[data-contrast="high"]{ --line: var(--ink-faint); --line-soft: var(--ink-faint); }
+:root[data-contrast="high"][data-theme="dark"]{ --ink: #ffffff; --ink-faint: #d7ded7; --bg: #000000; }
+:root[data-contrast="high"]:not([data-theme="dark"]){ --ink: #000000; --ink-faint: #262b26; --bg: #ffffff; }
+:root[data-contrast="high"] .aivy-row.is-current{ outline: 1px solid var(--moss-strong); }
+
 /* ---------- responsive ---------- */
 @media (max-width: 1240px){ :root{ --rightpanel-w: 0px; } .aivy-shell{ grid-template-columns: var(--sidebar-w) 1fr; grid-template-areas: "side main" "player player"; } .aivy-rightpanel{ display: none; } }
 @media (max-width: 1080px){ :root{ --sidebar-w: 208px; } .aivy-grid{ grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); } }

@@ -54,6 +54,7 @@ export function Scrubber({ getRatio, onSeekRatio, registerFill, registerThumb, c
 
 export function VolumeControl() {
   const { volume, muted, setVolume, toggleMute } = usePlayer();
+  const { t } = useUI();
   const trackRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const effective = muted ? 0 : volume;
@@ -61,14 +62,14 @@ export function VolumeControl() {
   const VolIcon = effective === 0 ? VolumeX : effective < 0.5 ? Volume1 : Volume2;
   return (
     <div className="aivy-vol">
-      <button className="aivy-icon-btn sm" onClick={toggleMute} aria-label={muted ? "Nyalain suara" : "Bisukan"}><VolIcon size={17} /></button>
+      <button className="aivy-icon-btn sm" onClick={toggleMute} aria-label={muted ? t("unmute") : t("mute")}><VolIcon size={17} /></button>
       <div
         ref={trackRef} className="track"
         onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging(true); setVolume(ratioFromEvent(e)); }}
         onPointerMove={(e) => { if (dragging) setVolume(ratioFromEvent(e)); }}
         onPointerUp={(e) => { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
         onPointerCancel={(e) => { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
-        role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(effective * 100)}
+        role="slider" aria-label={t("volume")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(effective * 100)}
       >
         <div className="fill" style={{ width: `${effective * 100}%` }} />
       </div>
@@ -133,27 +134,36 @@ export function buildShareUrl(track) {
 
 export function useTrackMenuItems(track, opts = {}) {
   const { liked, toggleLike, addToQueueEnd, playNextInQueue } = usePlayer();
-  const { openAddToPlaylist, pushToast } = useUI();
+  const { openAddToPlaylist, pushToast, t } = useUI();
   const { navigate } = useRouter();
   const isLiked = liked.has(String(track.videoId || track.id));
 
   const items = [
-    { label: isLiked ? "Hapus dari Disukai" : "Simpan ke Disukai", icon: <Heart size={15} fill={isLiked ? "currentColor" : "none"} />, onSelect: () => toggleLike(track) },
-    { label: "Putar setelah ini", icon: <ListMusic size={15} />, onSelect: () => playNextInQueue(track) },
-    { label: "Tambah ke antrean", icon: <Plus size={15} />, onSelect: () => addToQueueEnd(track) },
-    { label: "Tambah ke playlist", icon: <Library size={15} />, onSelect: () => openAddToPlaylist(track) },
+    { label: isLiked ? t("menuRemoveLiked") : t("menuSaveLiked"), icon: <Heart size={15} fill={isLiked ? "currentColor" : "none"} />, onSelect: () => toggleLike(track) },
+    { label: t("menuPlayNext"), icon: <ListMusic size={15} />, onSelect: () => playNextInQueue(track) },
+    { label: t("menuAddQueue"), icon: <Plus size={15} />, onSelect: () => addToQueueEnd(track) },
+    { label: t("menuAddPlaylist"), icon: <Library size={15} />, onSelect: () => openAddToPlaylist(track) },
     { divider: true },
-    { label: "Salin link lagu", icon: <Share2 size={15} />, onSelect: () => { navigator.clipboard?.writeText(buildShareUrl(track)); pushToast("Link disalin"); } },
+    { label: t("menuCopyLink"), icon: <Share2 size={15} />, onSelect: () => { navigator.clipboard?.writeText(buildShareUrl(track)); pushToast(t("linkCopied")); } },
   ];
-  if (track.artist?.id) items.push({ label: "Ke halaman artist", icon: <Music2 size={15} />, onSelect: () => navigate("artist", { params: { id: track.artist.id } }) });
-  if (track.album?.id) items.push({ label: "Ke halaman album", icon: <Music2 size={15} />, onSelect: () => navigate("album", { params: { id: track.album.id } }) });
-  if (opts.onRemove) { items.push({ divider: true }); items.push({ label: opts.removeLabel || "Hapus dari playlist ini", icon: <X size={15} />, onSelect: opts.onRemove }); }
+  if (track.artist?.id) items.push({ label: t("menuGoArtist"), icon: <Music2 size={15} />, onSelect: () => navigate("artist", { params: { id: track.artist.id } }) });
+  if (track.album?.id) items.push({ label: t("menuGoAlbum"), icon: <Music2 size={15} />, onSelect: () => navigate("album", { params: { id: track.album.id } }) });
+  if (opts.onRemove) { items.push({ divider: true }); items.push({ label: opts.removeLabel || t("menuRemovePlaylist"), icon: <X size={15} />, onSelect: opts.onRemove }); }
   return items;
+}
+
+// Setting "Konten eksplisit": kalau dimatiin, lagu yang punya flag
+// explicit (dari Deezer) disaring dari daftar. Dipakai di halaman-halaman
+// yang nampilin lagu dari katalog Deezer (Beranda, Artist, Album).
+export function filterExplicit(tracks, settings) {
+  if (!Array.isArray(tracks)) return tracks;
+  if (settings?.explicitContent !== false) return tracks;
+  return tracks.filter((tr) => !tr?.explicit);
 }
 
 export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single" }) {
   const { currentTrack, isPlaying, togglePlay, playSingle, playList, playRadio, liked, toggleLike } = usePlayer();
-  const { openContextMenu } = useUI();
+  const { openContextMenu, t } = useUI();
   const { navigate } = useRouter();
   const isCurrent = currentTrack && currentTrack.id === track.id;
   const isLiked = liked.has(String(track.videoId || track.id));
@@ -182,12 +192,12 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
           <span className="eq"><EqBars playing={isPlaying} /></span>
         </div>
       )}
-      <button className="thumb" onClick={handlePlay} aria-label={isCurrent && isPlaying ? "Jeda" : "Putar"}>
+      <button className="thumb" onClick={handlePlay} aria-label={isCurrent && isPlaying ? t("pause") : t("play")}>
         <SmartCover src={track.cover} seed={track.id + track.title} size={40} radius={6} />
         <span className="hover-play">{isCurrent && isPlaying ? <Pause size={15} /> : <Play size={15} />}</span>
       </button>
       <div className="meta" onClick={handlePlay} style={{ cursor: "pointer" }}>
-        <span className="t">{track.title}</span>
+        <span className="t">{track.explicit && <span className="aivy-explicit-badge" title="Explicit">E</span>}{track.title}</span>
         <span className="a" onClick={(e) => { e.stopPropagation(); track.artist?.id && navigate("artist", { params: { id: track.artist.id } }); }}>
           {track.artist?.name || "\u2014"}
         </span>
@@ -199,8 +209,8 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
       )}
       <div className="right">
         <div className={`row-actions ${isLiked ? "liked" : ""}`}>
-          <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={() => toggleLike(track)} aria-label="Suka"><Heart size={15} fill={isLiked ? "currentColor" : "none"} /></button>
-          <button className="aivy-icon-btn sm" onClick={handleContext} aria-label="Menu lainnya"><MoreHorizontal size={15} /></button>
+          <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={() => toggleLike(track)} aria-label={t("like")}><Heart size={15} fill={isLiked ? "currentColor" : "none"} /></button>
+          <button className="aivy-icon-btn sm" onClick={handleContext} aria-label={t("menuMore")}><MoreHorizontal size={15} /></button>
         </div>
         <span className="dur font-mono">{formatDuration(track.duration)}</span>
       </div>
@@ -259,13 +269,14 @@ export function CardAlbum({ album }) {
 
 export function CardArtist({ artist }) {
   const { navigate } = useRouter();
+  const { t } = useUI();
   return (
     <div className="aivy-card" onClick={() => navigate("artist", { params: { id: artist.id } })} style={{ cursor: "pointer" }}>
       <div className="art-wrap round">
         <SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={128} radius={999} style={{ width: "100%", height: "auto", borderRadius: "50%" }} />
       </div>
       <div className="title" style={{ textAlign: "center" }}>{artist.name}</div>
-      <div className="sub" style={{ textAlign: "center" }}>Artist</div>
+      <div className="sub" style={{ textAlign: "center" }}>{t("artistLabel")}</div>
     </div>
   );
 }
@@ -281,7 +292,7 @@ export function ToastHost({ isMobile }) {
 }
 
 export function AddToPlaylistModal() {
-  const { addToPlaylistTarget, closeAddToPlaylist } = useUI();
+  const { addToPlaylistTarget, closeAddToPlaylist, t } = useUI();
   const { playlists, addToPlaylist, createPlaylist } = usePlayer();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -301,8 +312,8 @@ export function AddToPlaylistModal() {
     <div className="aivy-modal-backdrop" onClick={closeAddToPlaylist}>
       <div className="aivy-modal" onClick={(e) => e.stopPropagation()}>
         <div className="aivy-modal-head">
-          <div className="aivy-modal-title">Tambah ke playlist</div>
-          <button className="aivy-icon-btn sm" onClick={closeAddToPlaylist} aria-label="Tutup"><X size={17} /></button>
+          <div className="aivy-modal-title">{t("addToPlaylistTitle")}</div>
+          <button className="aivy-icon-btn sm" onClick={closeAddToPlaylist} aria-label={t("close")}><X size={17} /></button>
         </div>
         <div className="aivy-playlist-pick">
           {playlists.map((pl) => (
@@ -312,19 +323,19 @@ export function AddToPlaylistModal() {
               {pl.songs?.some((s) => s.id === addToPlaylistTarget.id) && <Check size={15} color="var(--moss-strong)" />}
             </button>
           ))}
-          {!playlists.length && <div className="eyebrow" style={{ padding: "8px 10px" }}>Belum ada playlist</div>}
+          {!playlists.length && <div className="eyebrow" style={{ padding: "8px 10px" }}>{t("noPlaylistsYet")}</div>}
         </div>
         {creating ? (
           <div className="aivy-field" style={{ marginBottom: 4 }}>
-            <input ref={inputRef} className="aivy-input" placeholder="Nama playlist baru" value={name} onChange={(e) => setName(e.target.value)}
+            <input ref={inputRef} className="aivy-input" placeholder={t("newPlaylistNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setCreating(false); }} />
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <button className="aivy-btn-primary" style={{ flex: 1 }} onClick={handleCreate}>Buat & tambah</button>
-              <button className="aivy-btn-ghost" onClick={() => setCreating(false)}>Batal</button>
+              <button className="aivy-btn-primary" style={{ flex: 1 }} onClick={handleCreate}>{t("createAndAdd")}</button>
+              <button className="aivy-btn-ghost" onClick={() => setCreating(false)}>{t("cancel")}</button>
             </div>
           </div>
         ) : (
-          <button className="aivy-btn-ghost" style={{ width: "100%", marginTop: 4 }} onClick={() => setCreating(true)}><Plus size={15} /> Playlist baru</button>
+          <button className="aivy-btn-ghost" style={{ width: "100%", marginTop: 4 }} onClick={() => setCreating(true)}><Plus size={15} /> {t("newPlaylist")}</button>
         )}
       </div>
     </div>
@@ -333,7 +344,8 @@ export function AddToPlaylistModal() {
 
 // Dialog konfirmasi generik - dipakai a.l. buat "yakin mau hapus playlist?"
 // biar ga kepencet ke-delete tanpa sengaja.
-export function ConfirmDialog({ open, title, message, confirmLabel = "Hapus", cancelLabel = "Batal", danger = true, onConfirm, onCancel }) {
+export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, danger = true, onConfirm, onCancel }) {
+  const { t } = useUI();
   if (!open) return null;
   return (
     <div className="aivy-modal-backdrop" onClick={onCancel}>
@@ -342,8 +354,8 @@ export function ConfirmDialog({ open, title, message, confirmLabel = "Hapus", ca
         <div className="aivy-modal-title">{title}</div>
         {message && <p className="aivy-confirm-msg">{message}</p>}
         <div className="aivy-confirm-actions">
-          <button className="aivy-btn-ghost" onClick={onCancel}>{cancelLabel}</button>
-          <button className={`aivy-btn-primary ${danger ? "danger" : ""}`} onClick={onConfirm}>{confirmLabel}</button>
+          <button className="aivy-btn-ghost" onClick={onCancel}>{cancelLabel || t("cancel")}</button>
+          <button className={`aivy-btn-primary ${danger ? "danger" : ""}`} onClick={onConfirm}>{confirmLabel || t("confirmDeleteDefault")}</button>
         </div>
       </div>
     </div>
@@ -370,19 +382,19 @@ export function SkeletonList({ count = 8 }) {
 
 export function TransportButtons({ big = false }) {
   const { isPlaying, togglePlay, next, prev, shuffle, toggleShuffle, repeat, cycleRepeat, currentTrack, room } = usePlayer();
-  const { authUser } = useUI();
+  const { authUser, t } = useUI();
   const RepeatIcon = repeat === "one" ? Repeat1 : Repeat;
   const isHost = !room || !authUser || room.hostId === authUser.id;
   const controlLocked = room && room.hostOnlyControl && !isHost;
   return (
     <div className="aivy-transport-btns">
-      <button className={`aivy-icon-btn ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label="Acak" aria-pressed={shuffle} disabled={!!room}><Shuffle size={big ? 18 : 16} /></button>
-      <button className="aivy-icon-btn" onClick={prev} disabled={!currentTrack || controlLocked} aria-label="Sebelumnya"><SkipBack size={big ? 22 : 18} fill="currentColor" /></button>
-      <button className="aivy-play-btn" onClick={togglePlay} disabled={!currentTrack || controlLocked} aria-label={isPlaying ? "Jeda" : "Putar"}>
+      <button className={`aivy-icon-btn ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} disabled={!!room}><Shuffle size={big ? 18 : 16} /></button>
+      <button className="aivy-icon-btn" onClick={prev} disabled={!currentTrack || controlLocked} aria-label={t("previous")}><SkipBack size={big ? 22 : 18} fill="currentColor" /></button>
+      <button className="aivy-play-btn" onClick={togglePlay} disabled={!currentTrack || controlLocked} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={big ? 24 : 16} fill="currentColor" /> : <Play size={big ? 24 : 16} fill="currentColor" />}
       </button>
-      <button className="aivy-icon-btn" onClick={() => next(false)} disabled={!currentTrack || controlLocked} aria-label="Berikutnya"><SkipForward size={big ? 22 : 18} fill="currentColor" /></button>
-      <button className={`aivy-icon-btn ${repeat !== "off" ? "active" : ""}`} onClick={cycleRepeat} aria-label="Ulangi" aria-pressed={repeat !== "off"} disabled={!!room}><RepeatIcon size={big ? 18 : 16} /></button>
+      <button className="aivy-icon-btn" onClick={() => next(false)} disabled={!currentTrack || controlLocked} aria-label={t("next")}><SkipForward size={big ? 22 : 18} fill="currentColor" /></button>
+      <button className={`aivy-icon-btn ${repeat !== "off" ? "active" : ""}`} onClick={cycleRepeat} aria-label={t("repeat")} aria-pressed={repeat !== "off"} disabled={!!room}><RepeatIcon size={big ? 18 : 16} /></button>
     </div>
   );
 }
@@ -390,7 +402,7 @@ export function TransportButtons({ big = false }) {
 export function PlayerBar() {
   const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
-  const { toggleLyrics } = useUI();
+  const { toggleLyrics, t } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
@@ -404,17 +416,17 @@ export function PlayerBar() {
             <div className="meta">
               <span className="t">{currentTrack.title}</span>
               <span className="a" onClick={() => currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } })} style={{ cursor: "pointer" }}>
-                {currentTrack.artist?.name}{isPreviewClip && <span className="preview-tag">{" \u00b7 pratinjau 30s"}</span>}
+                {currentTrack.artist?.name}{isPreviewClip && <span className="preview-tag">{` \u00b7 ${t("previewTag")}`}</span>}
               </span>
             </div>
-            <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label="Suka"><Heart size={16} fill={isLiked ? "currentColor" : "none"} /></button>
+            <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")}><Heart size={16} fill={isLiked ? "currentColor" : "none"} /></button>
           </>
         ) : (
           <>
             <div style={{ width: 52, height: 52, borderRadius: 8, background: "var(--bg-elev-2)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <LeafMark size={22} color="var(--ink-faint)" />
             </div>
-            <span className="placeholder">Belum ada yang diputar</span>
+            <span className="placeholder">{t("nothingPlaying")}</span>
           </>
         )}
       </div>
@@ -427,7 +439,7 @@ export function PlayerBar() {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: "min(20%, 220px)", justifyContent: "flex-end" }}>
-        <button className="aivy-icon-btn sm" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label="Lirik" title={lyricsDisabled && currentTrack ? "Lirik ga tersedia buat lagu ini" : "Lirik"}><Mic2 size={16} /></button>
+        <button className="aivy-icon-btn sm" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label={t("lyrics")} title={lyricsDisabled && currentTrack ? t("lyricsUnavailable") : t("lyrics")}><Mic2 size={16} /></button>
         <VolumeControl />
       </div>
     </div>
@@ -437,15 +449,16 @@ export function PlayerBar() {
 export function MiniPlayer({ onExpand }) {
   const { currentTrack, isPlaying, togglePlay, next } = usePlayer();
   const { registerFill } = useScrubberBinding();
+  const { t } = useUI();
   if (!currentTrack) return null;
   return (
-    <div className="aivy-mini-player" onClick={onExpand} role="button" tabIndex={0} aria-label="Buka now playing">
+    <div className="aivy-mini-player" onClick={onExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}>
       <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={6} />
       <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
-      <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? "Jeda" : "Putar"}>
+      <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
       </button>
-      <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); next(false); }} aria-label="Berikutnya"><SkipForward size={18} fill="currentColor" /></button>
+      <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); next(false); }} aria-label={t("next")}><SkipForward size={18} fill="currentColor" /></button>
       <div className="mini-progress"><div className="fill" ref={registerFill} /></div>
     </div>
   );
@@ -454,7 +467,7 @@ export function MiniPlayer({ onExpand }) {
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const { currentTrack, liked, toggleLike, isPreviewClip, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
-  const { toggleLyrics } = useUI();
+  const { toggleLyrics, t } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
@@ -463,11 +476,11 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
       <div className={`aivy-sheet ${open ? "open" : ""}`} aria-hidden={!open}>
         <div className="aivy-sheet-head">
-          <button className="aivy-icon-btn" onClick={onClose} aria-label="Tutup"><ChevronDown size={22} /></button>
-          <span className="eyebrow">{isPreviewClip ? "Pratinjau 30 detik" : "Sedang diputar"}</span>
+          <button className="aivy-icon-btn" onClick={onClose} aria-label={t("close")}><ChevronDown size={22} /></button>
+          <span className="eyebrow">{isPreviewClip ? t("preview30") : t("nowPlaying")}</span>
           <div style={{ display: "flex", gap: 2 }}>
-            <button className="aivy-icon-btn" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label="Lirik" title={lyricsDisabled && currentTrack ? "Lirik ga tersedia buat lagu ini" : "Lirik"}><Mic2 size={19} /></button>
-            <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label="Buka antrean"><ListMusic size={19} /></button>
+            <button className="aivy-icon-btn" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label={t("lyrics")} title={lyricsDisabled && currentTrack ? t("lyricsUnavailable") : t("lyrics")}><Mic2 size={19} /></button>
+            <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={19} /></button>
           </div>
         </div>
         {currentTrack && (
@@ -478,7 +491,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                 <div className="t">{currentTrack.title}</div>
                 <div className="a" onClick={() => { currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}>{currentTrack.artist?.name}</div>
               </div>
-              <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label="Suka" style={{ flexShrink: 0 }}><Heart size={22} fill={isLiked ? "currentColor" : "none"} /></button>
+              <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")} style={{ flexShrink: 0 }}><Heart size={22} fill={isLiked ? "currentColor" : "none"} /></button>
             </div>
             <div className="aivy-scrubber-row">
               <span className="aivy-time font-mono">{formatTime(currentTime)}</span>
@@ -495,30 +508,31 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
 
 export function RightPanel() {
   const { currentTrack, upNext, history, queueList, order, posInOrder, room } = usePlayer();
+  const { t } = useUI();
   const [tab, setTab] = useState("queue");
   useEffect(() => { if (room) setTab("room"); }, [!!room]); 
 
   return (
     <aside className="aivy-rightpanel">
       <div className="aivy-rightpanel-tabs">
-        <button className={tab === "now" ? "active" : ""} onClick={() => setTab("now")}>Now Playing</button>
-        <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>Antrean</button>
-        {room && <button className={tab === "room" ? "active" : ""} onClick={() => setTab("room")}>Ruang</button>}
+        <button className={tab === "now" ? "active" : ""} onClick={() => setTab("now")}>{t("tabNowPlaying")}</button>
+        <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>{t("tabQueue")}</button>
+        {room && <button className={tab === "room" ? "active" : ""} onClick={() => setTab("room")}>{t("tabRoom")}</button>}
       </div>
       <div className="aivy-rightpanel-body aivy-scroll">
         {tab === "now" && <NowPlayingPane />}
         {tab === "queue" && (
           currentTrack ? (
             <>
-              <div className="aivy-drawer-sub eyebrow">Sedang diputar</div>
+              <div className="aivy-drawer-sub eyebrow">{t("nowPlaying")}</div>
               <TrackRow track={currentTrack} index={order[posInOrder]} list={queueList} showIndex={false} />
-              {upNext.length > 0 && <div className="aivy-drawer-sub eyebrow">Berikutnya</div>}
-              {upNext.map((t, i) => <TrackRow key={`${t.id}-${i}`} track={t} index={order[posInOrder + 1 + i]} list={queueList} showIndex={false} />)}
-              {history.length > 0 && <div className="aivy-drawer-sub eyebrow">Sudah diputar</div>}
-              {history.map((t, i) => <TrackRow key={`h-${t.id}-${i}`} track={t} index={order[i]} list={queueList} showIndex={false} />)}
+              {upNext.length > 0 && <div className="aivy-drawer-sub eyebrow">{t("upNextLabel")}</div>}
+              {upNext.map((tr, i) => <TrackRow key={`${tr.id}-${i}`} track={tr} index={order[posInOrder + 1 + i]} list={queueList} showIndex={false} />)}
+              {history.length > 0 && <div className="aivy-drawer-sub eyebrow">{t("playedLabel")}</div>}
+              {history.map((tr, i) => <TrackRow key={`h-${tr.id}-${i}`} track={tr} index={order[i]} list={queueList} showIndex={false} />)}
             </>
           ) : (
-            <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">Antrean kosong</div><div className="sub">Putar lagu apa aja buat mulai.</div></div>
+            <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("queueEmpty")}</div><div className="sub">{t("queueEmptySub")}</div></div>
           )
         )}
         {tab === "room" && room && <RoomPane />}
@@ -529,15 +543,15 @@ export function RightPanel() {
 
 function NowPlayingPane() {
   const { currentTrack, isPreviewClip, currentTrackHasLyrics } = usePlayer();
-  const { toggleLyrics } = useUI();
-  if (!currentTrack) return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">Belum ada yang diputar</div></div>;
+  const { toggleLyrics, t } = useUI();
+  if (!currentTrack) return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>;
   return (
     <div className="aivy-nowplaying-pane">
       <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={240} radius={16} style={{ width: "100%", height: "auto" }} />
       <div className="t">{currentTrack.title}</div>
       <div className="a">{currentTrack.artist?.name}</div>
-      {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>Pratinjau resmi 30 detik dari Deezer</div>}
-      <button className="aivy-btn-ghost" style={{ marginTop: 16 }} onClick={toggleLyrics} disabled={!currentTrackHasLyrics} title={!currentTrackHasLyrics ? "Lirik ga tersedia buat lagu ini" : undefined}><Mic2 size={14} /> {currentTrackHasLyrics ? "Lihat lirik" : "Lirik ga tersedia"}</button>
+      {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
+      <button className="aivy-btn-ghost" style={{ marginTop: 16 }} onClick={toggleLyrics} disabled={!currentTrackHasLyrics} title={!currentTrackHasLyrics ? t("lyricsUnavailable") : undefined}><Mic2 size={14} /> {currentTrackHasLyrics ? t("seeLyrics") : t("lyricsUnavailable")}</button>
     </div>
   );
 }
@@ -545,17 +559,18 @@ function NowPlayingPane() {
 function RoomPane() {
   const { room, leaveRoom } = usePlayer();
   const { navigate } = useRouter();
+  const { t } = useUI();
   if (!room) return null;
   return (
     <div className="aivy-room-pane">
       <div className="aivy-room-pane-head">
         <div>
           <div className="t">{room.name}</div>
-          <div className="eyebrow">{room.isPublic ? <><Globe size={11} /> Publik</> : <><Lock size={11} /> Privat</>}{` \u00b7 dibuat ${relativeTime(room.createdAt)}`}</div>
+          <div className="eyebrow">{room.isPublic ? <><Globe size={11} /> {t("public")}</> : <><Lock size={11} /> {t("private")}</>}{` \u00b7 ${t("createdAt")} ${relativeTime(room.createdAt)}`}</div>
         </div>
-        <button className="aivy-btn-ghost" onClick={() => { leaveRoom(); navigate("roomLobby"); }}>Keluar</button>
+        <button className="aivy-btn-ghost" onClick={() => { leaveRoom(); navigate("roomLobby"); }}>{t("leave")}</button>
       </div>
-      <div className="aivy-drawer-sub eyebrow">Yang lagi dengerin ({room.members?.length || 0})</div>
+      <div className="aivy-drawer-sub eyebrow">{t("listeningNow")} ({room.members?.length || 0})</div>
       <div className="aivy-room-members">
         {room.members?.map((m) => (
           <div key={m.id} className="aivy-room-member">
@@ -565,62 +580,65 @@ function RoomPane() {
           </div>
         ))}
       </div>
-      {room.hostOnlyControl && <div className="aivy-room-note" style={{ marginTop: 14 }}>Cuma host yang bisa kontrol pemutaran di ruang ini.</div>}
+      {room.hostOnlyControl && <div className="aivy-room-note" style={{ marginTop: 14 }}>{t("hostOnlyNotice")}</div>}
     </div>
   );
 }
 
 const NAV_ITEMS = [
-  { route: "home", label: "Beranda", icon: HomeIcon },
-  { route: "search", label: "Cari", icon: Search },
-  { route: "library", label: "Koleksi", icon: Library },
-  { route: "roomLobby", label: "Ruang", icon: Users },
+  { route: "home", labelKey: "navHome", icon: HomeIcon },
+  { route: "search", labelKey: "navSearch", icon: Search },
+  { route: "library", labelKey: "navLibrary", icon: Library },
+  { route: "roomLobby", labelKey: "navRooms", icon: Users },
 ];
 
 export function Sidebar() {
   const { name } = useRouter();
-  const { theme, toggleTheme, authUser, login } = useUI();
+  const { theme, toggleTheme, authUser, login, t } = useUI();
   const { playlists, createPlaylist } = usePlayer();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const inputRef = useRef(null);
   useEffect(() => { if (creating) inputRef.current?.focus(); }, [creating]);
-  const submitCreate = () => { const t = newName.trim(); if (t) createPlaylist(t); setNewName(""); setCreating(false); };
+  const submitCreate = () => { const val = newName.trim(); if (val) createPlaylist(val); setNewName(""); setCreating(false); };
 
   return (
     <aside className="aivy-sidebar">
-      <Link to="home" className="aivy-brand"><LeafMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">AIVY<small>Pemutar Musik</small></div></Link>
+      <Link to="home" className="aivy-brand"><LeafMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">AIVY<small>{t("appTagline")}</small></div></Link>
       <nav className="aivy-nav">
-        {NAV_ITEMS.map(({ route, label, icon: Icon }) => (
-          <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`}><Icon size={18} /><span>{label}</span></Link>
+        {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
+          <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`}><Icon size={18} /><span>{t(labelKey)}</span></Link>
         ))}
       </nav>
       <div className="aivy-side-section">
         <div className="eyebrow" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span>Playlist Kamu</span>
-          <button className="aivy-icon-btn sm" onClick={() => setCreating((c) => !c)} aria-label="Buat playlist"><Plus size={14} /></button>
+          <span>{t("navYourPlaylists")}</span>
+          <button className="aivy-icon-btn sm" onClick={() => setCreating((c) => !c)} aria-label={t("createPlaylist")}><Plus size={14} /></button>
         </div>
         {creating && (
           <div style={{ padding: "0 6px 8px" }}>
-            <input ref={inputRef} className="aivy-input" style={{ padding: "7px 12px", fontSize: 13 }} placeholder="Nama playlist" value={newName}
+            <input ref={inputRef} className="aivy-input" style={{ padding: "7px 12px", fontSize: 13 }} placeholder={t("newPlaylistName")} value={newName}
               onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitCreate(); if (e.key === "Escape") setCreating(false); }} onBlur={submitCreate} />
           </div>
         )}
         <div className="aivy-playlist-list aivy-scroll">
-          <Link to="liked" className="aivy-playlist-row"><Heart size={15} color="var(--berry)" fill="var(--berry)" /><span>Lagu Disukai</span></Link>
+          <Link to="liked" className="aivy-playlist-row"><Heart size={15} color="var(--berry)" fill="var(--berry)" /><span>{t("navLikedSongs")}</span></Link>
           {playlists.map((pl) => <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-playlist-row"><Library size={15} /><span>{pl.name}</span></Link>)}
         </div>
       </div>
       <div className="aivy-side-footer">
-        <Link to="settings" className="aivy-theme-btn"><SettingsIcon size={15} />Setting</Link>
-        <button className="aivy-theme-btn" onClick={toggleTheme}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}{theme === "dark" ? "Mode terang" : "Mode gelap"}</button>
+        {/* FIX bug "toggle theme dobel di desktop": tombol tema di TopBar
+            (kanan atas) udah dihapus - satu-satunya toggle tema desktop
+            sekarang cuma di sini. */}
+        <Link to="settings" className="aivy-theme-btn"><SettingsIcon size={15} />{t("navSettings")}</Link>
+        <button className="aivy-theme-btn" onClick={toggleTheme}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}{theme === "dark" ? t("navLightMode") : t("navDarkMode")}</button>
         {authUser ? (
           <Link to="settings" className="aivy-user-chip">
             <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>
             <span style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{authUser.username}</span>
           </Link>
         ) : (
-          <button className="aivy-login-btn" onClick={login}><LogIn size={15} /> Masuk dengan Discord</button>
+          <button className="aivy-login-btn" onClick={login}><LogIn size={15} /> {t("navLoginDiscord")}</button>
         )}
       </div>
     </aside>
@@ -629,10 +647,11 @@ export function Sidebar() {
 
 export function MobileTabBar() {
   const { name } = useRouter();
+  const { t } = useUI();
   return (
     <nav className="aivy-tabbar">
-      {NAV_ITEMS.map(({ route, label, icon: Icon }) => (
-        <Link key={route} to={route} className={`aivy-tab ${name === route ? "active" : ""}`}><Icon size={20} /><span>{label}</span></Link>
+      {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
+        <Link key={route} to={route} className={`aivy-tab ${name === route ? "active" : ""}`}><Icon size={20} /><span>{t(labelKey)}</span></Link>
       ))}
     </nav>
   );
@@ -640,7 +659,7 @@ export function MobileTabBar() {
 
 export function TopBar({ isMobile }) {
   const { name, back } = useRouter();
-  const { theme, toggleTheme, authUser, login } = useUI();
+  const { theme, toggleTheme, authUser, login, t } = useUI();
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const el = document.getElementById("aivy-content-scroll");
@@ -649,34 +668,33 @@ export function TopBar({ isMobile }) {
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, [name]);
-  const titleMap = { search: "Cari", library: "Koleksi", roomLobby: "Ruang", room: "Ruang", liked: "Lagu Disukai", settings: "Setting", home: "" };
+  const titleMap = { search: t("navSearch"), library: t("navLibrary"), roomLobby: t("navRooms"), room: t("navRooms"), liked: t("navLikedSongs"), settings: t("navSettings"), home: "" };
   return (
     <div className={`aivy-topbar ${scrolled ? "scrolled" : ""}`}>
       {isMobile ? (
         <>
-          {name !== "home" ? <button className="aivy-navbtn" onClick={back} aria-label="Kembali"><ArrowLeft size={16} /></button> : <LeafMark size={20} color="var(--moss-strong)" />}
+          {name !== "home" ? <button className="aivy-navbtn" onClick={back} aria-label={t("previous")}><ArrowLeft size={16} /></button> : <LeafMark size={20} color="var(--moss-strong)" />}
           <span className="aivy-topbar-title font-display" style={{ fontSize: 15 }}>{titleMap[name] ?? ""}</span>
         </>
       ) : (
         <div className="navbtns">
-          <button className="aivy-navbtn" onClick={back} aria-label="Kembali"><ChevronLeft size={16} /></button>
-          <button className="aivy-navbtn" onClick={() => window.history.forward()} aria-label="Maju"><ChevronRight size={16} /></button>
+          <button className="aivy-navbtn" onClick={back} aria-label={t("previous")}><ChevronLeft size={16} /></button>
+          <button className="aivy-navbtn" onClick={() => window.history.forward()} aria-label={t("next")}><ChevronRight size={16} /></button>
         </div>
       )}
       <div className="aivy-topbar-spacer" />
-      {!isMobile && <button className="aivy-navbtn" onClick={toggleTheme} aria-label="Ganti tema" title="Ganti tema">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>}
       {isMobile && (
         <>
           {/* FIX: dulu di mobile ga ada cara sama sekali buat ganti tema atau
               buka halaman Setting (cuma ada di sidebar desktop & sidebar-nya
               disembunyiin pas mobile) - sekarang ditaro di topbar */}
-          <button className="aivy-navbtn" onClick={toggleTheme} aria-label="Ganti tema" title="Ganti tema">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
+          <button className="aivy-navbtn" onClick={toggleTheme} aria-label={t("navSettings")} title={t("navSettings")}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
           {/* FIX: kalau udah login, avatar di bawah ini udah jadi satu-satunya
               pintu ke Setting - jangan dobel sama ikon gear ini */}
-          {!authUser && <Link to="settings" className="aivy-navbtn" aria-label="Setting" title="Setting"><SettingsIcon size={15} /></Link>}
+          {!authUser && <Link to="settings" className="aivy-navbtn" aria-label={t("navSettings")} title={t("navSettings")}><SettingsIcon size={15} /></Link>}
         </>
       )}
-      {isMobile && !authUser && <button className="aivy-btn-ghost" style={{ padding: "7px 14px", fontSize: 12.5 }} onClick={login}>Masuk</button>}
+      {isMobile && !authUser && <button className="aivy-btn-ghost" style={{ padding: "7px 14px", fontSize: 12.5 }} onClick={login}>{t("navLogin")}</button>}
       {isMobile && authUser && <Link to="settings" className="aivy-avatar" aria-label="Akun">{authUser.username?.slice(0, 1).toUpperCase()}</Link>}
     </div>
   );
@@ -686,7 +704,8 @@ export function ViewLoading() {
   return <div className="aivy-empty" style={{ paddingTop: 90 }}><IvyFallLoader size={40} /></div>;
 }
 export function ViewNotFound({ label }) {
-  return <div className="aivy-empty" style={{ paddingTop: 90 }}><LeafMark size={40} color="var(--ink-faint)" /><div className="title">{label} ga ketemu</div></div>;
+  const { t } = useUI();
+  return <div className="aivy-empty" style={{ paddingTop: 90 }}><LeafMark size={40} color="var(--ink-faint)" /><div className="title">{label} {t("notFoundLabel")}</div></div>;
 }
 
 // ---------- layar lirik ----------
@@ -721,7 +740,7 @@ function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext } = usePlayer();
   const [state, setState] = useState({ loading: false, synced: [], plain: "", checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
@@ -819,9 +838,9 @@ export function LyricsOverlay() {
       a.download = `lirik-${(currentTrack.title || "lagu").replace(/\s+/g, "-").toLowerCase()}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      pushToast("Gambar lirik disimpan");
+      pushToast(t("toastLyricsImageSaved"));
     });
-  }, [currentTrack, activeLineText, pushToast]);
+  }, [currentTrack, activeLineText, pushToast, t]);
 
   if (!lyricsOpen) return null;
 
@@ -831,14 +850,14 @@ export function LyricsOverlay() {
       <div className="aivy-lyrics-scrim" />
 
       <div className="aivy-lyrics-head">
-        <button className="aivy-icon-btn" onClick={closeLyrics} aria-label="Tutup"><ChevronDown size={22} /></button>
-        <span className="eyebrow">{isPreviewClip ? "Pratinjau 30 detik" : "Sedang diputar"}</span>
+        <button className="aivy-icon-btn" onClick={closeLyrics} aria-label={t("close")}><ChevronDown size={22} /></button>
+        <span className="eyebrow">{isPreviewClip ? t("preview30") : t("nowPlaying")}</span>
         <div className="aivy-lyrics-head-actions">
           <button
             className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`}
             onClick={() => currentTrack && toggleLike(currentTrack)}
             disabled={!currentTrack}
-            aria-label="Suka"
+            aria-label={t("like")}
           >
             <Heart size={17} fill={isLiked ? "currentColor" : "none"} />
           </button>
@@ -846,7 +865,7 @@ export function LyricsOverlay() {
             className="aivy-icon-btn sm"
             onClick={() => setShareOpen((v) => !v)}
             disabled={!currentTrack}
-            aria-label="Bagikan"
+            aria-label={t("share")}
           >
             <Share2 size={17} />
           </button>
@@ -867,13 +886,13 @@ export function LyricsOverlay() {
             </div>
 
             <div className="aivy-lyrics-fontctrl">
-              <span>Ukuran</span>
+              <span>{t("fontSize")}</span>
               {["sm", "md", "lg"].map((sz) => (
                 <button
                   key={sz}
                   className={fontSize === sz ? "active" : ""}
                   onClick={() => setFontSize(sz)}
-                  aria-label={`Ukuran ${sz}`}
+                  aria-label={`${t("fontSize")} ${sz}`}
                 >A</button>
               ))}
             </div>
@@ -885,14 +904,14 @@ export function LyricsOverlay() {
                 </div>
                 <div className="line">{activeLineText || "\u266a"}</div>
                 <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
-                <button onClick={handleSaveImage}>Simpan sebagai gambar</button>
+                <button onClick={handleSaveImage}>{t("saveAsImage")}</button>
               </div>
             )}
 
             {nextTrack && (
               <div className="aivy-lyrics-next">
                 <ListMusic size={14} />
-                <span className="label">Berikutnya</span>
+                <span className="label">{t("upNextLabel")}</span>
                 <span className="name">{nextTrack.title} &mdash; {nextTrack.artist?.name}</span>
               </div>
             )}
@@ -900,7 +919,7 @@ export function LyricsOverlay() {
 
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
             {state.loading ? (
-              <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">Nyari lirik\u2026</div></div>
+              <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">{t("searchingLyrics")}</div></div>
             ) : state.synced.length > 0 ? (
               <div className="aivy-lyrics-body aivy-scroll">
                 <div style={{ height: "38vh" }} />
@@ -920,8 +939,8 @@ export function LyricsOverlay() {
             ) : (
               <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}>
                 <LeafMark size={34} color="var(--ink-faint)" />
-                <div className="title">Lirik belum ketemu</div>
-                <div className="sub">laka nyik, lagu sing liane coba.</div>
+                <div className="title">{t("lyricsNotFound")}</div>
+                <div className="sub">{t("lyricsNotFoundSub")}</div>
               </div>
             )}
           </div>
@@ -929,7 +948,7 @@ export function LyricsOverlay() {
       )}
 
       {!currentTrack && (
-        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">Belum ada yang diputar</div></div>
+        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>
       )}
 
       {currentTrack && (

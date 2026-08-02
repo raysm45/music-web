@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Play, Shuffle, Check } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { TrackRow, CardAlbum, CardArtist, ViewLoading, ViewNotFound } from "../components.jsx";
+import { TrackRow, CardAlbum, CardArtist, ViewLoading, ViewNotFound, filterExplicit } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
 export function ArtistPage() {
@@ -13,7 +13,7 @@ export function ArtistPage() {
   const [following, setFollowing] = useState(false);
   const [showAllTracks, setShowAllTracks] = useState(false);
   const { playList } = usePlayer();
-  const { pushToast } = useUI();
+  const { pushToast, t, settings } = useUI();
 
   useEffect(() => {
     let alive = true;
@@ -23,42 +23,45 @@ export function ArtistPage() {
     return () => { alive = false; };
   }, [params.id]);
 
-  if (loading) return <ViewLoading />;
-  if (!artist) return <ViewNotFound label="Artist" />;
+  // FIX Setting "Konten eksplisit": disaring dari lagu top artist ini.
+  const topTracks = useMemo(() => filterExplicit(artist?.topTracks, settings) || [], [artist, settings]);
 
-  const tracks = showAllTracks ? artist.topTracks : artist.topTracks.slice(0, 5);
+  if (loading) return <ViewLoading />;
+  if (!artist) return <ViewNotFound label={t("artistLabel")} />;
+
+  const tracks = showAllTracks ? topTracks : topTracks.slice(0, 5);
 
   return (
     <div className="aivy-view-enter">
       <div className="aivy-hero">
         <div className="art round"><SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={176} radius={999} style={{ width: 176, height: 176, borderRadius: "50%" }} /></div>
         <div className="aivy-hero-meta">
-          <div className="eyebrow">Artist</div>
+          <div className="eyebrow">{t("artistLabel")}</div>
           <h1 className="font-display">{artist.name}</h1>
-          <div className="stats"><span>{artist.listeners?.toLocaleString("id-ID")} pendengar bulanan</span></div>
+          <div className="stats"><span>{artist.listeners?.toLocaleString(settings.language === "en" ? "en-US" : "id-ID")} {t("listenersMonthly")}</span></div>
         </div>
       </div>
       <div className="aivy-hero-actions">
-        <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => artist.topTracks?.length && playList(artist.topTracks, 0)} aria-label="Putar semua"><Play size={22} fill="currentColor" /></button>
-        <button className={following ? "aivy-chip active" : "aivy-btn-ghost"} onClick={() => { setFollowing((f) => !f); pushToast(following ? `Berhenti ikuti ${artist.name}` : `Mengikuti ${artist.name}`); }}>
-          {following ? <><Check size={14} /> Mengikuti</> : "Ikuti"}
+        <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => topTracks.length && playList(topTracks, 0)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>
+        <button className={following ? "aivy-chip active" : "aivy-btn-ghost"} onClick={() => { setFollowing((f) => !f); pushToast(following ? `${t("unfollowedToast")} ${artist.name}` : `${t("followedToast")} ${artist.name}`); }}>
+          {following ? <><Check size={14} /> {t("following")}</> : t("follow")}
         </button>
       </div>
-      {artist.tags?.length > 0 && <div className="aivy-tagrow">{artist.tags.map((t) => <span key={t} className="aivy-chip">{t}</span>)}</div>}
+      {artist.tags?.length > 0 && <div className="aivy-tagrow">{artist.tags.map((tag) => <span key={tag} className="aivy-chip">{tag}</span>)}</div>}
       {tracks?.length > 0 && (
         <section className="aivy-section">
-          <div className="aivy-section-head"><h2 className="aivy-section-title">Lagu Populer</h2></div>
-          <div>{tracks.map((t, i) => <TrackRow key={t.id} track={t} index={i} list={artist.topTracks} showAlbum queueMode="context" />)}</div>
-          {artist.topTracks.length > 5 && <button className="aivy-chip" style={{ marginTop: 10 }} onClick={() => setShowAllTracks((s) => !s)}>{showAllTracks ? "Tampilkan lebih sedikit" : `Tampilkan ${artist.topTracks.length - 5} lagi`}</button>}
+          <div className="aivy-section-head"><h2 className="aivy-section-title">{t("popularSongs")}</h2></div>
+          <div>{tracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={topTracks} showAlbum queueMode="context" />)}</div>
+          {topTracks.length > 5 && <button className="aivy-chip" style={{ marginTop: 10 }} onClick={() => setShowAllTracks((s) => !s)}>{showAllTracks ? t("showLess") : `${t("showMore")} ${topTracks.length - 5} ${t("more")}`}</button>}
         </section>
       )}
       {artist.albums?.length > 0 && (
-        <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">Album</h2></div>
+        <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{t("albumsLabel")}</h2></div>
           <div className="aivy-hrow aivy-scroll">{artist.albums.map((a) => <CardAlbum key={a.id} album={a} />)}</div>
         </section>
       )}
       {artist.relatedArtists?.length > 0 && (
-        <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">Mirip dengan {artist.name}</h2></div>
+        <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{t("similarTo")} {artist.name}</h2></div>
           <div className="aivy-hrow aivy-scroll">{artist.relatedArtists.map((a) => <CardArtist key={a.id} artist={a} />)}</div>
         </section>
       )}
@@ -73,6 +76,7 @@ export function AlbumPage() {
   const [loading, setLoading] = useState(true);
   const { playList, toggleShuffle } = usePlayer();
   const { navigate } = useRouter();
+  const { t, settings } = useUI();
 
   useEffect(() => {
     let alive = true;
@@ -81,30 +85,32 @@ export function AlbumPage() {
     return () => { alive = false; };
   }, [params.id]);
 
-  if (loading) return <ViewLoading />;
-  if (!album) return <ViewNotFound label="Album" />;
+  // FIX Setting "Konten eksplisit": disaring dari daftar lagu album ini.
+  const albumTracks = useMemo(() => filterExplicit(album?.tracks, settings) || [], [album, settings]);
+  const totalMin = Math.round(albumTracks.reduce((s, tr) => s + (tr.duration || 0), 0) / 60);
 
-  const totalMin = Math.round((album.tracks || []).reduce((s, t) => s + (t.duration || 0), 0) / 60);
+  if (loading) return <ViewLoading />;
+  if (!album) return <ViewNotFound label={t("albumLabel")} />;
 
   return (
     <div className="aivy-view-enter">
       <div className="aivy-hero">
         <div className="art"><SmartCover src={album.cover} seed={"album" + album.id + album.title} size={176} radius={16} style={{ width: 176, height: 176 }} /></div>
         <div className="aivy-hero-meta">
-          <div className="eyebrow">Album</div>
+          <div className="eyebrow">{t("albumLabel")}</div>
           <h1 className="font-display">{album.title}</h1>
           <div className="stats">
             <span onClick={() => navigate("artist", { params: { id: album.artist.id } })} style={{ cursor: "pointer", color: "var(--ink)", fontWeight: 600 }}>{album.artist?.name}</span>
             <span>{album.releaseDate ? `\u00b7 ${String(album.releaseDate).slice(0, 4)}` : ""}</span>
-            <span>{`\u00b7 ${album.trackCount || album.tracks?.length || 0} lagu, ${totalMin} mnt`}</span>
+            <span>{`\u00b7 ${albumTracks.length} ${t("trackCountLabel")}, ${totalMin} ${t("minutesLabel")}`}</span>
           </div>
         </div>
       </div>
       <div className="aivy-hero-actions">
-        <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(album.tracks, 0)} aria-label="Putar album"><Play size={22} fill="currentColor" /></button>
-        <button className="aivy-icon-btn" onClick={() => { toggleShuffle(); playList(album.tracks, 0); }} aria-label="Acak & putar"><Shuffle size={18} /></button>
+        <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(albumTracks, 0)} aria-label={t("playAlbum")}><Play size={22} fill="currentColor" /></button>
+        <button className="aivy-icon-btn" onClick={() => { toggleShuffle(); playList(albumTracks, 0); }} aria-label={t("shufflePlay")}><Shuffle size={18} /></button>
       </div>
-      <div>{(album.tracks || []).map((t, i) => <TrackRow key={t.id} track={t} index={i} list={album.tracks} queueMode="context" />)}</div>
+      <div>{albumTracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={albumTracks} queueMode="context" />)}</div>
     </div>
   );
 }

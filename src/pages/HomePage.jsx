@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Api } from "../lib/api.js";
-import { usePlayer } from "../context.jsx";
-import { CardTrack, CardAlbum, CardArtist } from "../components.jsx";
+import { usePlayer, useUI } from "../context.jsx";
+import { CardTrack, CardAlbum, CardArtist, filterExplicit } from "../components.jsx";
 import { IvyFallLoader } from "../lib/brand.jsx";
 import { uid } from "../lib/utils.js";
 
-function greetingText() {
+function greetingKeys() {
   const h = new Date().getHours();
-  if (h >= 4 && h < 11) return ["Pagi ini mulai dengan apa?", "Beberapa lagu buat nemenin pagi kamu."];
-  if (h >= 11 && h < 15) return ["Siang santai.", "Putar sesuatu buat nemenin jam istirahat."];
-  if (h >= 15 && h < 18) return ["Sore ini enaknya dengerin apa?", "Kumpulan yang pas buat jam-jam segini."];
-  if (h >= 18 && h < 23) return ["Malam ini, temenin dengan musik.", "Pelan-pelan aja, nggak usah buru-buru."];
-  return ["Masih kebangun?", "Beberapa pilihan yang cocok buat begadang."];
+  if (h >= 4 && h < 11) return ["greetMorningTitle", "greetMorningSub"];
+  if (h >= 11 && h < 15) return ["greetNoonTitle", "greetNoonSub"];
+  if (h >= 15 && h < 18) return ["greetAfternoonTitle", "greetAfternoonSub"];
+  if (h >= 18 && h < 23) return ["greetEveningTitle", "greetEveningSub"];
+  return ["greetNightTitle", "greetNightSub"];
 }
 
 function useDiscoverRow(seed, limit = 14) {
@@ -40,14 +40,18 @@ function Row({ title, items, render }) {
 }
 
 export function HomePage() {
-  const [greet1, greet2] = useMemo(greetingText, []);
+  const { t, settings } = useUI();
+  const [greetKey1, greetKey2] = useMemo(greetingKeys, []);
   const { liked, history: playedHistory } = usePlayer();
 
   const trending = useDiscoverRow("trending-" + new Date().toDateString());
   const fresh = useDiscoverRow("fresh-" + Math.floor(Date.now() / 3600000));
   const moodCalm = useDiscoverRow("mood-santai");
 
-  const trendingTracks = useMemo(() => (trending || []).filter((i) => i.type === "track").slice(0, 12), [trending]);
+  // FIX Setting "Konten eksplisit": lagu/album/artist dari katalog Deezer
+  // disaring lewat filterExplicit() begitu settings.explicitContent
+  // dimatiin - dipakai di semua baris & feed di halaman ini.
+  const trendingTracks = useMemo(() => filterExplicit((trending || []).filter((i) => i.type === "track"), settings).slice(0, 12), [trending, settings]);
   const freshAlbums = useMemo(() => (fresh || []).filter((i) => i.type === "album").slice(0, 12), [fresh]);
   const artists = useMemo(() => (moodCalm || []).filter((i) => i.type === "artist").slice(0, 12), [moodCalm]);
 
@@ -56,8 +60,8 @@ export function HomePage() {
     const likedIds = [...liked];
     if (!likedIds.length) { setSimilarItems([]); return; }
     const seedId = likedIds[Math.floor(Math.random() * likedIds.length)];
-    Api.similar({ trackId: seedId }).then((res) => setSimilarItems(res.items || [])).catch(() => setSimilarItems([]));
-  }, [liked]);
+    Api.similar({ trackId: seedId }).then((res) => setSimilarItems(filterExplicit(res.items || [], settings))).catch(() => setSimilarItems([]));
+  }, [liked]); // eslint-disable-line
 
   // --- feed campuran tak berujung ---
   const seedRef = useRef(uid("home-seed"));
@@ -96,26 +100,27 @@ export function HomePage() {
     return () => io.disconnect();
   }, [loadMore]);
 
-  const exploreTracks = useMemo(() => items.filter((i) => i.type === "track"), [items]);
+  const visibleItems = useMemo(() => items.filter((i) => i.type !== "track" || settings.explicitContent !== false || !i.explicit), [items, settings.explicitContent]);
+  const exploreTracks = useMemo(() => visibleItems.filter((i) => i.type === "track"), [visibleItems]);
 
   return (
     <div className="aivy-view-enter">
-      <div className="aivy-greet"><h1 className="font-display">{greet1}</h1><p>{greet2}</p></div>
+      <div className="aivy-greet"><h1 className="font-display">{t(greetKey1)}</h1><p>{t(greetKey2)}</p></div>
 
       {playedHistory.length > 0 && (
-        <Row title="Lanjutkan dengerin" items={playedHistory.slice(0, 12)} render={(t) => <CardTrack key={t.id} track={t} list={playedHistory} />} />
+        <Row title={t("rowContinueListening")} items={playedHistory.slice(0, 12)} render={(tr) => <CardTrack key={tr.id} track={tr} list={playedHistory} />} />
       )}
-      <Row title="Lagi Ramai" items={trending === null ? null : trendingTracks} render={(t) => <CardTrack key={t.id} track={t} list={trendingTracks} />} />
+      <Row title={t("rowTrending")} items={trending === null ? null : trendingTracks} render={(tr) => <CardTrack key={tr.id} track={tr} list={trendingTracks} />} />
       {similarItems && similarItems.length > 0 && (
-        <Row title="Karena kamu suka lagu ini" items={similarItems} render={(t) => <CardTrack key={t.id} track={t} list={similarItems} />} />
+        <Row title={t("rowBecauseYouLiked")} items={similarItems} render={(tr) => <CardTrack key={tr.id} track={tr} list={similarItems} />} />
       )}
-      <Row title="Album buat dijelajah" items={fresh === null ? null : freshAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
-      <Row title="Artist untuk kamu" items={moodCalm === null ? null : artists} render={(a) => <CardArtist key={a.id} artist={a} />} />
+      <Row title={t("rowAlbumsToExplore")} items={fresh === null ? null : freshAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
+      <Row title={t("rowArtistsForYou")} items={moodCalm === null ? null : artists} render={(a) => <CardArtist key={a.id} artist={a} />} />
 
       <section className="aivy-section">
-        <div className="aivy-section-head"><h2 className="aivy-section-title">Jelajahi</h2></div>
+        <div className="aivy-section-head"><h2 className="aivy-section-title">{t("rowExplore")}</h2></div>
         <div className="aivy-grid">
-          {items.map((item, i) => {
+          {visibleItems.map((item, i) => {
             if (item.type === "track") return <CardTrack key={`t-${item.id}-${i}`} track={item} list={exploreTracks} />;
             if (item.type === "album") return <CardAlbum key={`a-${item.id}-${i}`} album={item} />;
             return <CardArtist key={`ar-${item.id}-${i}`} artist={item} />;
@@ -123,7 +128,7 @@ export function HomePage() {
         </div>
         <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", padding: "26px 0" }}>
           {loading && <IvyFallLoader size={28} />}
-          {done && items.length > 0 && <span className="eyebrow">Kamu udah sampai ujung jelajahan hari ini</span>}
+          {done && items.length > 0 && <span className="eyebrow">{t("exploreEnd")}</span>}
         </div>
       </section>
     </div>

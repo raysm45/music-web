@@ -4,6 +4,19 @@ import React, {
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
 import { clamp, uid } from "./lib/utils.js";
+import { makeT } from "./lib/i18n.js";
+
+// 10-band graphic equalizer - frekuensi standar (Hz) yang dipakai hampir
+// semua pemutar musik. Setiap band gain-nya dalam dB (-12..12).
+export const EQ_BANDS_HZ = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+export const EQ_PRESETS = {
+  flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  bass: [7, 6, 5, 3, 1, 0, 0, 0, 0, 0],
+  treble: [0, 0, 0, 0, 0, 1, 3, 5, 6, 7],
+  vocal: [-2, -2, -1, 2, 4, 4, 2, 0, -1, -2],
+  electronic: [5, 4, 0, -2, -3, 0, 2, 3, 4, 5],
+};
+const DEFAULT_EQ = { enabled: false, preset: "flat", preamp: 0, bands: [...EQ_PRESETS.flat] };
 
 const UICtx = createContext(null);
 export function useUI() { return useContext(UICtx); }
@@ -28,6 +41,7 @@ const DEFAULT_SETTINGS = {
   downloadOverWifiOnly: true,
   hostOnlyControlDefault: false,
   roomVisibilityDefault: "public",
+  equalizer: DEFAULT_EQ,
 };
 
 export function UIProvider({ children }) {
@@ -58,6 +72,24 @@ export function UIProvider({ children }) {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  // FIX: compactRows / reducedMotion / highContrast dulu kesimpen doang di
+  // settings tapi ga pernah dibaca komponen manapun. Sekarang ketiganya
+  // di-refleksiin sebagai data-attribute di <html>, dan global.css punya
+  // aturan buat masing-masing atribut itu.
+  useEffect(() => {
+    document.documentElement.dataset.compact = settings.compactRows ? "true" : "false";
+  }, [settings.compactRows]);
+  useEffect(() => {
+    document.documentElement.dataset.reducedMotion = settings.reducedMotion ? "true" : "false";
+  }, [settings.reducedMotion]);
+  useEffect(() => {
+    document.documentElement.dataset.contrast = settings.highContrast ? "high" : "normal";
+  }, [settings.highContrast]);
+
+  // FIX bug "ganti bahasa belum bisa": t() sekarang beneran dipakai di
+  // seluruh app, lookup ke kamus lib/i18n.js sesuai settings.language.
+  const t = useCallback((key, fallback) => makeT(settings.language)(key, fallback), [settings.language]);
+
   const pushToast = useCallback((message) => {
     const id = uid("toast");
     setToasts((t) => [...t, { id, message }]);
@@ -68,14 +100,14 @@ export function UIProvider({ children }) {
   const logout = useCallback(async () => {
     try { await Api.logout(); } catch {  }
     setAuthUser(null);
-    pushToast("Sampai ketemu lagi");
-  }, [pushToast]);
+    pushToast(t("toastByeSee"));
+  }, [pushToast, t]);
 
   const updateSettings = useCallback(async (patch) => {
     setSettings((s) => ({ ...s, ...patch }));
     if (patch.theme) setTheme(patch.theme === "light" ? "light" : "dark");
-    try { await Api.putSettings(patch); } catch { pushToast("Gagal nyimpen setting ke server"); }
-  }, [pushToast]);
+    try { await Api.putSettings(patch); } catch { pushToast(t("toastSettingsSaveFailed")); }
+  }, [pushToast, t]);
 
   const resetSettings = useCallback(async () => {
     setSettings(DEFAULT_SETTINGS);
@@ -100,7 +132,7 @@ export function UIProvider({ children }) {
   const value = {
     authUser, authChecked, login, logout,
     settings, updateSettings, resetSettings,
-    theme, toggleTheme,
+    theme, toggleTheme, t,
     toasts, pushToast,
     contextMenu, openContextMenu, closeContextMenu,
     addToPlaylistTarget, openAddToPlaylist, closeAddToPlaylist,
@@ -131,7 +163,7 @@ function normalizeTrack(raw) {
 }
 
 export function PlayerProvider({ children }) {
-  const { authUser, settings, pushToast } = useUI();
+  const { authUser, settings, pushToast, t } = useUI();
 
   const [queueList, setQueueList] = useState([]);
   const [order, setOrder] = useState([]);
@@ -148,7 +180,14 @@ export function PlayerProvider({ children }) {
   const [playlists, setPlaylists] = useState([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
 
-  
+  // Graf Web Audio (equalizer 10-band + preamp + compressor buat "ratakan
+  // volume") - dibikin sekali (lazy) pas lagu pertama mulai diputar, terus
+  // dipakai terus buat sepanjang sesi karena MediaElementSourceNode cuma
+  // boleh dibikin SEKALI per elemen <audio>.
+  const audioGraphRef = useRef(null);
+  const fadeTimerRef = useRef(null);
+  const wasFadedOutRef = useRef(false);
+
   const [room, setRoom] = useState(null);
   const [publicRooms, setPublicRooms] = useState([]);
   const [roomError, setRoomError] = useState(null);
@@ -158,6 +197,74 @@ export function PlayerProvider({ children }) {
   const audioRef = useRef(typeof Audio !== "undefined" ? new Audio() : null);
   const progressElsRef = useRef(new Map());
   const resolvedFullCache = useRef(new Map());
+
+  // Bikin (sekali) graf Web Audio: <audio> -> preamp -> 10x biquad filter
+  // (equalizer) -> compressor ("ratakan volume") -> gain fade (crossfade)
+  // -> speaker. Equalizer & normalize dikontrol dengan cara nyetel .value
+  // node yang relevan, BUKAN bongkar-pasang koneksi, biar aman dipanggil
+  // berkali-kali tanpa bikin graf dobel.
+  const ensureAudioGraph = useCallback(() => {
+    if (audioGraphRef.current) return audioGraphRef.current;
+    const audio = audioRef.current;
+    if (!audio || typeof window === "undefined") return null;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    try {
+      const ctx = new Ctx();
+      const source = ctx.createMediaElementSource(audio);
+      const preamp = ctx.createGain();
+      const bands = EQ_BANDS_HZ.map((freq) => {
+        const f = ctx.createBiquadFilter();
+        f.type = "peaking";
+        f.frequency.value = freq;
+        f.Q.value = 1.1;
+        f.gain.value = 0;
+        return f;
+      });
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -24;
+      compressor.knee.value = 20;
+      compressor.ratio.value = 8;
+      compressor.attack.value = 0.01;
+      compressor.release.value = 0.2;
+      const fadeGain = ctx.createGain();
+      fadeGain.gain.value = 1;
+
+      source.connect(preamp);
+      let node = preamp;
+      bands.forEach((b) => { node.connect(b); node = b; });
+      node.connect(compressor);
+      compressor.connect(fadeGain);
+      fadeGain.connect(ctx.destination);
+
+      const graph = { ctx, source, preamp, bands, compressor, fadeGain };
+      audioGraphRef.current = graph;
+      return graph;
+    } catch {
+      return null; // browser lawas / ga dukung Web Audio - putar tetap jalan tanpa EQ
+    }
+  }, []);
+
+  // Terapin nilai equalizer (aktif/nonaktif, preamp, tiap band) ke graf.
+  // Kalau equalizer dimatiin, semua gain di-nolin (bypass) tanpa perlu
+  // bongkar koneksi node.
+  useEffect(() => {
+    const graph = ensureAudioGraph();
+    if (!graph) return;
+    const eq = settings.equalizer || DEFAULT_EQ;
+    const enabled = !!eq.enabled;
+    graph.preamp.gain.value = enabled ? Math.pow(10, (eq.preamp || 0) / 20) : 1;
+    graph.bands.forEach((band, i) => { band.gain.value = enabled ? (eq.bands?.[i] ?? 0) : 0; });
+  }, [settings.equalizer, ensureAudioGraph]);
+
+  // "Ratakan volume": nyalain/matiin compressor lewat threshold-nya - kalau
+  // dimatiin, threshold dinaikin ke 0dB jadi praktis transparan (bypass).
+  useEffect(() => {
+    const graph = ensureAudioGraph();
+    if (!graph) return;
+    graph.compressor.threshold.value = settings.normalizeVolume ? -24 : 0;
+    graph.compressor.ratio.value = settings.normalizeVolume ? 8 : 1;
+  }, [settings.normalizeVolume, ensureAudioGraph]);
 
   const currentTrack = queueList.length && order.length ? queueList[order[posInOrder]] : null;
   const currentKey = currentTrack ? currentTrack.id : null;
@@ -238,6 +345,14 @@ export function PlayerProvider({ children }) {
   }, [settings.audioQuality]);
 
   
+  // Nyalain lagi AudioContext kalau kebrowser lagi disuspend (kebijakan
+  // autoplay browser - AudioContext cuma boleh jalan abis ada user gesture,
+  // jadi kita coba resume tiap kali ada aksi "putar").
+  const resumeAudioCtx = useCallback(() => {
+    const graph = ensureAudioGraph();
+    graph?.ctx?.resume?.().catch(() => {});
+  }, [ensureAudioGraph]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -248,13 +363,26 @@ export function PlayerProvider({ children }) {
       if (cancelled) return;
       setLoadingAudio(false);
       if (!resolved) {
-        pushToast(`Audio ga tersedia buat "${currentTrack.title}"`);
+        pushToast(`${t("toastAudioUnavailable")} "${currentTrack.title}"`);
         return;
       }
       setIsPreviewClip(resolved.preview);
       if (audio.src !== resolved.src) audio.src = resolved.src;
       audio.volume = muted ? 0 : volume;
-      if (isPlaying) audio.play().catch(() => {});
+      wasFadedOutRef.current = false;
+      // Crossfade "masuk": kalau crossfadeSeconds > 0, lagu baru mulai dari
+      // gain 0 terus di-ramp naik pelan-pelan ke 1 - berasa nyambung mulus
+      // dari lagu sebelumnya yang tadi di-fade keluar (lihat onTimeUpdate).
+      const graph = ensureAudioGraph();
+      if (graph && settings.crossfadeSeconds > 0) {
+        graph.fadeGain.gain.cancelScheduledValues(graph.ctx.currentTime);
+        graph.fadeGain.gain.setValueAtTime(0, graph.ctx.currentTime);
+        graph.fadeGain.gain.linearRampToValueAtTime(1, graph.ctx.currentTime + settings.crossfadeSeconds);
+      } else if (graph) {
+        graph.fadeGain.gain.cancelScheduledValues(graph.ctx.currentTime);
+        graph.fadeGain.gain.setValueAtTime(1, graph.ctx.currentTime);
+      }
+      if (isPlaying) { resumeAudioCtx(); audio.play().catch(() => {}); }
     });
     return () => { cancelled = true; };
   }, [currentKey]); 
@@ -262,7 +390,7 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
-    if (isPlaying) audio.play().catch(() => {});
+    if (isPlaying) { resumeAudioCtx(); audio.play().catch(() => {}); }
     else audio.pause();
   }, [isPlaying]); 
 
@@ -292,10 +420,30 @@ export function PlayerProvider({ children }) {
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
       writeProgress(audio.currentTime, audio.duration || clipDuration);
+      // Crossfade "keluar": begitu sisa waktu lagu <= crossfadeSeconds,
+      // ramp turunin gain ke hampir 0 - lagu berikutnya bakal fade masuk
+      // (lihat efek loadCurrentTrack di atas). Ga dipakai kalau lagi di
+      // ruang bareng (playback disinkron dari server) atau repeat "one".
+      const cf = settings.crossfadeSeconds || 0;
+      if (cf > 0 && !inRoom && repeat !== "one" && !wasFadedOutRef.current) {
+        const dur = audio.duration || clipDuration;
+        if (isFinite(dur) && dur > 0 && dur - audio.currentTime <= cf) {
+          const graph = audioGraphRef.current;
+          if (graph) {
+            wasFadedOutRef.current = true;
+            graph.fadeGain.gain.cancelScheduledValues(graph.ctx.currentTime);
+            graph.fadeGain.gain.setValueAtTime(graph.fadeGain.gain.value, graph.ctx.currentTime);
+            graph.fadeGain.gain.linearRampToValueAtTime(0.001, graph.ctx.currentTime + Math.max(0.05, dur - audio.currentTime));
+          }
+        }
+      }
     };
     const onEnded = () => {
       if (inRoom) return; 
       if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
+      // Setting "Putar otomatis": kalau dimatiin, berhenti di lagu ini aja
+      // alih-alih otomatis lanjut ke lagu berikutnya.
+      if (settings.autoplay === false) { setIsPlaying(false); pushToast(t("toastAutoplayOff")); return; }
       nextRef.current(true);
     };
     const onError = () => { setLoadingAudio(false); };
@@ -311,7 +459,7 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
-  }, [repeat, inRoom, writeProgress]); 
+  }, [repeat, inRoom, writeProgress, settings.crossfadeSeconds, settings.autoplay, pushToast, t, clipDuration]); 
 
   // Pas balik dari background (kunci layar/ganti app dibuka lagi), paksa
   // resync sekali biar angka & scrubber langsung "kekejar" bukan nunggu
@@ -525,27 +673,27 @@ export function PlayerProvider({ children }) {
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
   const toggleLike = useCallback(async (track) => {
-    if (!authUser) { pushToast("Login dulu buat nyimpen lagu"); return; }
+    if (!authUser) { pushToast(t("toastLoginToSave")); return; }
     const key = String(track.videoId || track.id);
     const willLike = !liked.has(key);
     setLiked((prev) => { const n = new Set(prev); willLike ? n.add(key) : n.delete(key); return n; });
-    pushToast(willLike ? `Ditambahin ke Disukai — ${track.title}` : `Dihapus dari Disukai — ${track.title}`);
+    pushToast(`${willLike ? t("toastAddedLiked") : t("toastRemovedLiked")} — ${track.title}`);
     try {
       if (willLike) await Api.like(key, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, duration: track.duration });
       else await Api.unlike(key);
-    } catch { pushToast("Gagal nyimpen ke server, coba lagi"); }
-  }, [authUser, liked, pushToast]);
+    } catch { pushToast(t("toastLikeFailed")); }
+  }, [authUser, liked, pushToast, t]);
 
   const addToQueueEnd = useCallback((rawTrack) => {
     const track = normalizeTrack(rawTrack);
-    if (inRoom) { socketRef.current?.emit("queue-add", { roomId: room.id, song: track }); pushToast(`Ditambahin ke antrean ruang — ${track.title}`); return; }
+    if (inRoom) { socketRef.current?.emit("queue-add", { roomId: room.id, song: track }); pushToast(`${t("toastAddedRoomQueue")} — ${track.title}`); return; }
     setQueueList((list) => {
       const newList = [...list, track];
       setOrder((ord) => [...ord, newList.length - 1]);
       return newList;
     });
-    pushToast(`Ditambahin ke antrean — ${track.title}`);
-  }, [inRoom, room, pushToast]);
+    pushToast(`${t("toastAddedQueue")} — ${track.title}`);
+  }, [inRoom, room, pushToast, t]);
 
   const playNextInQueue = useCallback((rawTrack) => {
     const track = normalizeTrack(rawTrack);
@@ -555,18 +703,18 @@ export function PlayerProvider({ children }) {
       setOrder((ord) => { const c = [...ord]; c.splice(posInOrder + 1, 0, newList.length - 1); return c; });
       return newList;
     });
-    pushToast(`Diputar setelah ini — ${track.title}`);
-  }, [inRoom, addToQueueEnd, posInOrder, pushToast]);
+    pushToast(`${t("toastPlayAfterThis")} — ${track.title}`);
+  }, [inRoom, addToQueueEnd, posInOrder, pushToast, t]);
 
   const createPlaylist = useCallback(async (name, description) => {
-    if (!authUser) { pushToast("Login dulu buat bikin playlist"); return null; }
+    if (!authUser) { pushToast(t("toastLoginToCreatePlaylist")); return null; }
     try {
       const pl = await Api.createPlaylist({ name, description, isPublic: false });
       setPlaylists((p) => [...p, { ...pl, songs: [] }]);
-      pushToast(`Playlist "${name}" dibuat`);
+      pushToast(`${t("toastPlaylistCreated")} "${name}"`);
       return pl.id;
-    } catch { pushToast("Gagal bikin playlist"); return null; }
-  }, [authUser, pushToast]);
+    } catch { pushToast(t("toastPlaylistCreateFailed")); return null; }
+  }, [authUser, pushToast, t]);
 
   
   const setPlaylistDetail = useCallback((detail) => {
@@ -592,44 +740,78 @@ export function PlayerProvider({ children }) {
       ? { ...pl, songs: [...(pl.songs || []), track] } : pl)));
     try {
       await Api.addSong(playlistId, key, { title: track.title, thumbnail: track.cover, duration: track.duration });
-      pushToast("Ditambahin ke playlist");
-    } catch { pushToast("Gagal nambahin ke playlist"); }
-  }, [pushToast]);
+      pushToast(t("toastAddedToPlaylist"));
+    } catch { pushToast(t("toastAddToPlaylistFailed")); }
+  }, [pushToast, t]);
 
   const removeFromPlaylist = useCallback(async (playlistId, trackId) => {
     setPlaylists((list) => list.map((pl) => (pl.id === playlistId ? { ...pl, songs: pl.songs.filter((s) => s.id !== trackId) } : pl)));
-    try { await Api.removeSong(playlistId, trackId); } catch { pushToast("Gagal hapus dari playlist"); }
-  }, [pushToast]);
+    try { await Api.removeSong(playlistId, trackId); } catch { pushToast(t("toastRemoveFromPlaylistFailed")); }
+  }, [pushToast, t]);
 
   const deletePlaylist = useCallback(async (playlistId) => {
     setPlaylists((list) => list.filter((p) => p.id !== playlistId));
-    try { await Api.deletePlaylist(playlistId); pushToast("Playlist dihapus"); } catch { pushToast("Gagal hapus playlist"); }
-  }, [pushToast]);
+    try { await Api.deletePlaylist(playlistId); pushToast(t("toastPlaylistDeleted")); } catch { pushToast(t("toastPlaylistDeleteFailed")); }
+  }, [pushToast, t]);
 
   
+  // Refs biar handler socket (dibikin sekali lewat ensureSocket) selalu
+  // baca settings/authUser/t TERBARU tanpa perlu bongkar-pasang koneksi
+  // socket tiap kali settings berubah.
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  const authUserRef = useRef(authUser);
+  useEffect(() => { authUserRef.current = authUser; }, [authUser]);
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
+  const prevMemberCountRef = useRef(0);
+  // Nandain sinkronisasi PERTAMA setelah gabung/bikin ruang - dipakai buat
+  // setting "Auto-gabung audio waktu masuk ruang". Sinkronisasi berikutnya
+  // (pas host pencet play/pause di tengah sesi) tetep normal ngikutin live.
+  const firstSyncPendingRef = useRef(false);
+
   const ensureSocket = useCallback(() => {
     if (socketRef.current) return socketRef.current;
     const socket = io(API_BASE, { withCredentials: true, autoConnect: true, transports: ["websocket", "polling"] });
-    socket.on("members-updated", (members) => setRoom((r) => (r ? { ...r, members } : r)));
+    socket.on("members-updated", (members) => {
+      setRoom((r) => {
+        if (!r) return r;
+        // Notifikasi "Undangan ke ruang": kasih tau HOST kalau ada member
+        // baru gabung ke ruangnya - proxy paling deket buat "invite"
+        // karena AIVY belum punya sistem undangan formal.
+        const isHost = authUserRef.current && r.hostId === authUserRef.current.id;
+        if (isHost && settingsRef.current.notifyRoomInvite !== false && members.length > prevMemberCountRef.current && prevMemberCountRef.current > 0) {
+          const joined = members.find((m) => !r.members?.some((old) => old.id === m.id));
+          if (joined) pushToast(`${joined.username} ${tRef.current("toastMemberJoined")}`);
+        }
+        prevMemberCountRef.current = members.length;
+        return { ...r, members };
+      });
+    });
     socket.on("queue-updated", ({ queue, currentIndex }) => setRoom((r) => (r ? { ...r, queue, currentIndex } : r)));
     socket.on("playback-sync", (fullRoom) => {
       applyingRemoteRef.current = true;
       setRoom(fullRoom);
+      prevMemberCountRef.current = fullRoom.members?.length || 0;
       const track = fullRoom.currentIndex >= 0 ? normalizeTrack(fullRoom.queue[fullRoom.currentIndex]) : null;
       setQueueList(fullRoom.queue.map(normalizeTrack));
       setOrder(fullRoom.queue.map((_, i) => i));
       setPosInOrder(fullRoom.currentIndex >= 0 ? fullRoom.currentIndex : 0);
       setIsPlaying(fullRoom.isPlaying);
       const audio = audioRef.current;
+      const isFirstSync = firstSyncPendingRef.current;
+      firstSyncPendingRef.current = false;
+      const allowAutoplay = !isFirstSync || settingsRef.current.autoJoinRoomAudio !== false;
       if (audio && track) {
         resolveAudioSrc(track).then((resolved) => {
           if (!resolved) return;
           if (audio.src !== resolved.src) audio.src = resolved.src;
           audio.currentTime = fullRoom.position || 0;
-          if (fullRoom.isPlaying) audio.play().catch(() => {});
+          if (fullRoom.isPlaying && allowAutoplay) audio.play().catch(() => {});
           else audio.pause();
         });
       }
+      if (isFirstSync && fullRoom.isPlaying && !allowAutoplay) setIsPlaying(false);
       applyingRemoteRef.current = false;
     });
     socketRef.current = socket;
@@ -639,26 +821,28 @@ export function PlayerProvider({ children }) {
   const refreshPublicRooms = useCallback(() => { Api.publicRooms().then(setPublicRooms).catch(() => {}); }, []);
 
   const createRoom = useCallback((opts) => new Promise((resolve) => {
-    if (!authUser) { pushToast("Login dulu buat bikin ruang"); resolve(null); return; }
+    if (!authUser) { pushToast(t("toastLoginToCreateRoom")); resolve(null); return; }
     const socket = ensureSocket();
+    firstSyncPendingRef.current = true;
     socket.emit("create-room", opts, (res) => {
       if (res.error) { setRoomError(res.error); pushToast(res.error); resolve(null); return; }
       setRoom(res.room);
       setRoomError(null);
       resolve(res.room);
     });
-  }), [authUser, ensureSocket, pushToast]);
+  }), [authUser, ensureSocket, pushToast, t]);
 
   const joinRoom = useCallback((id, password) => new Promise((resolve) => {
-    if (!authUser) { pushToast("Login dulu buat gabung ruang"); resolve(null); return; }
+    if (!authUser) { pushToast(t("toastLoginToJoinRoom")); resolve(null); return; }
     const socket = ensureSocket();
+    firstSyncPendingRef.current = true;
     socket.emit("join-room", { roomId: id, password }, (res) => {
       if (res.error) { setRoomError(res.error); resolve(null); return; }
       setRoom(res.room);
       setRoomError(null);
       resolve(res.room);
     });
-  }), [authUser, ensureSocket, pushToast]);
+  }), [authUser, ensureSocket, pushToast, t]);
 
   const leaveRoom = useCallback(() => {
     socketRef.current?.emit("leave-room");
