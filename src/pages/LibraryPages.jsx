@@ -7,8 +7,17 @@ import { SmartCover } from "../lib/brand.jsx";
 import { Api } from "../lib/api.js";
 
 export function LibraryPage() {
-  const { playlists, liked } = usePlayer();
+  const { playlists, liked, setPlaylistDetail } = usePlayer();
   const { t } = useUI();
+
+  React.useEffect(() => {
+    playlists.forEach((pl) => {
+      if (pl.songs === undefined) {
+        Api.playlist(pl.id).then((detail) => setPlaylistDetail(detail)).catch(() => {});
+      }
+    });
+  }, [playlists, setPlaylistDetail]);
+
   return (
     <div className="aivy-view-enter">
       <div className="aivy-greet" style={{ paddingBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
