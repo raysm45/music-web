@@ -487,6 +487,27 @@ svg{ display: block; }
 .aivy-select{ background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; color: var(--ink); }
 .aivy-range{ accent-color: var(--moss); width: 110px; }
 
+.aivy-cselect{ position: relative; display: inline-block; min-width: 0; }
+.aivy-settings-select{ flex-shrink: 0; min-width: 150px; }
+.aivy-full-select{ display: block; width: 100%; }
+.aivy-cselect-trigger{ display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; color: var(--ink); text-align: left; cursor: pointer; transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
+.aivy-cselect-trigger:hover{ border-color: var(--ink-faint); background: var(--bg-elev-3); }
+.aivy-cselect-trigger.is-open{ border-color: var(--moss-strong); background: var(--bg-elev-3); }
+.aivy-cselect-value{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-cselect-chevron{ flex-shrink: 0; color: var(--ink-faint); transition: transform var(--dur-base) var(--ease), color var(--dur-fast) var(--ease); }
+.aivy-cselect-trigger.is-open .aivy-cselect-chevron{ transform: rotate(180deg); color: var(--ink-dim); }
+.aivy-cselect-menu{ position: fixed; z-index: 95; overflow-y: auto; background: var(--bg-elev-3); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 6px; box-shadow: var(--shadow-pop); }
+.aivy-cselect-menu.is-opening{ animation: aivy-cselect-in var(--dur-base) var(--ease) forwards; }
+.aivy-cselect-menu.is-closing{ animation: aivy-cselect-out 150ms var(--ease) forwards; }
+.aivy-cselect-option{ display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13px; color: var(--ink-dim); cursor: pointer; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+.aivy-cselect-option span{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-cselect-option.is-highlighted{ background: var(--bg-elev-2); color: var(--ink); }
+.aivy-cselect-option.is-selected{ color: var(--ink); font-weight: 600; }
+.aivy-cselect-check{ flex-shrink: 0; color: var(--moss-strong); animation: aivy-cselect-check-pop var(--dur-base) var(--ease); }
+@keyframes aivy-cselect-in{ from{ opacity: 0; transform: scale(.96) translateY(-4px); } to{ opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes aivy-cselect-out{ from{ opacity: 1; transform: scale(1) translateY(0); } to{ opacity: 0; transform: scale(.96) translateY(-4px); } }
+@keyframes aivy-cselect-check-pop{ from{ transform: scale(.4); opacity: 0; } to{ transform: scale(1); opacity: 1; } }
+
 .aivy-import-page{ max-width: 640px; margin: 0 auto; padding-bottom: 48px; }
 .aivy-import-back{ display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-faint); margin-bottom: 18px; }
 .aivy-import-back:hover{ color: var(--ink-dim); }

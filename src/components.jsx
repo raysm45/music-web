@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from "react";
+import { createPortal } from "react-dom";
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume2, Volume1,
   VolumeX, Heart, Search, Home as HomeIcon, Library, ListMusic, ChevronDown,
@@ -121,6 +122,129 @@ export function GlobalContextMenu() {
           </button>
         )
       ))}
+    </div>
+  );
+}
+
+export function CustomSelect({ value, options, onChange, placeholder, className = "" }) {
+  const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [rect, setRect] = useState(null);
+  const [highlight, setHighlight] = useState(-1);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+  const closeTimerRef = useRef(null);
+
+  const selectedIndex = options.findIndex((o) => o.value === value);
+  const selected = selectedIndex >= 0 ? options[selectedIndex] : null;
+
+  const doClose = useCallback(() => {
+    setOpen((wasOpen) => {
+      if (!wasOpen) return wasOpen;
+      setClosing(true);
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = setTimeout(() => setClosing(false), 160);
+      return false;
+    });
+  }, []);
+
+  const doOpen = () => {
+    const r = triggerRef.current.getBoundingClientRect();
+    setRect(r);
+    setHighlight(selectedIndex >= 0 ? selectedIndex : 0);
+    clearTimeout(closeTimerRef.current);
+    setClosing(false);
+    setOpen(true);
+  };
+
+  const toggle = () => (open ? doClose() : doOpen());
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e) {
+      if (triggerRef.current?.contains(e.target)) return;
+      if (menuRef.current?.contains(e.target)) return;
+      doClose();
+    }
+    function onKey(e) {
+      if (e.key === "Escape") { e.preventDefault(); doClose(); triggerRef.current?.focus(); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => Math.min(options.length - 1, h + 1)); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => Math.max(0, h - 1)); }
+      else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const o = options[highlight];
+        if (o) { onChange(o.value); doClose(); triggerRef.current?.focus(); }
+      }
+    }
+    function onReflow() { if (triggerRef.current) setRect(triggerRef.current.getBoundingClientRect()); }
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onReflow, true);
+    window.addEventListener("resize", onReflow);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onReflow, true);
+      window.removeEventListener("resize", onReflow);
+    };
+  }, [open, options, highlight, onChange, doClose]);
+
+  useEffect(() => () => clearTimeout(closeTimerRef.current), []);
+
+  const showMenu = open || closing;
+  const menuStyle = useMemo(() => {
+    if (!rect) return { display: "none" };
+    const gap = 6;
+    const estHeight = Math.min(280, options.length * 38 + 10);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUp = spaceBelow < estHeight + 12 && spaceAbove > spaceBelow;
+    const style = {
+      left: rect.left,
+      width: Math.max(rect.width, 160),
+      maxHeight: Math.min(280, (openUp ? spaceAbove : spaceBelow) - 16),
+    };
+    if (openUp) { style.bottom = window.innerHeight - rect.top + gap; style.transformOrigin = "bottom"; }
+    else { style.top = rect.bottom + gap; style.transformOrigin = "top"; }
+    return style;
+  }, [rect, options.length]);
+
+  return (
+    <div className={`aivy-cselect ${className}`}>
+      <button
+        type="button"
+        ref={triggerRef}
+        className={`aivy-cselect-trigger ${open ? "is-open" : ""}`}
+        onClick={toggle}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="aivy-cselect-value">{selected ? selected.label : (placeholder || "")}</span>
+        <ChevronDown size={15} className="aivy-cselect-chevron" />
+      </button>
+      {showMenu && createPortal(
+        <div
+          ref={menuRef}
+          className={`aivy-cselect-menu ${closing ? "is-closing" : "is-opening"}`}
+          style={menuStyle}
+          role="listbox"
+        >
+          {options.map((o, i) => (
+            <div
+              key={o.value}
+              role="option"
+              aria-selected={o.value === value}
+              className={`aivy-cselect-option ${o.value === value ? "is-selected" : ""} ${i === highlight ? "is-highlighted" : ""}`}
+              onMouseEnter={() => setHighlight(i)}
+              onClick={() => { onChange(o.value); doClose(); triggerRef.current?.focus(); }}
+            >
+              <span>{o.label}</span>
+              {o.value === value && <Check size={14} className="aivy-cselect-check" />}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

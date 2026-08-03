@@ -3,6 +3,7 @@ import { Sun, Moon, Monitor, LogOut, RotateCcw, SlidersHorizontal } from "lucide
 import { useUI } from "../context.jsx";
 import { EQ_BANDS_HZ, EQ_PRESETS } from "../context.jsx";
 import { LANGUAGES } from "../lib/i18n.js";
+import { CustomSelect } from "../components.jsx";
 
 function SettingSection({ title, children }) {
   return (
@@ -29,9 +30,7 @@ function SelectRow({ label, hint, value, options, onChange }) {
   return (
     <label className="aivy-settings-row">
       <div><div className="label">{label}</div>{hint && <div className="hint">{hint}</div>}</div>
-      <select className="aivy-select" value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+      <CustomSelect className="aivy-settings-select" value={value} options={options} onChange={onChange} />
     </label>
   );
 }

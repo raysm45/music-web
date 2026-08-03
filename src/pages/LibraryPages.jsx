@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
-import { TrackRow, ViewNotFound, ConfirmDialog } from "../components.jsx";
+import { TrackRow, ViewNotFound, ConfirmDialog, CustomSelect } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 import { Api } from "../lib/api.js";
 
@@ -317,14 +317,14 @@ export function ImportPage() {
             <div className="body">
               <div className="label">Tambah ke playlist yang sudah ada</div>
               {playlists.length > 0 ? (
-                <select
-                  className="aivy-select" style={{ width: "100%" }}
-                  value={selectedPlaylistId}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => { setTargetMode("existing"); setSelectedPlaylistId(e.target.value); }}
-                >
-                  {playlists.map((pl) => <option key={pl.id} value={pl.id}>{pl.name}</option>)}
-                </select>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <CustomSelect
+                    className="aivy-full-select"
+                    value={selectedPlaylistId}
+                    options={playlists.map((pl) => ({ value: pl.id, label: pl.name }))}
+                    onChange={(v) => { setTargetMode("existing"); setSelectedPlaylistId(v); }}
+                  />
+                </div>
               ) : (
                 <div className="hint" style={{ fontSize: 12.5, color: "var(--ink-faint)" }}>Kamu belum punya playlist.</div>
               )}
