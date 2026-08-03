@@ -23,7 +23,6 @@ export function ArtistPage() {
     return () => { alive = false; };
   }, [params.id]);
 
-  // FIX Setting "Konten eksplisit": disaring dari lagu top artist ini.
   const topTracks = useMemo(() => filterExplicit(artist?.topTracks, settings) || [], [artist, settings]);
 
   if (loading) return <ViewLoading />;
@@ -85,7 +84,6 @@ export function AlbumPage() {
     return () => { alive = false; };
   }, [params.id]);
 
-  // FIX Setting "Konten eksplisit": disaring dari daftar lagu album ini.
   const albumTracks = useMemo(() => filterExplicit(album?.tracks, settings) || [], [album, settings]);
   const totalMin = Math.round(albumTracks.reduce((s, tr) => s + (tr.duration || 0), 0) / 60);
 

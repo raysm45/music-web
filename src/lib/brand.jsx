@@ -46,10 +46,6 @@ export function TendrilSpinner({ size = 28, color = "currentColor", spin = true 
   );
 }
 
-// Animasi loading "daun ivy gugur" - dipakai gantiin spinner puter-puter
-// polos di seluruh app (boot, load home, nyari lirik, dst). Beberapa daun
-// (pakai bentuk LEAF_PATH yg sama kayak logo) jatuh + muter pelan, loop
-// terus-terusan dengan delay beda-beda tiap daun biar keliatan alami.
 export function IvyFallLoader({ size = 48, color = "var(--moss-strong)", label }) {
   const leaves = [
     { x: 3, delay: "0s", scale: 0.52 },
@@ -75,9 +71,6 @@ const DUOTONES = [
   ["#2B3630", "#A7B88C"],
 ];
 
-// Dipakai HANYA sebagai gambar pengganti kalau track/album/artist beneran
-// ga punya cover dari API (field cover/image null) — bukan konten palsu,
-// sama kayak avatar-inisial di aplikasi lain waktu foto profil kosong.
 export function CoverArt({ seed, size = 160, radius = 14, style = {} }) {
   const h = hashStr(String(seed));
   const [bg, fg] = DUOTONES[h % DUOTONES.length];
@@ -120,8 +113,6 @@ export function CoverArt({ seed, size = 160, radius = 14, style = {} }) {
   );
 }
 
-// Cover "cerdas": pakai gambar asli kalau ada, jatuh balik ke CoverArt
-// generatif kalau kosong atau gagal dimuat.
 export function SmartCover({ src, seed, size = 160, radius = 14, style = {}, alt = "" }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => { setFailed(false); }, [src]);

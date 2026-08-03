@@ -12,9 +12,6 @@ export function RoomLobbyPage() {
   const { navigate } = useRouter();
 
   const [name, setName] = useState("");
-  // FIX: sebelumnya defaultnya di-hardcode (true/false), sekarang ngikutin
-  // Setting > Ruang > "Ruang publik secara default" & "Cuma host kontrol
-  // pemutaran (default)".
   const [isPublic, setIsPublic] = useState(settings.roomVisibilityDefault !== "private");
   const [password, setPassword] = useState("");
   const [hostOnlyControl, setHostOnlyControl] = useState(!!settings.hostOnlyControlDefault);
@@ -117,7 +114,7 @@ export function RoomPage() {
     if (!authUser) return;
     if (room && room.id === params.id) { setChecked(true); return; }
     joinRoom(params.id, undefined).then((r) => { if (!r) navigate("roomLobby", { replace: true }); setChecked(true); });
-  }, [params.id, authUser]); // eslint-disable-line
+  }, [params.id, authUser]);
 
   useEffect(() => {
     if (!search.trim()) { setResults([]); return; }
@@ -156,7 +153,7 @@ export function RoomPage() {
       <section className="aivy-section">
         <div className="aivy-section-head"><h2 className="aivy-section-title">{t("roomQueue")}</h2></div>
         {room.queue?.length > 0 ? (
-          <div>{room.queue.map((track, i) => <TrackRow key={track.id + i} track={track} index={i} list={room.queue} showIndex />)}</div>
+          <div>{room.queue.map((track, i) => <TrackRow key={track.id + i} track={track} index={i} list={room.queue} showIndex queueMode="queue" />)}</div>
         ) : (
           <div className="aivy-empty"><div className="sub">{t("roomQueueEmpty")}</div></div>
         )}

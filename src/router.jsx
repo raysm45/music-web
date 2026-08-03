@@ -79,7 +79,8 @@ export function Link({ to, params, replace, className, children, onClick, ...res
     <a
       href={href} className={className}
       onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; // biarin buka tab baru jalan normal
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1)
+          return;
         e.preventDefault();
         onClick?.(e);
         navigate(href, { replace });

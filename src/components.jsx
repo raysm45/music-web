@@ -4,7 +4,7 @@ import {
   VolumeX, Heart, Search, Home as HomeIcon, Library, ListMusic, ChevronDown,
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
-  Lock, Globe, Crown, Mic2, AlertTriangle,
+  Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2,
 } from "lucide-react";
 import { usePlayer, useUI } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
@@ -152,9 +152,6 @@ export function useTrackMenuItems(track, opts = {}) {
   return items;
 }
 
-// Setting "Konten eksplisit": kalau dimatiin, lagu yang punya flag
-// explicit (dari Deezer) disaring dari daftar. Dipakai di halaman-halaman
-// yang nampilin lagu dari katalog Deezer (Beranda, Artist, Album).
 export function filterExplicit(tracks, settings) {
   if (!Array.isArray(tracks)) return tracks;
   if (settings?.explicitContent !== false) return tracks;
@@ -162,7 +159,7 @@ export function filterExplicit(tracks, settings) {
 }
 
 export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single" }) {
-  const { currentTrack, isPlaying, togglePlay, playSingle, playList, playRadio, liked, toggleLike } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, playSingle, playList, playRadio, selectQueuePosition, liked, toggleLike } = usePlayer();
   const { openContextMenu, t } = useUI();
   const { navigate } = useRouter();
   const isCurrent = currentTrack && currentTrack.id === track.id;
@@ -171,15 +168,9 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
 
   const handlePlay = () => {
     if (isCurrent) { togglePlay(); return; }
-    // "context": klik lagu di dalam playlist/album/koleksi -> seluruh
-    // koleksi itu yang jadi antrean (mulai dari lagu yang diklik), biar
-    // shuffle & repeat kerja buat semua lagu di koleksi itu, bukan cuma
-    // 1 lagu doang.
     if (queueMode === "context" && list && list.length) { playList(list, index); return; }
-    // "radio": klik lagu dari hasil PENCARIAN -> jangan numpahin sisa
-    // hasil pencarian ke antrean (isinya belum tentu nyambung), tapi
-    // putar lagu itu terus isi antrean pakai lagu-lagu yang MIRIP.
     if (queueMode === "radio") { playRadio(track); return; }
+    if (queueMode === "queue") { selectQueuePosition(index); return; }
     playSingle(track);
   };
   const handleContext = (e) => { e.preventDefault(); openContextMenu(e.clientX, e.clientY, items); };
@@ -229,11 +220,19 @@ function EqBars({ playing }) {
 }
 
 export function CardTrack({ track, list }) {
-  const { currentTrack, isPlaying, togglePlay, playSingle } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, playSingle, playList } = usePlayer();
   const { openContextMenu } = useUI();
   const isCurrent = currentTrack && currentTrack.id === track.id;
   const items = useTrackMenuItems(track);
-  const handlePlay = () => { if (isCurrent) togglePlay(); else playSingle(track); };
+  const handlePlay = () => {
+    if (isCurrent) { togglePlay(); return; }
+    if (list && list.length) {
+      const idx = list.findIndex((t) => t.id === track.id);
+      playList(list, idx === -1 ? 0 : idx);
+    } else {
+      playSingle(track);
+    }
+  };
   return (
     <div className="aivy-card" onContextMenu={(e) => { e.preventDefault(); openContextMenu(e.clientX, e.clientY, items); }}>
       <div className="art-wrap">
@@ -342,9 +341,9 @@ export function AddToPlaylistModal() {
   );
 }
 
-// Dialog konfirmasi generik - dipakai a.l. buat "yakin mau hapus playlist?"
-// biar ga kepencet ke-delete tanpa sengaja.
-export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, danger = true, onConfirm, onCancel }) {
+export function ConfirmDialog(
+  { open, title, message, confirmLabel, cancelLabel, danger = true, onConfirm, onCancel }
+) {
   const { t } = useUI();
   if (!open) return null;
   return (
@@ -362,9 +361,6 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
   );
 }
 
-// ---------- skeleton loading (dipakai pas nunggu hasil pencarian) ----------
-// Ganti "Mencari..." polos jadi kerangka baris lagu yang shimmer, biar
-// keliatan lebih cepet & jelas kontennya bakal berbentuk apa.
 export function SkeletonTrackRow() {
   return (
     <div className="aivy-skel-row">
@@ -506,11 +502,30 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   );
 }
 
+export function QueueSheet({ open, onClose }) {
+  const { t } = useUI();
+  return (
+    <>
+      <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
+      <div className={`aivy-sheet aivy-queue-sheet ${open ? "open" : ""}`} aria-hidden={!open}>
+        <div className="aivy-sheet-head">
+          <button className="aivy-icon-btn" onClick={onClose} aria-label={t("close")}><ChevronDown size={22} /></button>
+          <span className="eyebrow">{t("tabQueue")}</span>
+          <span style={{ width: 38 }} />
+        </div>
+        <div className="aivy-sheet-body aivy-scroll aivy-queue-sheet-body">
+          <QueueBody />
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function RightPanel() {
-  const { currentTrack, upNext, history, queueList, order, posInOrder, room } = usePlayer();
+  const { room } = usePlayer();
   const { t } = useUI();
   const [tab, setTab] = useState("queue");
-  useEffect(() => { if (room) setTab("room"); }, [!!room]); 
+  useEffect(() => { if (room) setTab("room"); }, [!!room]);
 
   return (
     <aside className="aivy-rightpanel">
@@ -521,23 +536,167 @@ export function RightPanel() {
       </div>
       <div className="aivy-rightpanel-body aivy-scroll">
         {tab === "now" && <NowPlayingPane />}
-        {tab === "queue" && (
-          currentTrack ? (
-            <>
-              <div className="aivy-drawer-sub eyebrow">{t("nowPlaying")}</div>
-              <TrackRow track={currentTrack} index={order[posInOrder]} list={queueList} showIndex={false} />
-              {upNext.length > 0 && <div className="aivy-drawer-sub eyebrow">{t("upNextLabel")}</div>}
-              {upNext.map((tr, i) => <TrackRow key={`${tr.id}-${i}`} track={tr} index={order[posInOrder + 1 + i]} list={queueList} showIndex={false} />)}
-              {history.length > 0 && <div className="aivy-drawer-sub eyebrow">{t("playedLabel")}</div>}
-              {history.map((tr, i) => <TrackRow key={`h-${tr.id}-${i}`} track={tr} index={order[i]} list={queueList} showIndex={false} />)}
-            </>
-          ) : (
-            <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("queueEmpty")}</div><div className="sub">{t("queueEmptySub")}</div></div>
-          )
-        )}
+        {tab === "queue" && <QueueBody />}
         {tab === "room" && room && <RoomPane />}
       </div>
     </aside>
+  );
+}
+
+function QueueTrackMeta({ track }) {
+  return (
+    <div className="aivy-queue-meta">
+      <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={6} style={{ width: 44, height: 44 }} />
+      <div className="txt">
+        <span className="t">{track.title}</span>
+        <span className="a">{track.artist?.name || "\u2014"}</span>
+      </div>
+    </div>
+  );
+}
+
+function QueueNowPlayingRow({ track }) {
+  const { isPlaying, liked, toggleLike } = usePlayer();
+  const { t } = useUI();
+  const isLiked = liked.has(String(track.videoId || track.id));
+  return (
+    <div className="aivy-queue-row is-current">
+      <span className="aivy-queue-eq"><EqBars playing={isPlaying} /></span>
+      <QueueTrackMeta track={track} />
+      <div className="aivy-queue-row-actions">
+        <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={() => toggleLike(track)} aria-label={t("like")}>
+          <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function QueueHistoryRow({ track, onSelect }) {
+  const { liked, toggleLike } = usePlayer();
+  const { t } = useUI();
+  const isLiked = liked.has(String(track.videoId || track.id));
+  return (
+    <div className="aivy-queue-row is-history" onClick={onSelect}>
+      <QueueTrackMeta track={track} />
+      <div className="aivy-queue-row-actions">
+        <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={(e) => { e.stopPropagation(); toggleLike(track); }} aria-label={t("like")}>
+          <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function QueueUpNextList({ items }) {
+  const { moveQueueItem, removeFromQueue, selectQueuePosition, posInOrder, liked, toggleLike } = usePlayer();
+  const { t } = useUI();
+  const [dragIndex, setDragIndex] = useState(null);
+  const [overIndex, setOverIndex] = useState(null);
+  const [dragDeltaY, setDragDeltaY] = useState(0);
+  const dragMeta = useRef({ startY: 0, rowHeight: 60 });
+
+  const endDrag = (commit) => {
+    if (commit && dragIndex !== null && overIndex !== null && dragIndex !== overIndex) {
+      moveQueueItem(dragIndex, overIndex);
+    }
+    setDragIndex(null);
+    setOverIndex(null);
+    setDragDeltaY(0);
+  };
+
+  const handlePointerDown = (e, index) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const row = e.currentTarget.closest(".aivy-queue-row");
+    dragMeta.current.startY = e.clientY;
+    dragMeta.current.rowHeight = row?.getBoundingClientRect().height || 60;
+    setDragIndex(index);
+    setOverIndex(index);
+  };
+  const handlePointerMove = (e) => {
+    if (dragIndex === null) return;
+    const deltaY = e.clientY - dragMeta.current.startY;
+    setDragDeltaY(deltaY);
+    const shift = Math.round(deltaY / dragMeta.current.rowHeight);
+    const next = clamp(dragIndex + shift, 0, items.length - 1);
+    if (next !== overIndex) setOverIndex(next);
+  };
+
+  return (
+    <div className="aivy-queue-list">
+      {items.map((tr, i) => {
+        const isDragging = dragIndex === i;
+        let offsetPct = 0;
+        if (dragIndex !== null && !isDragging) {
+          if (dragIndex < overIndex && i > dragIndex && i <= overIndex) offsetPct = -100;
+          else if (dragIndex > overIndex && i >= overIndex && i < dragIndex) offsetPct = 100;
+        }
+        const isLiked = liked.has(String(tr.videoId || tr.id));
+        const style = isDragging
+          ? { transform: `translateY(${dragDeltaY}px)` }
+          : offsetPct
+            ? { transform: `translateY(${offsetPct}%)` }
+            : undefined;
+        return (
+          <div key={`${tr.id}-${i}`} className={`aivy-queue-row is-upnext ${isDragging ? "is-dragging" : ""}`} style={style}>
+            <button
+              className="aivy-queue-handle"
+              onPointerDown={(e) => handlePointerDown(e, i)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={() => endDrag(true)}
+              onPointerCancel={() => endDrag(false)}
+              aria-label={t("dragToReorder")}
+            >
+              <GripVertical size={15} />
+            </button>
+            <div className="aivy-queue-clickzone" onClick={() => selectQueuePosition(posInOrder + 1 + i)}>
+              <QueueTrackMeta track={tr} />
+            </div>
+            <div className="aivy-queue-row-actions">
+              <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={() => toggleLike(tr)} aria-label={t("like")}>
+                <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
+              </button>
+              <button className="aivy-icon-btn sm" onClick={() => removeFromQueue(i)} aria-label={t("removeFromQueue")}>
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function QueueBody() {
+  const { currentTrack, upNext, history, selectQueuePosition, clearUpNext } = usePlayer();
+  const { t } = useUI();
+
+  if (!currentTrack) {
+    return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("queueEmpty")}</div><div className="sub">{t("queueEmptySub")}</div></div>;
+  }
+
+  return (
+    <>
+      <div className="aivy-drawer-sub eyebrow">{t("nowPlaying")}</div>
+      <QueueNowPlayingRow track={currentTrack} />
+
+      <div className="aivy-drawer-sub eyebrow aivy-queue-upnext-head">
+        <span>{t("upNextLabel")}</span>
+        {upNext.length > 0 && (
+          <button className="aivy-queue-clear" onClick={clearUpNext}><Trash2 size={12} /> {t("clearQueue")}</button>
+        )}
+      </div>
+      {upNext.length > 0 ? (
+        <QueueUpNextList items={upNext} />
+      ) : (
+        <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>
+      )}
+
+      {history.length > 0 && <div className="aivy-drawer-sub eyebrow">{t("playedLabel")}</div>}
+      {history.map((tr, i) => (
+        <QueueHistoryRow key={`h-${tr.id}-${i}`} track={tr} onSelect={() => selectQueuePosition(i)} />
+      ))}
+    </>
   );
 }
 
@@ -627,9 +786,7 @@ export function Sidebar() {
         </div>
       </div>
       <div className="aivy-side-footer">
-        {/* FIX bug "toggle theme dobel di desktop": tombol tema di TopBar
-            (kanan atas) udah dihapus - satu-satunya toggle tema desktop
-            sekarang cuma di sini. */}
+        {}
         <Link to="settings" className="aivy-theme-btn"><SettingsIcon size={15} />{t("navSettings")}</Link>
         <button className="aivy-theme-btn" onClick={toggleTheme}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}{theme === "dark" ? t("navLightMode") : t("navDarkMode")}</button>
         {authUser ? (
@@ -685,12 +842,9 @@ export function TopBar({ isMobile }) {
       <div className="aivy-topbar-spacer" />
       {isMobile && (
         <>
-          {/* FIX: dulu di mobile ga ada cara sama sekali buat ganti tema atau
-              buka halaman Setting (cuma ada di sidebar desktop & sidebar-nya
-              disembunyiin pas mobile) - sekarang ditaro di topbar */}
+          {}
           <button className="aivy-navbtn" onClick={toggleTheme} aria-label={t("navSettings")} title={t("navSettings")}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
-          {/* FIX: kalau udah login, avatar di bawah ini udah jadi satu-satunya
-              pintu ke Setting - jangan dobel sama ikon gear ini */}
+          {}
           {!authUser && <Link to="settings" className="aivy-navbtn" aria-label={t("navSettings")} title={t("navSettings")}><SettingsIcon size={15} /></Link>}
         </>
       )}
@@ -708,13 +862,6 @@ export function ViewNotFound({ label }) {
   return <div className="aivy-empty" style={{ paddingTop: 90 }}><LeafMark size={40} color="var(--ink-faint)" /><div className="title">{label} {t("notFoundLabel")}</div></div>;
 }
 
-// ---------- layar lirik ----------
-// Overlay full-screen, muncul di atas apapun (mirip NowPlayingSheet tapi
-// global & bisa dibuka dari mana aja - PlayerBar, NowPlayingSheet, atau
-// panel Now Playing). Nyari lirik ke /api/lyrics, kalau dapet versi
-// bersinkron (LRC) baris yang lagi diputar di-highlight & auto-scroll
-// (efek karaoke); kalau cuma dapet lirik polos, ditampilin apa adanya;
-// kalau ga ketemu sama sekali, kasih pesan yang jelas alih-alih kosong.
 const LYRICS_FONT_SIZES = {
   sm: "clamp(15px, 2.8vw, 19px)",
   md: "clamp(19px, 3.6vw, 26px)",
@@ -786,7 +933,7 @@ export function LyricsOverlay() {
         });
     });
     return () => { cancelled = true; };
-  }, [lyricsOpen, trackKey]); // eslint-disable-line
+  }, [lyricsOpen, trackKey]);
 
   const activeIndex = useMemo(() => {
     if (!state.synced.length) return -1;

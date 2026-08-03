@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { RouterProvider, useRouter } from "./router.jsx";
 import { UIProvider, PlayerProvider, useUI, usePlayer } from "./context.jsx";
 import {
-  ErrorBoundary, Sidebar, MobileTabBar, TopBar, PlayerBar, MiniPlayer, NowPlayingSheet,
+  ErrorBoundary, Sidebar, MobileTabBar, TopBar, PlayerBar, MiniPlayer, NowPlayingSheet, QueueSheet,
   RightPanel, GlobalContextMenu, AddToPlaylistModal, ToastHost, ViewLoading, LyricsOverlay,
 } from "./components.jsx";
 import { LandingPage, LoginPage } from "./pages/AuthPages.jsx";
@@ -44,14 +44,15 @@ function AppInner() {
   const { currentTrack } = usePlayer();
   const isMobile = useIsMobile(860);
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
 
   if (!authChecked) return <div className="aivy-boot"><ViewLoading /></div>;
   if (name === "landing") return <LandingPage />;
-  if (name === "login") return <LoginPage />;
+  if (name === "login")
+    return <LoginPage />;
 
-  // Semua route lain butuh login. Belum login -> tampilin halaman login,
-  // bukan dibiarin nyoba render halaman yang datanya bakal gagal dimuat.
-  if (!authUser) return <LoginPage />;
+  if (!authUser)
+    return <LoginPage />;
 
   const Page = PAGE_BY_ROUTE[name] || HomePage;
 
@@ -70,7 +71,8 @@ function AppInner() {
 
       {isMobile && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
       {isMobile && <MobileTabBar />}
-      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => setNowPlayingOpen(false)} />}
+      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); setQueueOpen(true); }} />}
+      {isMobile && <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} />}
 
       <AddToPlaylistModal />
       <LyricsOverlay />

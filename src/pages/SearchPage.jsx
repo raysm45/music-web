@@ -16,23 +16,14 @@ export function SearchPage() {
   const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
-  const [lyricsMap, setLyricsMap] = useState({}); // { [trackId]: true | false } - dipakai buat naikin lagu yang ada liriknya ke atas
+  const [lyricsMap, setLyricsMap] = useState({});
   const inputRef = useRef(null);
 
-  // Cuma buat dropdown saran ketikan (typeahead) - ringan, bukan hasil
-  // pencarian beneran, jadi aman tetep jalan tiap ketik.
   const debouncedSuggest = useRef(debounce((q) => {
     if (!authUser || settings.searchHistoryEnabled === false) return;
     Api.suggestSearches(q).then(setSuggestions).catch(() => {});
   }, 200)).current;
 
-  // FIX bug "kadang hasil pencarian tidak ada, padahal di response ada
-  // hasilnya": dulu tiap ketikan langsung nembak Api.search lewat
-  // setTimeout, dan kalau ketikan/jaringan ga stabil, response yang LEBIH
-  // LAMA bisa nyampe SETELAH response yang lebih baru & nimpa hasil yang
-  // udah bener jadi kosong (classic race condition). requestSeqRef di
-  // bawah nolak response basi - cuma response dari request PALING TERAKHIR
-  // yang boleh nge-set state.
   const requestSeqRef = useRef(0);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -40,10 +31,6 @@ export function SearchPage() {
     if (authUser && settings.searchHistoryEnabled !== false) Api.recentSearches(8).then(setRecent).catch(() => {});
   }, [authUser, settings.searchHistoryEnabled]);
 
-  // GANTI "dynamic search" (nyari tiap ketikan) jadi cuma nyari pas user
-  // benar-benar niat cari (tekan Enter / pilih saran / klik chip). Ini
-  // yang bikin pencarian kerasa "ultra cepet": ga ada lagi request
-  // menumpuk tiap huruf yang diketik, cuma 1 request pas user submit.
   const doSearch = async (q) => {
     const trimmed = q.trim();
     if (!trimmed) { setResults([]); setHasSearched(false); setSearching(false); return; }
@@ -52,7 +39,8 @@ export function SearchPage() {
     setHasSearched(true);
     try {
       const res = await Api.search(trimmed);
-      if (seq !== requestSeqRef.current) return; // response basi, buang
+      if (seq !== requestSeqRef.current)
+        return;
       setResults(res || []);
     } catch {
       if (seq !== requestSeqRef.current) return;
@@ -87,12 +75,6 @@ export function SearchPage() {
   const showBrowse = !query.trim() && !hasSearched;
   const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.thumbnail, duration: r.duration || null, artist: null } : r));
 
-  // Cek ketersediaan lirik buat tiap hasil pencarian (lewat /api/lyrics),
-  // lalu naikin lagu-lagu yang liriknya ketemu ke paling atas. Jalan
-  // paralel dengan concurrency dibatasin biar ga nembak API kebanyakan
-  // request bareng, dan hasil urutan barunya baru di-apply sekali abis
-  // SEMUA lagu keceked - biar list-nya ga lompat-lompat urutan tiap
-  // sebentar-sebentar pas lagi discroll.
   useEffect(() => {
     if (!results.length) { setLyricsMap({}); return; }
     let cancelled = false;

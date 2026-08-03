@@ -85,13 +85,11 @@ svg{ display: block; }
   *{ animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
 
-/* ---------- boot / crash ---------- */
 .aivy-boot{ height: 100dvh; display: flex; align-items: center; justify-content: center; }
 .aivy-crash{ height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 20px; }
 .aivy-crash .title{ font-family: var(--font-display); font-size: 19px; font-weight: 600; }
 .aivy-crash .sub{ font-size: 13.5px; color: var(--ink-faint); max-width: 38ch; }
 
-/* ---------- shell ---------- */
 .aivy-shell{
   height: 100dvh; width: 100%; display: grid;
   grid-template-columns: var(--sidebar-w) 1fr var(--rightpanel-w);
@@ -165,7 +163,6 @@ svg{ display: block; }
 .aivy-input:focus{ outline: none; border-color: var(--ink-faint); background: var(--bg-elev-3); }
 .aivy-check-row{ display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-dim); padding: 4px 2px 10px; cursor: pointer; }
 
-/* ---------- sections / cards / grids ---------- */
 .aivy-section{ margin: 22px 0 30px; min-width: 0; }
 .aivy-section-head{ display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .aivy-section-title{ font-family: var(--font-display); font-size: clamp(17px, 2vw, 21px); font-weight: 560; }
@@ -187,7 +184,6 @@ svg{ display: block; }
 .aivy-card-play:hover{ background: var(--moss-strong); }
 .aivy-card-play svg{ margin-left: 1px; }
 
-/* ---------- track rows ---------- */
 .aivy-row{ display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--radius-sm); min-width: 0; transition: background var(--dur-fast) var(--ease); }
 .aivy-row:hover{ background: var(--bg-elev-2); }
 .aivy-row .idx{ width: 22px; flex-shrink: 0; text-align: center; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-faint); }
@@ -217,7 +213,6 @@ svg{ display: block; }
 .eq-bars span:nth-child(3){ animation-delay: 0ms; }
 @keyframes aivy-eq{ 0%,100%{ height: 3px; } 50%{ height: 12px; } }
 
-/* ---------- player bar ---------- */
 .aivy-player{ grid-area: player; background: var(--bg-elev); border-top: 1px solid var(--line); display: flex; align-items: center; gap: 16px; padding: 0 16px; min-width: 0; }
 .aivy-player .now{ display: flex; align-items: center; gap: 12px; min-width: 0; width: min(28%, 300px); }
 .aivy-player .now .meta{ min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -249,13 +244,35 @@ svg{ display: block; }
 .aivy-vol .fill{ position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--ink-dim); }
 .aivy-vol:hover .fill{ background: var(--moss-strong); }
 
-/* ---------- right panel (desktop) ---------- */
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .aivy-rightpanel-tabs{ display: flex; border-bottom: 1px solid var(--line); flex-shrink: 0; }
 .aivy-rightpanel-tabs button{ flex: 1; padding: 13px 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-faint); border-bottom: 2px solid transparent; }
 .aivy-rightpanel-tabs button.active{ color: var(--ink); border-bottom-color: var(--moss-strong); }
 .aivy-rightpanel-body{ flex: 1; min-height: 0; overflow-y: auto; padding: 10px; }
 .aivy-drawer-sub{ padding: 12px 10px 6px; }
+.aivy-queue-upnext-head{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.aivy-queue-clear{ display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--ink-faint); padding: 3px 8px; border-radius: var(--radius-pill); flex-shrink: 0; }
+.aivy-queue-clear:hover{ color: var(--danger, #d1553f); background: var(--bg-elev-2); }
+.aivy-queue-empty-hint{ padding: 6px 10px 16px; font-size: 12.5px; color: var(--ink-faint); }
+.aivy-queue-list{ position: relative; display: flex; flex-direction: column; }
+.aivy-queue-row{ position: relative; display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 2px; border-radius: var(--radius-sm); min-width: 0; background: var(--bg-elev); transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
+.aivy-queue-row:hover{ background: var(--bg-elev-2); }
+.aivy-queue-row.is-dragging{ transition: none; z-index: 5; background: var(--bg-elev-3); box-shadow: var(--shadow-sheet, 0 8px 20px rgba(0,0,0,.28)); }
+.aivy-queue-row.is-current{ background: var(--bg-elev-2); }
+.aivy-queue-row.is-history{ cursor: pointer; opacity: .68; }
+.aivy-queue-row.is-history:hover{ opacity: 1; }
+.aivy-queue-handle{ width: 26px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-faint); cursor: grab; touch-action: none; }
+.aivy-queue-handle:hover{ color: var(--ink-dim); }
+.aivy-queue-handle:active{ cursor: grabbing; }
+.aivy-queue-clickzone{ flex: 1; min-width: 0; cursor: pointer; }
+.aivy-queue-meta{ display: flex; align-items: center; gap: 10px; min-width: 0; }
+.aivy-queue-meta .txt{ min-width: 0; display: flex; flex-direction: column; }
+.aivy-queue-meta .t{ font-size: 13.5px; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-queue-meta .a{ font-size: 12px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+.aivy-queue-row-actions{ display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.aivy-queue-eq{ width: 26px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--moss-strong); }
+.aivy-queue-sheet-body{ align-items: stretch; padding: 6px 14px calc(28px + var(--safe-b)); }
+.aivy-queue-sheet-body .aivy-queue-meta img, .aivy-queue-sheet-body .aivy-queue-meta svg{ width: 44px; height: 44px; }
 .aivy-nowplaying-pane{ display: flex; flex-direction: column; align-items: center; text-align: center; padding: 16px 8px; }
 .aivy-nowplaying-pane .t{ font-family: var(--font-display); font-size: 17px; font-weight: 600; margin-top: 16px; }
 .aivy-nowplaying-pane .a{ font-size: 13px; color: var(--ink-faint); margin-top: 4px; }
@@ -265,7 +282,6 @@ svg{ display: block; }
 .aivy-room-member{ display: flex; align-items: center; gap: 9px; padding: 6px 6px; font-size: 13px; }
 .aivy-room-member .name{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---------- mobile mini player + tab bar ---------- */
 .aivy-mini-player{ position: fixed; left: 8px; right: 8px; z-index: 40; bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px); background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-md); display: flex; align-items: center; gap: 10px; padding: 7px 8px; min-width: 0; }
 .aivy-mini-player .meta{ min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0; }
 .aivy-mini-player .meta .t{ font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -276,7 +292,6 @@ svg{ display: block; }
 .aivy-tab{ flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-faint); font-size: 10.5px; font-weight: 600; min-width: 0; }
 .aivy-tab.active{ color: var(--moss-strong); }
 
-/* ---------- now playing sheet (mobile) ---------- */
 .aivy-sheet-backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,.44); z-index: 60; opacity: 0; transition: opacity var(--dur-base) var(--ease); pointer-events: none; }
 .aivy-sheet-backdrop.open{ opacity: 1; pointer-events: auto; }
 .aivy-sheet{ position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; height: 100dvh; background: var(--bg); display: flex; flex-direction: column; transform: translateY(100%); transition: transform var(--dur-slow) var(--ease); box-shadow: var(--shadow-sheet); }
@@ -291,7 +306,6 @@ svg{ display: block; }
 .aivy-sheet .aivy-transport-btns{ gap: 20px; margin-bottom: 8px; }
 .aivy-sheet .aivy-play-btn{ width: 60px; height: 60px; }
 
-/* ---------- context menu ---------- */
 .aivy-ctxmenu{ position: fixed; z-index: 90; background: var(--bg-elev-3); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 6px; box-shadow: var(--shadow-pop); animation: aivy-pop-in var(--dur-fast) var(--ease); }
 .aivy-ctxmenu-divider{ height: 1px; background: var(--line-soft); margin: 5px 8px; }
 .aivy-menu-item{ width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13px; text-align: left; color: var(--ink); }
@@ -299,7 +313,6 @@ svg{ display: block; }
 .aivy-menu-item:disabled{ opacity: .4; }
 .aivy-menu-item svg{ flex-shrink: 0; color: var(--ink-faint); }
 
-/* ---------- modal / toast ---------- */
 .aivy-modal-backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,.44); z-index: 70; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; animation: aivy-fade-in var(--dur-base) var(--ease) forwards; }
 .aivy-modal{ width: min(420px, 100%); background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 22px; box-shadow: var(--shadow-pop); transform: translateY(8px) scale(.98); opacity: 0; animation: aivy-pop-in var(--dur-base) var(--ease) forwards; max-height: 80vh; overflow-y: auto; }
 .aivy-modal-head{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
@@ -320,7 +333,6 @@ svg{ display: block; }
 .aivy-spin{ animation: aivy-rotate 2.4s linear infinite; }
 @keyframes aivy-rotate{ to{ transform: rotate(360deg); } }
 
-/* ---------- home / empty / hero / search ---------- */
 .aivy-greet{ padding: 18px 2px 4px; }
 .aivy-greet h1{ font-family: var(--font-display); font-size: clamp(24px, 3.6vw, 34px); font-weight: 560; letter-spacing: -0.01em; }
 .aivy-greet p{ color: var(--ink-faint); font-size: 14px; margin-top: 6px; max-width: 52ch; }
@@ -353,7 +365,6 @@ svg{ display: block; }
 .aivy-tagrow{ display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 2px 0; }
 @media (max-width: 640px){ .aivy-hero{ flex-direction: column; align-items: flex-start; gap: 14px; padding-top: 14px; } }
 
-/* ---------- room lobby ---------- */
 .aivy-room-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 640px; }
 .aivy-room-card{ border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 22px; display: flex; flex-direction: column; gap: 6px; }
 .aivy-room-card h3{ font-family: var(--font-display); font-size: 18px; font-weight: 600; margin-bottom: 6px; }
@@ -365,12 +376,10 @@ svg{ display: block; }
 .aivy-public-room-row .nowplaying{ display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-dim); margin-top: 3px; }
 @media (max-width: 640px){ .aivy-room-grid{ grid-template-columns: 1fr; } }
 
-/* ---------- landing / login ---------- */
 .aivy-landing{ min-height: 100dvh; overflow-y: auto; position: relative; isolation: isolate; }
 .aivy-landing-topbar{ position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; transition: background var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease); border-bottom: 1px solid transparent; }
 .aivy-landing-topbar.solid{ background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom-color: var(--line); backdrop-filter: blur(10px); }
 
-/* ambient blooms drifting behind hero + quote — quiet, never louder than content */
 .aivy-landing-blobs{ position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 .aivy-blob{ position: absolute; border-radius: 50%; filter: blur(64px); opacity: .32; }
 .aivy-blob.b1{ width: 460px; height: 460px; top: -120px; left: 8%; background: radial-gradient(circle, var(--moss) 0%, transparent 70%); }
@@ -379,7 +388,6 @@ svg{ display: block; }
 
 .aivy-landing-story{ position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 0 32px; }
 
-/* the vine — a spine that grows down the page as you scroll, in step with the brand: "tumbuh pelan tapi menjalar ke mana-mana" */
 .aivy-vine-rail{ position: absolute; left: -30px; top: 0; bottom: 0; width: 2px; display: none; }
 .aivy-vine-track{ position: absolute; inset: 0; width: 2px; background: var(--line); border-radius: 2px; }
 .aivy-vine-fill{ position: absolute; top: 0; left: 0; width: 2px; height: 100%; background: linear-gradient(180deg, var(--moss-strong), var(--gold) 55%, var(--berry) 100%); border-radius: 2px; transform-origin: top; }
@@ -389,7 +397,6 @@ svg{ display: block; }
 .aivy-landing-hero h1{ font-family: var(--font-display); font-size: clamp(34px, 6vw, 58px); font-weight: 600; line-height: 1.06; letter-spacing: -0.01em; }
 .aivy-landing-hero p{ font-size: 16px; color: var(--ink-dim); line-height: 1.65; max-width: 54ch; }
 
-/* cara kerja — real sequence, so numbering earns its place */
 .aivy-landing-steps{ position: relative; padding: 30px 0 70px; display: flex; flex-direction: column; gap: 0; }
 .aivy-step{ display: flex; gap: 22px; padding: 26px 0; border-bottom: 1px solid var(--line-soft); }
 .aivy-step:last-child{ border-bottom: none; }
@@ -402,12 +409,10 @@ svg{ display: block; }
 .aivy-feature-card h3{ font-family: var(--font-display); font-size: 17px; font-weight: 600; }
 .aivy-feature-card p{ font-size: 13.5px; color: var(--ink-faint); line-height: 1.6; }
 
-/* philosophy quote — the one place we let the serif get loud */
 .aivy-landing-quote{ position: relative; text-align: center; max-width: 780px; margin: 0 auto; padding: 40px 32px 100px; }
 .aivy-landing-quote blockquote{ font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(22px, 3.4vw, 34px); line-height: 1.4; color: var(--ink); }
 .aivy-landing-quote cite{ display: block; margin-top: 18px; font-style: normal; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
 
-/* footer / credits */
 .aivy-landing-footer-v2{ position: relative; z-index: 1; border-top: 1px solid var(--line-soft); padding: 56px 32px 0; }
 .aivy-footer-grid{ max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 40px; padding-bottom: 44px; }
 .aivy-footer-brand{ display: flex; flex-direction: column; gap: 12px; max-width: 34ch; }
@@ -437,7 +442,36 @@ svg{ display: block; }
 .aivy-login-back{ font-size: 12.5px; color: var(--ink-faint); margin-top: 4px; }
 .aivy-login-back:hover{ color: var(--ink-dim); }
 
-/* ---------- settings ---------- */
+.reveal{ opacity: 0; transform: translateY(18px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+.reveal.in{ opacity: 1; transform: translateY(0); }
+
+.aivy-landing-faq{ position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 10px 32px 100px; }
+.aivy-landing-faq h2{ font-size: clamp(22px, 3vw, 30px); font-weight: 600; text-align: center; margin-bottom: 28px; }
+.aivy-faq-list{ display: flex; flex-direction: column; border-top: 1px solid var(--line-soft); }
+.aivy-faq-item{ border-bottom: 1px solid var(--line-soft); }
+.aivy-faq-q{ width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 4px; text-align: left; font-size: 14.5px; font-weight: 560; color: var(--ink); }
+.aivy-faq-q svg{ flex-shrink: 0; color: var(--ink-faint); transition: transform var(--dur-fast) var(--ease); }
+.aivy-faq-item.open .aivy-faq-q svg{ transform: rotate(180deg); color: var(--moss-strong); }
+.aivy-faq-a{ display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--dur-base) var(--ease); }
+.aivy-faq-a p{ overflow: hidden; font-size: 13.5px; color: var(--ink-faint); line-height: 1.65; padding-right: 30px; }
+.aivy-faq-item.open .aivy-faq-a{ grid-template-rows: 1fr; }
+.aivy-faq-a > p{ min-height: 0; }
+.aivy-faq-item.open .aivy-faq-a p{ padding-bottom: 18px; }
+
+.aivy-login-shell{ min-height: 100dvh; display: grid; grid-template-columns: 1fr; }
+.aivy-login-visual{ display: none; position: relative; overflow: hidden; background: linear-gradient(165deg, var(--bg-elev) 0%, var(--bg) 75%); border-right: 1px solid var(--line); padding: 44px; flex-direction: column; justify-content: space-between; gap: 30px; isolation: isolate; }
+.aivy-login-visual .aivy-blob{ z-index: -1; }
+.aivy-login-visual-quote{ position: relative; z-index: 1; font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(19px, 2.1vw, 25px); line-height: 1.42; max-width: 32ch; color: var(--ink); }
+.aivy-login-visual-points{ position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; }
+.aivy-login-visual-point{ display: flex; align-items: flex-start; gap: 12px; font-size: 13.5px; color: var(--ink-dim); line-height: 1.4; }
+.aivy-login-error{ display: flex; align-items: flex-start; gap: 9px; width: 100%; text-align: left; background: color-mix(in srgb, var(--berry) 14%, transparent); border: 1px solid color-mix(in srgb, var(--berry) 42%, transparent); color: var(--berry-strong); border-radius: var(--radius-md); padding: 12px 14px; font-size: 12.5px; line-height: 1.55; }
+.aivy-login-fineprint{ font-size: 11.5px; color: var(--ink-faint); line-height: 1.5; }
+
+@media (min-width: 900px){
+  .aivy-login-shell{ grid-template-columns: 1.05fr 1fr; }
+  .aivy-login-visual{ display: flex; }
+}
+
 .aivy-settings-page{ max-width: 720px; padding-bottom: 40px; margin: 0 auto; }
 .aivy-settings-section{ margin: 26px 0; }
 .aivy-settings-title{ font-family: var(--font-display); font-size: 17px; font-weight: 600; margin-bottom: 10px; }
@@ -453,7 +487,6 @@ svg{ display: block; }
 .aivy-select{ background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; color: var(--ink); }
 .aivy-range{ accent-color: var(--moss); width: 110px; }
 
-/* ---------- import playlist (Koleksi > Import) ---------- */
 .aivy-import-page{ max-width: 640px; margin: 0 auto; padding-bottom: 48px; }
 .aivy-import-back{ display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-faint); margin-bottom: 18px; }
 .aivy-import-back:hover{ color: var(--ink-dim); }
@@ -507,43 +540,33 @@ svg{ display: block; }
 
 .aivy-import-actions{ display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 
-/* ---------- equalizer (Setting > Equalizer) ---------- */
 .aivy-eq-bands{ display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 4px 2px; }
 .aivy-eq-band{ display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .aivy-eq-val{ font-size: 10px; color: var(--ink-faint); }
 .aivy-eq-freq{ font-size: 10px; color: var(--ink-faint); }
-/* FIX bug "slider band pendek banget": pas writing-mode di-set vertikal,
-   sumbu "panjang" slider itu HEIGHT, bukan width (width jadi ketebalan
-   track) - sebelumnya kebalik (height:20px bikin slidernya pendek),
-   sekarang dibenerin + ditambahin fallback buat Firefox/WebKit lama. */
+
 .aivy-eq-slider{ accent-color: var(--moss); width: 22px; height: 150px; writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical; appearance: slider-vertical; touch-action: none; }
 @media (max-width: 640px){ .aivy-eq-bands{ overflow-x: auto; } .aivy-eq-band{ flex: 0 0 34px; } }
 
-/* ---------- badge "E" buat lagu explicit di TrackRow ---------- */
 .aivy-explicit-badge{ display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-right: 6px; border-radius: 3px; background: var(--ink-faint); color: var(--bg); font-size: 9px; font-weight: 800; line-height: 1; vertical-align: middle; }
 
-/* ---------- Setting "Baris lebih rapat" ---------- */
 :root[data-compact="true"] .aivy-row{ padding-top: 4px; padding-bottom: 4px; }
 :root[data-compact="true"] .aivy-row .thumb{ width: 32px; height: 32px; }
 :root[data-compact="true"] .aivy-row .thumb :is(img, svg){ width: 32px; height: 32px; }
 :root[data-compact="true"] .aivy-skel-thumb{ width: 32px; height: 32px; }
 
-/* ---------- Setting "Kurangi animasi" ---------- */
 :root[data-reduced-motion="true"] *,
 :root[data-reduced-motion="true"] *::before,
 :root[data-reduced-motion="true"] *::after{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 
-/* ---------- Setting "Kontras tinggi" ---------- */
 :root[data-contrast="high"]{ --line: var(--ink-faint); --line-soft: var(--ink-faint); }
 :root[data-contrast="high"][data-theme="dark"]{ --ink: #ffffff; --ink-faint: #d7ded7; --bg: #000000; }
 :root[data-contrast="high"]:not([data-theme="dark"]){ --ink: #000000; --ink-faint: #262b26; --bg: #ffffff; }
 :root[data-contrast="high"] .aivy-row.is-current{ outline: 1px solid var(--moss-strong); }
 
-/* ---------- responsive ---------- */
 @media (max-width: 1240px){ :root{ --rightpanel-w: 0px; } .aivy-shell{ grid-template-columns: var(--sidebar-w) 1fr; grid-template-areas: "side main" "player player"; } .aivy-rightpanel{ display: none; } }
 @media (max-width: 1080px){ :root{ --sidebar-w: 208px; } .aivy-grid{ grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); } }
 
-/* ---------- ivy fall loader (ganti spinner puter-puter) ---------- */
 .aivy-ivyloader{ position: relative; display: inline-block; }
 .aivy-ivyleaf{ animation: aivy-leaf-fall 2.6s ease-in infinite; transform-origin: 16px 16px; opacity: 0; }
 @keyframes aivy-leaf-fall{
@@ -555,7 +578,6 @@ svg{ display: block; }
 }
 @media (prefers-reduced-motion: reduce){ .aivy-ivyleaf{ animation: none; opacity: .85; } }
 
-/* ---------- skeleton (shimmer) buat loading hasil pencarian ---------- */
 .aivy-skeleton{ position: relative; overflow: hidden; background: var(--bg-elev-2); }
 .aivy-skeleton::after{
   content: ""; position: absolute; inset: 0; transform: translateX(-100%);
@@ -570,7 +592,6 @@ svg{ display: block; }
 .aivy-skel-line.w60{ width: 60%; }
 .aivy-skel-line.w35{ width: 35%; }
 
-/* ---------- confirm dialog ---------- */
 .aivy-confirm-modal{ text-align: center; }
 .aivy-confirm-icon{ width: 44px; height: 44px; border-radius: 50%; background: color-mix(in srgb, var(--berry) 16%, transparent); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
 .aivy-confirm-modal .aivy-modal-title{ justify-content: center; }
@@ -580,7 +601,6 @@ svg{ display: block; }
 .aivy-btn-primary.danger{ background: var(--berry); color: #fff; }
 .aivy-btn-primary.danger:hover{ background: var(--berry-strong); }
 
-/* ---------- layar lirik ---------- */
 .aivy-lyrics-overlay{
   position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh; z-index: 75; background: var(--bg);
   display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: contain;

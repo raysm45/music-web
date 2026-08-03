@@ -48,8 +48,6 @@ function SliderRow({ label, hint, value, min, max, step, onChange, format }) {
   );
 }
 
-// Cocokin band gain sekarang ke salah satu preset yang ada (biar dropdown
-// "Preset" otomatis nunjukkin "Custom" begitu user geser slider manual).
 function matchPreset(bands) {
   const entries = Object.entries(EQ_PRESETS);
   for (const [key, vals] of entries) {

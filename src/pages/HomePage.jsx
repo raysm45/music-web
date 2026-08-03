@@ -48,9 +48,6 @@ export function HomePage() {
   const fresh = useDiscoverRow("fresh-" + Math.floor(Date.now() / 3600000));
   const moodCalm = useDiscoverRow("mood-santai");
 
-  // FIX Setting "Konten eksplisit": lagu/album/artist dari katalog Deezer
-  // disaring lewat filterExplicit() begitu settings.explicitContent
-  // dimatiin - dipakai di semua baris & feed di halaman ini.
   const trendingTracks = useMemo(() => filterExplicit((trending || []).filter((i) => i.type === "track"), settings).slice(0, 12), [trending, settings]);
   const freshAlbums = useMemo(() => (fresh || []).filter((i) => i.type === "album").slice(0, 12), [fresh]);
   const artists = useMemo(() => (moodCalm || []).filter((i) => i.type === "artist").slice(0, 12), [moodCalm]);
@@ -61,9 +58,8 @@ export function HomePage() {
     if (!likedIds.length) { setSimilarItems([]); return; }
     const seedId = likedIds[Math.floor(Math.random() * likedIds.length)];
     Api.similar({ trackId: seedId }).then((res) => setSimilarItems(filterExplicit(res.items || [], settings))).catch(() => setSimilarItems([]));
-  }, [liked]); // eslint-disable-line
+  }, [liked]);
 
-  // --- feed campuran tak berujung ---
   const seedRef = useRef(uid("home-seed"));
   const [items, setItems] = useState([]);
   const [cursor, setCursor] = useState(0);
@@ -90,7 +86,7 @@ export function HomePage() {
     setLoading(false);
   }, [cursor, loading, done]);
 
-  useEffect(() => { loadMore(); }, []); // eslint-disable-line
+  useEffect(() => { loadMore(); }, []);
 
   useEffect(() => {
     const el = sentinelRef.current;

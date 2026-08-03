@@ -1,13 +1,3 @@
-// Sistem terjemahan sederhana buat AIVY. Setting "Bahasa" di halaman Setting
-// nyimpen kode bahasa ("id" / "en") di settings.language, lalu useUI().t(key)
-// dipakai di seluruh app buat nampilin teks sesuai bahasa yang dipilih.
-//
-// FIX bug "ganti bahasa belum bisa": sebelumnya settings.language cuma
-// kesimpen doang, ga ada satu pun komponen yang benar-benar baca nilainya
-// buat nentuin teks yang ditampilin. Sekarang setiap potongan UI utama
-// (sidebar, topbar, player, setting, halaman-halaman utama, dst) manggil
-// t("key") yang lookup ke kamus di bawah ini.
-
 export const LANGUAGES = [
   { value: "id", label: "Indonesia" },
   { value: "en", label: "English" },
@@ -15,7 +5,6 @@ export const LANGUAGES = [
 
 const dict = {
   id: {
-    // --- umum ---
     appTagline: "Pemutar Musik",
     loading: "Memuat…",
     cancel: "Batal",
@@ -23,7 +12,6 @@ const dict = {
     save: "Simpan",
     close: "Tutup",
 
-    // --- nav ---
     navHome: "Beranda",
     navSearch: "Cari",
     navLibrary: "Koleksi",
@@ -38,12 +26,10 @@ const dict = {
     createPlaylist: "Buat playlist",
     newPlaylistName: "Nama playlist",
 
-    // --- error boundary ---
     crashTitle: "Ada yang salah di halaman ini",
     crashSub: "Coba muat ulang. Kalau masih kejadian, kabarin ke kami ya.",
     crashBack: "Kembali ke beranda",
 
-    // --- player ---
     nothingPlaying: "Belum ada yang diputar",
     previewTag: "pratinjau 30s",
     preview30: "Pratinjau 30 detik",
@@ -72,12 +58,15 @@ const dict = {
     lyricsNotFoundSub: "Coba cari lagu yang lain.",
     upNextLabel: "Berikutnya",
 
-    // --- right panel ---
     tabNowPlaying: "Now Playing",
     tabQueue: "Antrean",
     tabRoom: "Ruang",
     queueEmpty: "Antrean kosong",
     queueEmptySub: "Putar lagu apa aja buat mulai.",
+    queueUpNextEmpty: "Belum ada lagu berikutnya. Tambahin dari menu \"Tambah ke antrean\".",
+    clearQueue: "Kosongkan",
+    removeFromQueue: "Hapus dari antrean",
+    dragToReorder: "Tahan buat urutin ulang",
     playedLabel: "Sudah diputar",
     officialPreview: "Pratinjau resmi 30 detik dari Deezer",
     listenersMonthly: "pendengar bulanan",
@@ -88,7 +77,6 @@ const dict = {
     listeningNow: "Yang lagi dengerin",
     hostOnlyNotice: "Cuma host yang bisa kontrol pemutaran di ruang ini.",
 
-    // --- context menu ---
     menuRemoveLiked: "Hapus dari Disukai",
     menuSaveLiked: "Simpan ke Disukai",
     menuPlayNext: "Putar setelah ini",
@@ -101,7 +89,6 @@ const dict = {
     menuRemovePlaylist: "Hapus dari playlist ini",
     menuMore: "Menu lainnya",
 
-    // --- modals ---
     addToPlaylistTitle: "Tambah ke playlist",
     noPlaylistsYet: "Belum ada playlist",
     newPlaylistNamePlaceholder: "Nama playlist baru",
@@ -109,7 +96,6 @@ const dict = {
     newPlaylist: "Playlist baru",
     confirmDeleteDefault: "Hapus",
 
-    // --- toasts ---
     toastByeSee: "Sampai ketemu lagi",
     toastSettingsSaveFailed: "Gagal nyimpen setting ke server",
     toastLoginToSave: "Login dulu buat nyimpen lagu",
@@ -118,6 +104,7 @@ const dict = {
     toastLikeFailed: "Gagal nyimpen ke server, coba lagi",
     toastAddedRoomQueue: "Ditambahin ke antrean ruang",
     toastAddedQueue: "Ditambahin ke antrean",
+    toastQueueCleared: "Antrean berikutnya dikosongkan",
     toastPlayAfterThis: "Diputar setelah ini",
     toastLoginToCreatePlaylist: "Login dulu buat bikin playlist",
     toastPlaylistCreated: "Playlist dibuat",
@@ -135,7 +122,6 @@ const dict = {
     toastPlaybackNormalized: "Volume lagu diseragamkan",
     toastMemberJoined: "gabung ke ruangmu",
 
-    // --- settings page ---
     settingsTitle: "Setting",
     loginForSettings: "Login dulu buat buka setting",
     sectionAppearance: "Tampilan",
@@ -202,7 +188,6 @@ const dict = {
     settingResetAll: "Reset semua setting",
     settingResetAllHint: "Balikin semua ke bawaan",
 
-    // --- home ---
     greetMorningTitle: "Pagi ini mulai dengan apa?",
     greetMorningSub: "Beberapa lagu buat nemenin pagi kamu.",
     greetNoonTitle: "Siang santai.",
@@ -221,7 +206,6 @@ const dict = {
     rowExplore: "Jelajahi",
     exploreEnd: "Kamu udah sampai ujung jelajahan hari ini",
 
-    // --- search ---
     searchPlaceholder: "Cari lagu atau artist, lalu tekan Enter",
     clear: "Bersihin",
     recentSearches: "Pencarian terakhir",
@@ -232,7 +216,6 @@ const dict = {
     noResults: "Ga ketemu apa-apa",
     noResultsSub: "Coba kata kunci lain, atau cek ejaannya.",
 
-    // --- library ---
     yourLibrary: "Koleksi kamu",
     songsCount: "lagu",
     noPlaylistsYetLong: "Belum ada playlist — bikin dari sidebar, atau lewat menu klik-kanan lagu.",
@@ -249,7 +232,6 @@ const dict = {
     playlistEmpty: "Playlist ini masih kosong",
     playlistEmptySub: 'Cari lagu, lalu pilih "Tambah ke playlist" dari menu lagu.',
 
-    // --- rooms ---
     loginForRooms: "Login dulu buat dengerin bareng",
     loginForRoomsSub: "Ruang butuh akun biar bisa nampilin siapa aja yang lagi gabung.",
     listenTogether: "Dengerin bareng",
@@ -277,7 +259,6 @@ const dict = {
     roomQueue: "Antrean ruang",
     roomQueueEmpty: "Antrean masih kosong, tambahin lagu dari pencarian di atas.",
 
-    // --- catalog ---
     artistLabel: "Artist",
     following: "Mengikuti",
     follow: "Ikuti",
@@ -354,6 +335,10 @@ const dict = {
     tabRoom: "Room",
     queueEmpty: "Queue is empty",
     queueEmptySub: "Play any song to get started.",
+    queueUpNextEmpty: "Nothing queued up yet. Add songs from the \"Add to queue\" menu.",
+    clearQueue: "Clear",
+    removeFromQueue: "Remove from queue",
+    dragToReorder: "Hold to reorder",
     playedLabel: "Already played",
     officialPreview: "Official 30-second preview from Deezer",
     listenersMonthly: "monthly listeners",
@@ -391,6 +376,7 @@ const dict = {
     toastLikeFailed: "Couldn't save to server, try again",
     toastAddedRoomQueue: "Added to room queue",
     toastAddedQueue: "Added to queue",
+    toastQueueCleared: "Up next cleared",
     toastPlayAfterThis: "Will play after this",
     toastLoginToCreatePlaylist: "Log in to create a playlist",
     toastPlaylistCreated: "Playlist created",

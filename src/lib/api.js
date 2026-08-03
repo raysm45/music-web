@@ -27,7 +27,6 @@ async function apiSend(path, method, body) {
 }
 
 export const Api = {
-  // --- katalog & pencarian ---
   discover: (seed, cursor, limit) =>
     apiGet(`/api/discover?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 20}`),
   search: (q) => apiGet(`/api/search?q=${encodeURIComponent(q)}`),
@@ -44,19 +43,12 @@ export const Api = {
     return apiGet(`/api/lyrics?${qs.toString()}`);
   },
 
-  // --- audio ---
-  // Sumber utama: preview 30 detik RESMI dari Deezer (track.preview),
-  // langsung diputar tanpa lewat backend sama sekali. streamUrl di bawah ini
-  // cuma dipakai kalau user secara sadar nyalain "putar penuh (eksperimen)"
-  // di Setting, yang jalannya lewat resolver YouTube di server.
   streamUrl: (videoId) => `${API_BASE}/api/stream/${encodeURIComponent(videoId)}`,
 
-  // --- auth ---
   me: () => apiGet("/auth/me"),
   logout: () => apiSend("/auth/logout", "POST"),
   discordLoginUrl: () => `${API_BASE}/auth/discord`,
 
-  // --- me: likes, history, search history, settings ---
   likes: () => apiGet("/api/me/likes"),
   like: (videoId, meta) => apiSend(`/api/me/likes/${encodeURIComponent(videoId)}`, "POST", meta),
   unlike: (videoId) => apiSend(`/api/me/likes/${encodeURIComponent(videoId)}`, "DELETE"),
@@ -73,7 +65,6 @@ export const Api = {
   putSettings: (patch) => apiSend("/api/me/settings", "PUT", patch),
   resetSettings: () => apiSend("/api/me/settings/reset", "POST"),
 
-  // --- playlists ---
   playlists: () => apiGet("/api/playlists"),
   createPlaylist: (body) => apiSend("/api/playlists", "POST", body),
   playlist: (id) => apiGet(`/api/playlists/${id}`),
@@ -81,10 +72,8 @@ export const Api = {
   removeSong: (id, videoId) => apiSend(`/api/playlists/${id}/songs/${encodeURIComponent(videoId)}`, "DELETE"),
   deletePlaylist: (id) => apiSend(`/api/playlists/${id}`, "DELETE"),
 
-  // --- import playlist YouTube ---
   resolveYoutubeImport: (url) => apiSend("/api/import/youtube/resolve", "POST", { url }),
   commitYoutubeImport: (body) => apiSend("/api/import/youtube/commit", "POST", body),
 
-  // --- rooms (daftar publik lewat REST; create/join/sync lewat socket) ---
   publicRooms: () => apiGet("/api/rooms"),
 };

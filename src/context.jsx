@@ -48,7 +48,7 @@ export function UIProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [theme, setTheme] = useState("dark");
   const [toasts, setToasts] = useState([]);
-  const [contextMenu, setContextMenu] = useState(null); 
+  const [contextMenu, setContextMenu] = useState(null);
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
   const [lyricsOpen, setLyricsOpen] = useState(false);
 
@@ -90,10 +90,11 @@ export function UIProvider({ children }) {
 
   const login = useCallback(() => { window.location.href = Api.discordLoginUrl(); }, []);
   const logout = useCallback(async () => {
-    try { await Api.logout(); } catch {  }
-    setAuthUser(null);
-    pushToast(t("toastByeSee"));
-  }, [pushToast, t]);
+    try {
+      await Api.logout();
+    } catch {}
+    window.location.href = "/";
+  }, []);
 
   const pendingSettingsPatchRef = useRef({});
   const flushSettingsRef = useRef(null);
@@ -265,7 +266,7 @@ export function PlayerProvider({ children }) {
   const currentKey = currentTrack ? currentTrack.id : null;
   const inRoom = !!room;
 
-  useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []); 
+  useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []);
 
   const [currentTrackHasLyrics, setCurrentTrackHasLyrics] = useState(true);
   const lyricsCheckSeqRef = useRef(0);
@@ -284,7 +285,6 @@ export function PlayerProvider({ children }) {
       });
   }, [currentKey]);
 
-  
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
     Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.videoId || r.id))))).catch(() => {});
@@ -309,7 +309,6 @@ export function PlayerProvider({ children }) {
     });
   }, []);
 
-  
   const resolveAudioSrc = useCallback(async (track) => {
     if (!track) return null;
     const wantFull = settings.audioQuality === "full";
@@ -329,7 +328,7 @@ export function PlayerProvider({ children }) {
         }
       }
       if (videoId) return { src: Api.streamUrl(videoId), preview: false };
-      
+
     }
 
     if (track.preview) return { src: track.preview, preview: true };
@@ -337,7 +336,6 @@ export function PlayerProvider({ children }) {
     return null;
   }, [settings.audioQuality]);
 
-  
   const resumeAudioCtx = useCallback(() => {
     const graph = ensureAudioGraph();
     graph?.ctx?.resume?.().catch(() => {});
@@ -382,21 +380,20 @@ export function PlayerProvider({ children }) {
       if (isPlaying) { resumeAudioCtx(); audio.play().catch(() => {}); }
     });
     return () => { cancelled = true; };
-  }, [currentKey]); 
+  }, [currentKey]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
     if (isPlaying) { resumeAudioCtx(); audio.play().catch(() => {}); }
     else audio.pause();
-  }, [isPlaying]); 
+  }, [isPlaying]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) audio.volume = muted ? 0 : volume;
   }, [volume, muted]);
 
-  
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -422,7 +419,7 @@ export function PlayerProvider({ children }) {
       }
     };
     const onEnded = () => {
-      if (inRoom) return; 
+      if (inRoom) return;
       if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
       if (settings.autoplay === false) { setIsPlaying(false); pushToast(t("toastAutoplayOff")); return; }
       nextRef.current(true);
@@ -440,7 +437,7 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
-  }, [repeat, inRoom, writeProgress, settings.crossfadeSeconds, settings.autoplay, pushToast, t, clipDuration]); 
+  }, [repeat, inRoom, writeProgress, settings.crossfadeSeconds, settings.autoplay, pushToast, t, clipDuration]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -455,7 +452,6 @@ export function PlayerProvider({ children }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [writeProgress, clipDuration]);
 
-  
   useEffect(() => {
     let raf;
     function tick() {
@@ -483,16 +479,16 @@ export function PlayerProvider({ children }) {
     const list = rawList.map(normalizeTrack).filter(Boolean);
     if (!list.length) return;
     if (inRoom) {
-      
+      const baseIndex = room.queue?.length || 0;
+      const safeStart = clamp(startIndex, 0, list.length - 1);
       list.forEach((t) => socketRef.current?.emit("queue-add", { roomId: room.id, song: t }));
-      socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: startIndex } });
+      socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: baseIndex + safeStart } });
       return;
     }
     const safeStart = clamp(startIndex, 0, list.length - 1);
     setQueueList(list);
     setOrder(buildOrder(list.length, safeStart, shuffle));
-    
-    
+
     setPosInOrder(shuffle ? 0 : safeStart);
     setIsPlaying(true);
     if (authUser && settings.historyEnabled !== false) {
@@ -501,31 +497,34 @@ export function PlayerProvider({ children }) {
     }
   }, [inRoom, room, buildOrder, shuffle, authUser, settings.historyEnabled, resumeAudioCtx]);
 
-  
-  
-  
   const playSingle = useCallback((rawTrack) => {
     resumeAudioCtx();
     const track = normalizeTrack(rawTrack);
     if (!track) return;
     if (inRoom) {
-      socketRef.current?.emit("queue-add", { roomId: room.id, song: track });
-      socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: 0 } });
+      const existingIdx = room.queue?.findIndex((t) => String(t.id) === String(track.id) || (track.videoId && String(t.videoId) === String(track.videoId)));
+      if (existingIdx !== undefined && existingIdx !== -1) {
+        socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: existingIdx } });
+      } else {
+        const newIndex = room.queue?.length || 0;
+        socketRef.current?.emit("queue-add", { roomId: room.id, song: track });
+        socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: newIndex } });
+      }
       return;
     }
-    
+
     const existingIdx = queueList.findIndex((t) => t.id === track.id);
     if (existingIdx !== -1) {
       const posInOrder = order.indexOf(existingIdx);
       if (posInOrder !== -1) { setPosInOrder(posInOrder); setIsPlaying(true); return; }
     }
-    
+
     setQueueList([track]);
     setOrder([0]);
     setPosInOrder(0);
     setIsPlaying(true);
     if (authUser && settings.historyEnabled !== false) {
-      Api.addHistory(track.videoId || track.id, { title: track.title, thumbnail: track.cover, duration: track.duration }).catch(() => {});
+      Api.addHistory(track.videoId || track.id, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, duration: track.duration }).catch(() => {});
     }
   }, [inRoom, room, queueList, order, authUser, settings.historyEnabled, resumeAudioCtx]);
 
@@ -676,6 +675,50 @@ export function PlayerProvider({ children }) {
     pushToast(`${t("toastPlayAfterThis")} — ${track.title}`);
   }, [inRoom, addToQueueEnd, posInOrder, pushToast, t]);
 
+  const removeFromQueue = useCallback((upNextIndex) => {
+    if (inRoom) {
+      const absolutePos = (room?.currentIndex ?? -1) + 1 + upNextIndex;
+      socketRef.current?.emit("queue-remove", { roomId: room.id, position: absolutePos });
+      return;
+    }
+    setOrder((ord) => {
+      const absolutePos = posInOrder + 1 + upNextIndex;
+      return ord.filter((_, i) => i !== absolutePos);
+    });
+  }, [inRoom, room, posInOrder]);
+
+  const moveQueueItem = useCallback((fromUpNextIndex, toUpNextIndex) => {
+    if (fromUpNextIndex === toUpNextIndex) return;
+    if (inRoom) {
+      const base = (room?.currentIndex ?? -1) + 1;
+      socketRef.current?.emit("queue-reorder", { roomId: room.id, from: base + fromUpNextIndex, to: base + toUpNextIndex });
+      return;
+    }
+    setOrder((ord) => {
+      const base = posInOrder + 1;
+      const next = [...ord];
+      const [moved] = next.splice(base + fromUpNextIndex, 1);
+      if (moved === undefined) return ord;
+      next.splice(base + toUpNextIndex, 0, moved);
+      return next;
+    });
+  }, [inRoom, room, posInOrder]);
+
+  const selectQueuePosition = useCallback((absolutePosition) => {
+    if (inRoom) {
+      socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: absolutePosition } });
+      return;
+    }
+    setPosInOrder(clamp(absolutePosition, 0, Math.max(order.length - 1, 0)));
+    setIsPlaying(true);
+  }, [inRoom, room, order.length]);
+
+  const clearUpNext = useCallback(() => {
+    if (inRoom) { socketRef.current?.emit("queue-clear", { roomId: room.id }); pushToast(t("toastQueueCleared")); return; }
+    setOrder((ord) => ord.slice(0, posInOrder + 1));
+    pushToast(t("toastQueueCleared"));
+  }, [inRoom, room, posInOrder, pushToast, t]);
+
   const createPlaylist = useCallback(async (name, description) => {
     if (!authUser) { pushToast(t("toastLoginToCreatePlaylist")); return null; }
     try {
@@ -686,10 +729,8 @@ export function PlayerProvider({ children }) {
     } catch { pushToast(t("toastPlaylistCreateFailed")); return null; }
   }, [authUser, pushToast, t]);
 
-  
   const setPlaylistDetail = useCallback((detail) => {
-    
-    
+
     const songs = (detail.songs || []).map((s) => ({
       id: s.video_id,
       videoId: s.video_id,
@@ -705,7 +746,7 @@ export function PlayerProvider({ children }) {
   const addToPlaylist = useCallback(async (playlistId, rawTrack) => {
     const track = normalizeTrack(rawTrack);
     const key = track.videoId || track.id;
-    
+
     setPlaylists((list) => list.map((pl) => (pl.id === playlistId && !pl.songs?.some((s) => (s.videoId || s.id) === key)
       ? { ...pl, songs: [...(pl.songs || []), track] } : pl)));
     try {
@@ -724,7 +765,6 @@ export function PlayerProvider({ children }) {
     try { await Api.deletePlaylist(playlistId); pushToast(t("toastPlaylistDeleted")); } catch { pushToast(t("toastPlaylistDeleteFailed")); }
   }, [pushToast, t]);
 
-  
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const authUserRef = useRef(authUser);
@@ -749,7 +789,12 @@ export function PlayerProvider({ children }) {
         return { ...r, members };
       });
     });
-    socket.on("queue-updated", ({ queue, currentIndex }) => setRoom((r) => (r ? { ...r, queue, currentIndex } : r)));
+    socket.on("queue-updated", ({ queue, currentIndex }) => {
+      setRoom((r) => (r ? { ...r, queue, currentIndex } : r));
+      setQueueList(queue.map(normalizeTrack));
+      setOrder(queue.map((_, i) => i));
+      setPosInOrder(currentIndex >= 0 ? currentIndex : 0);
+    });
     socket.on("playback-sync", (fullRoom) => {
       applyingRemoteRef.current = true;
       setRoom(fullRoom);
@@ -823,6 +868,7 @@ export function PlayerProvider({ children }) {
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
+    removeFromQueue, moveQueueItem, clearUpNext, selectQueuePosition,
     playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, refreshPlaylists,
     registerProgressEl,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
