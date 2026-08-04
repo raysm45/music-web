@@ -2,13 +2,16 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Search, X, Clock, TrendingUp } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { useUI } from "../context.jsx";
+import { useRouter } from "../router.jsx";
 import { TrackRow, SkeletonList } from "../components.jsx";
+import { SmartCover } from "../lib/brand.jsx";
 import { debounce } from "../lib/utils.js";
 
 const GENRE_SHORTCUTS = ["Pop", "Hip-Hop", "R&B", "Indie", "Rock", "Electronic", "Jazz", "Dangdut", "K-Pop", "Reggae", "Klasik", "Akustik"];
 
 export function SearchPage() {
   const { authUser, settings, t } = useUI();
+  const { navigate } = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -17,6 +20,7 @@ export function SearchPage() {
   const [recent, setRecent] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [lyricsMap, setLyricsMap] = useState({});
+  const [artistHit, setArtistHit] = useState(null);
   const inputRef = useRef(null);
 
   const debouncedSuggest = useRef(debounce((q) => {
@@ -33,10 +37,20 @@ export function SearchPage() {
 
   const doSearch = async (q) => {
     const trimmed = q.trim();
-    if (!trimmed) { setResults([]); setHasSearched(false); setSearching(false); return; }
+    if (!trimmed) { setResults([]); setHasSearched(false); setSearching(false); setArtistHit(null); return; }
     const seq = ++requestSeqRef.current;
     setSearching(true);
     setHasSearched(true);
+    setArtistHit(null);
+
+    Api.artistQuick(trimmed).then((res) => {
+      if (seq !== requestSeqRef.current) return;
+      setArtistHit(res || null);
+    }).catch(() => {
+      if (seq !== requestSeqRef.current) return;
+      setArtistHit(null);
+    });
+
     try {
       const res = await Api.search(trimmed);
       if (seq !== requestSeqRef.current)
@@ -153,6 +167,26 @@ export function SearchPage() {
             </div>
           </section>
         </>
+      )}
+
+      {hasSearched && artistHit && (
+        <section className="aivy-section" style={{ marginTop: 4 }}>
+          <div className="aivy-section-head"><h2 className="aivy-section-title">{t("artistLabel")}</h2></div>
+          <div
+            className="aivy-row"
+            style={{ cursor: "pointer" }}
+            onClick={() => navigate("artist", { params: { id: artistHit.id } })}
+          >
+            <SmartCover
+              src={artistHit.image} seed={"artist" + artistHit.id + artistHit.name} size={48} radius={999}
+              style={{ width: 48, height: 48, borderRadius: "50%" }}
+            />
+            <div className="meta">
+              <span className="t">{artistHit.name}</span>
+              <span className="a">{t("artistLabel")}</span>
+            </div>
+          </div>
+        </section>
       )}
 
       {hasSearched && (

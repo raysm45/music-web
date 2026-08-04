@@ -31,6 +31,7 @@ export const Api = {
     apiGet(`/api/discover?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 20}`),
   search: (q) => apiGet(`/api/search?q=${encodeURIComponent(q)}`),
   artist: (q) => apiGet(`/api/artist?q=${encodeURIComponent(q)}`),
+  artistQuick: (q) => apiGet(`/api/artist/quick?q=${encodeURIComponent(q)}`),
   album: (id) => apiGet(`/api/album/${id}`),
   track: (id) => apiGet(`/api/track/${id}`),
   similar: (args) =>

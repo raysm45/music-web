@@ -162,10 +162,15 @@ export function usePlayer() { return useContext(PlayerCtx); }
 
 function normalizeTrack(raw) {
   if (!raw) return null;
-  if (raw.videoId && !raw.id) {
+  // Penanda track asli Deezer adalah artist.id (selalu ada dari mapTrack backend).
+  // Jangan pakai "!raw.id" sebagai penanda, karena banyak tempat di frontend
+  // (search, liked songs, room queue) sengaja set id = videoId untuk track dari
+  // YouTube -- kalau dites pakai !raw.id, track itu malah kebaca sebagai track
+  // Deezer dan videoId-nya dikirim sebagai trackId Deezer ke /api/similar (error).
+  if (raw.videoId && !raw.artist?.id) {
     return {
       id: raw.videoId, videoId: raw.videoId, title: raw.title,
-      artist: null, album: null, cover: raw.thumbnail || null,
+      artist: raw.artist || null, album: raw.album || null, cover: raw.thumbnail || raw.cover || null,
       duration: raw.duration || null, preview: null, source: "youtube",
     };
   }
