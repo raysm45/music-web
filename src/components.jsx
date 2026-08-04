@@ -879,9 +879,7 @@ export function QueueBody() {
             <Radio size={12} /><span>{t("suggestedSongsLabel")}</span>
           </div>
           <div className="aivy-queue-suggested-hint">{t("suggestedSongsHint")}</div>
-          {suggestedQueue.map((tr, i) => (
-            <QueueSuggestedRow key={`s-${tr.id}-${i}`} track={tr} onAdd={() => promoteSuggestion(tr)} />
-          ))}
+          <QueueSuggestedRow track={suggestedQueue[0]} onAdd={() => promoteSuggestion(suggestedQueue[0])} />
         </>
       )}
 

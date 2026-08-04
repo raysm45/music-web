@@ -627,7 +627,7 @@ export function PlayerProvider({ children }) {
         .map(normalizeTrack)
         .filter(Boolean)
         .filter((t) => t.id !== seedTrack.id && !knownIds.has(String(t.id)));
-      setSuggestedQueue(items.slice(0, 12));
+      setSuggestedQueue(items.slice(0, 5));
     }).catch(() => {
       if (seq !== suggestSeqRef.current) return;
       setSuggestedQueue([]);

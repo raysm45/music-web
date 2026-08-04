@@ -23,29 +23,55 @@ function useActiveOnScreen(threshold = 0.65) {
 function ShortCard({ track, muted, onToggleMute }) {
   const [ref, active] = useActiveOnScreen();
   const [videoId, setVideoId] = useState(track.videoId || null);
-  const [resolving, setResolving] = useState(false);
+  const resolvingRef = useRef(false);
+  const audioRef = useRef(null);
   const { liked, toggleLike, playRadio, addToQueueEnd } = usePlayer();
   const { navigate } = useRouter();
   const { t, pushToast } = useUI();
   const isLiked = liked.has(String(track.videoId || track.id));
+  const hasPreview = !!track.preview;
 
   useEffect(() => {
-    if (!active || videoId || resolving) return;
+    if (!active || videoId || resolvingRef.current) return;
+    resolvingRef.current = true;
     let alive = true;
-    setResolving(true);
     Api.search(`${track.title} ${track.artist?.name || ""}`.trim())
       .then((res) => { if (alive && res?.[0]?.videoId) setVideoId(res[0].videoId); })
       .catch(() => {})
-      .finally(() => { if (alive) setResolving(false); });
+      .finally(() => { resolvingRef.current = false; });
     return () => { alive = false; };
-  }, [active, videoId, resolving, track]);
+  }, [active, videoId, track]);
 
-  const embedSrc = active && videoId
-    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${videoId}&playsinline=1&modestbranding=1&rel=0`
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !hasPreview) return;
+    if (active) {
+      audio.currentTime = 0;
+      audio.muted = muted;
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [active, hasPreview]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = muted;
+  }, [muted]);
+
+  const handlePlayFull = () => {
+    audioRef.current?.pause();
+    playRadio(track);
+    pushToast(t("toastPlayingFullSong"));
+  };
+
+  const videoActive = active && videoId;
+  const embedSrc = videoActive
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${hasPreview ? 1 : (muted ? 1 : 0)}&controls=0&loop=1&playlist=${videoId}&start=0&end=30&playsinline=1&modestbranding=1&rel=0`
     : "";
 
   return (
     <div className="aivy-short-slide" ref={ref}>
+      {hasPreview && <audio ref={audioRef} src={track.preview} loop preload="none" />}
       <div className="aivy-short-media">
         {embedSrc ? (
           <iframe
@@ -79,7 +105,7 @@ function ShortCard({ track, muted, onToggleMute }) {
           <button className="aivy-short-action" onClick={() => { addToQueueEnd(track); }} aria-label={t("menuAddQueue")}>
             <Plus size={22} />
           </button>
-          <button className="aivy-short-action primary" onClick={() => { playRadio(track); pushToast(t("toastPlayingFullSong")); }} aria-label={t("shortsPlayFull")}>
+          <button className="aivy-short-action primary" onClick={handlePlayFull} aria-label={t("shortsPlayFull")}>
             <Music2 size={20} />
           </button>
         </div>
@@ -94,7 +120,7 @@ export function ShortsPage() {
   const [items, setItems] = useState([]);
   const [cursor, setCursor] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
   const sentinelRef = useRef(null);
   const seenIds = useRef(new Set());
 

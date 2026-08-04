@@ -24,20 +24,24 @@ export function LibraryPage() {
           </div>
           <div className="title">{t("navLikedSongs")}</div><div className="sub">{liked.size} {t("songsCount")}</div>
         </Link>
-        {playlists.map((pl) => (
-          <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-card" style={{ textAlign: "left" }}>
-            <div className="art-wrap">
-              {pl.songs?.[0]?.cover ? (
-                <SmartCover src={pl.songs[0].cover} seed={"pl" + pl.id} size={160} radius={10} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
-              ) : (
-                <div style={{ width: "100%", aspectRatio: "1", borderRadius: "var(--radius-md)", background: "var(--bg-elev-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <LibraryIcon size={26} color="var(--ink-faint)" />
-                </div>
-              )}
-            </div>
-            <div className="title">{pl.name}</div><div className="sub">{pl.songs?.length || 0} {t("songsCount")}</div>
-          </Link>
-        ))}
+        {playlists.map((pl) => {
+          const cover = pl.songs?.[0]?.cover ?? pl.cover_thumbnail ?? null;
+          const count = pl.songs ? pl.songs.length : (pl.song_count ?? 0);
+          return (
+            <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-card" style={{ textAlign: "left" }}>
+              <div className="art-wrap">
+                {cover ? (
+                  <SmartCover src={cover} seed={"pl" + pl.id} size={160} radius={10} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+                ) : (
+                  <div style={{ width: "100%", aspectRatio: "1", borderRadius: "var(--radius-md)", background: "var(--bg-elev-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <LibraryIcon size={26} color="var(--ink-faint)" />
+                  </div>
+                )}
+              </div>
+              <div className="title">{pl.name}</div><div className="sub">{count} {t("songsCount")}</div>
+            </Link>
+          );
+        })}
       </div>
       {playlists.length === 0 && <p className="eyebrow" style={{ padding: "8px 2px" }}>{t("noPlaylistsYetLong")}</p>}
     </div>
