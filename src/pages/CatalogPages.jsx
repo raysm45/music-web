@@ -31,8 +31,12 @@ export function ArtistPage() {
   const tracks = showAllTracks ? topTracks : topTracks.slice(0, 5);
 
   return (
-    <div className="aivy-view-enter">
-      <div className="aivy-hero">
+    <div className="aivy-view-enter aivy-artist-page">
+      <div className="aivy-artist-banner">
+        <SmartCover src={artist.banner || artist.image} seed={"banner" + artist.id + artist.name} size={1200} radius={0} style={{ width: "100%", height: "100%" }} />
+        <div className="aivy-artist-banner-fade" />
+      </div>
+      <div className="aivy-hero aivy-artist-hero">
         <div className="art round"><SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={176} radius={999} style={{ width: 176, height: 176, borderRadius: "50%" }} /></div>
         <div className="aivy-hero-meta">
           <div className="eyebrow">{t("artistLabel")}</div>

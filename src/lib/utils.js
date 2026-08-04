@@ -19,15 +19,7 @@ export function formatTime(sec) {
 
 export function formatDuration(sec) {
   if (!isFinite(sec) || sec <= 0) return "\u2013";
-  const total = Math.floor(sec);
-  const h = Math.floor(total / 3600);
-  if (h >= 1) {
-    const m = Math.floor((total % 3600) / 60);
-    return m > 0 ? `${h} jam ${m} menit` : `${h} jam`;
-  }
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
+  return formatTime(sec);
 }
 
 export function parseLRC(lrc) {

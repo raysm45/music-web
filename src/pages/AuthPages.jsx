@@ -1,21 +1,23 @@
 import React, { useEffect, useState, useRef } from "react";
-import { LogIn, Users, Heart, Share2, Sparkles, ChevronDown, AlertTriangle, ShieldCheck, Music2 } from "lucide-react";
-import { LeafMark, IvyFallLoader } from "../lib/brand.jsx";
+import { LogIn, Users, Heart, Share2, Sparkles, ChevronDown, AlertTriangle, ShieldCheck, Music2, Radio, Waves } from "lucide-react";
+import { LeafMark, IvyFallLoader, SmartCover } from "../lib/brand.jsx";
 import { useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
 
 const STEPS = [
-  { title: "Masuk sekali pakai Discord", body: "Ga perlu bikin akun baru atau nginget password lagi — satu klik, langsung siap dengerin." },
-  { title: "Jelajahi & simpan yang kamu suka", body: "Cari lagu, susun playlist, tandain favorit — semua kesukaan kamu ke-inget tiap kamu balik lagi." },
-  { title: "Buka ruang, ajak temen dengerin bareng", body: "Semua orang di ruang yang sama denger lagu yang sama, di detik yang sama, walau beda kota." },
+  { title: "Masuk sekali dengan Discord", body: "Tidak perlu akun baru atau kata sandi tambahan. Satu kali klik, dan kamu langsung berada di dalam." },
+  { title: "Jelajahi dan simpan pilihanmu", body: "Cari lagu, susun playlist, dan tandai favorit. Setiap preferensi kamu tersimpan rapi untuk kunjungan berikutnya." },
+  { title: "Dengarkan bersama, di mana saja", body: "Buka sebuah ruang dan ajak orang lain bergabung. Semua mendengar lagu yang sama, pada detik yang sama." },
 ];
 
 const FAQS = [
-  { q: "Apakah AIVY gratis dipakai?", a: "Iya. AIVY dibikin buat dipakai santai bareng temen — fitur-fitur utamanya ga bayar." },
-  { q: "Kenapa masuknya harus lewat Discord?", a: "Biar kamu ga perlu bikin & nginget password baru. AIVY cuma minta info profil dasar (nama & foto) buat nampilin akun kamu." },
-  { q: "Gimana cara dengerin bareng temen?", a: "Buka halaman Ruang, bikin ruang baru, terus bagiin link ruangnya ke temen kamu. Semua orang denger di detik yang sama." },
-  { q: "Data saya aman ga?", a: "Kami cuma nyimpen apa yang perlu buat AIVY jalan — riwayat putar, playlist, dan preferensi kamu." },
+  { q: "Apakah AIVY berbayar?", a: "Tidak. Seluruh fitur inti AIVY dapat digunakan tanpa biaya, dirancang untuk dipakai setiap hari." },
+  { q: "Mengapa masuk harus melalui Discord?", a: "Supaya kamu tidak perlu membuat dan mengingat kata sandi baru. AIVY hanya meminta nama dan foto profil dasar untuk menampilkan akunmu." },
+  { q: "Bagaimana cara mendengarkan bersama teman?", a: "Buka halaman Ruang, buat ruang baru, lalu bagikan tautannya. Setiap orang yang bergabung mendengar di detik yang sama." },
+  { q: "Apakah data saya aman?", a: "Kami hanya menyimpan yang diperlukan agar AIVY berjalan — riwayat putar, playlist, dan preferensi tampilanmu." },
 ];
+
+const MOOD_CHIPS = ["Fokus", "Santai", "Perjalanan", "Malam Hari", "Semangat Pagi", "Nostalgia", "Hujan", "Kerja", "Lari Pagi", "Akustik"];
 
 function useRevealOnScroll(containerRef) {
   useEffect(() => {
@@ -32,6 +34,76 @@ function useRevealOnScroll(containerRef) {
   }, [containerRef]);
 }
 
+function useSpotlight(ref) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onMove = (e) => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      el.style.setProperty("--my", `${e.clientY - r.top}px`);
+    };
+    el.addEventListener("pointermove", onMove);
+    return () => el.removeEventListener("pointermove", onMove);
+  }, [ref]);
+}
+
+function useMagnetic(ref, strength = 16) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onMove = (e) => {
+      const r = el.getBoundingClientRect();
+      const dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+      const dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+      el.style.transform = `translate(${dx * strength}px, ${dy * strength * 0.6}px)`;
+    };
+    const onLeave = () => { el.style.transform = "translate(0, 0)"; };
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerleave", onLeave);
+    return () => { el.removeEventListener("pointermove", onMove); el.removeEventListener("pointerleave", onLeave); };
+  }, [ref, strength]);
+}
+
+function useTilt(ref, strength = 10) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onMove = (e) => {
+      const r = el.getBoundingClientRect();
+      const dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+      const dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+      el.style.transform = `perspective(900px) rotateY(${dx * strength}deg) rotateX(${-dy * strength}deg) scale(1.015)`;
+    };
+    const onLeave = () => { el.style.transform = "perspective(900px) rotateY(0) rotateX(0) scale(1)"; };
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerleave", onLeave);
+    return () => { el.removeEventListener("pointermove", onMove); el.removeEventListener("pointerleave", onLeave); };
+  }, [ref, strength]);
+}
+
+function PreviewMockup() {
+  const tiltRef = useRef(null);
+  useTilt(tiltRef, 7);
+  return (
+    <div className="aivy-preview-mock" ref={tiltRef}>
+      <div className="aivy-preview-mock-glow" />
+      <div className="aivy-preview-mock-row">
+        <div className="art"><SmartCover seed="aivy-preview-hero" size={64} radius={12} style={{ width: 52, height: 52 }} /></div>
+        <div className="txt">
+          <div className="t">Perjalanan Sore</div>
+          <div className="a">Studio Ivy \u00b7 Lagu Instrumental</div>
+        </div>
+        <Waves size={18} color="var(--moss-strong)" className="wave" />
+      </div>
+      <div className="aivy-preview-mock-bar"><span style={{ width: "62%" }} /></div>
+      <div className="aivy-preview-mock-tags">
+        <span><Radio size={12} /> Radio otomatis aktif</span>
+      </div>
+    </div>
+  );
+}
+
 export function LandingPage() {
   const { authUser, authChecked, login } = useUI();
   const { navigate } = useRouter();
@@ -41,6 +113,10 @@ export function LandingPage() {
   const heroRef = useRef(null);
   const landingRef = useRef(null);
   const storyRef = useRef(null);
+  const spotlightRef = useRef(null);
+  const ctaRef = useRef(null);
+  useSpotlight(spotlightRef);
+  useMagnetic(ctaRef, 10);
 
   useEffect(() => {
     if (authChecked && authUser) navigate("home", { replace: true });
@@ -101,15 +177,26 @@ export function LandingPage() {
           <div className="aivy-vine-fill" style={{ transform: `scaleY(${vineProgress})` }} />
         </div>
 
-        <section className="aivy-landing-hero" ref={heroRef}>
-          <LeafMark size={56} color="var(--moss-strong)" />
-          <h1 className="font-display">Musik yang tumbuh bareng selera kamu</h1>
-          <p>
-            AIVY dengerin pelan-pelan, ga buru-buru. Jelajahi lagu baru, bikin playlist,
-            dan dengerin bareng temen di ruang yang sama — semuanya di satu tempat yang tenang.
+        <section className="aivy-landing-hero" ref={(el) => { heroRef.current = el; spotlightRef.current = el; }}>
+          <div className="aivy-hero-spotlight" aria-hidden="true" />
+          <div className="eyebrow aivy-hero-eyebrow reveal">Platform mendengarkan musik</div>
+          <h1 className="font-display reveal">Musik yang tumbuh bersama seleramu</h1>
+          <p className="reveal">
+            AIVY membantumu menjelajahi lagu baru, menyusun playlist, dan mendengarkan bersama
+            teman di ruang yang sama — dirancang tenang, tanpa distraksi yang tidak perlu.
           </p>
-          <button className="aivy-btn-primary lg" onClick={login}><LogIn size={17} /> Masuk dengan Discord</button>
+          <button className="aivy-btn-primary lg reveal" onClick={login} ref={ctaRef}><LogIn size={17} /> Masuk dengan Discord</button>
+
+          <div className="aivy-hero-preview reveal"><PreviewMockup /></div>
         </section>
+
+        <div className="aivy-marquee-wrap reveal" aria-hidden="true">
+          <div className="aivy-marquee">
+            <div className="aivy-marquee-track">
+              {[...MOOD_CHIPS, ...MOOD_CHIPS].map((m, i) => <span key={i} className="aivy-marquee-chip">{m}</span>)}
+            </div>
+          </div>
+        </div>
 
         <div className="aivy-landing-steps">
           {STEPS.map((s, i) => (
@@ -127,33 +214,33 @@ export function LandingPage() {
       <section className="aivy-landing-features">
         <div className="aivy-feature-card reveal">
           <Sparkles size={22} color="var(--moss-strong)" />
-          <h3>Jelajah tanpa ujung</h3>
-          <p>Beranda yang terus nawarin lagu baru sesuai yang kamu suka, ga pernah kehabisan.</p>
+          <h3>Jelajah tanpa batas</h3>
+          <p>Beranda yang terus menyesuaikan diri dengan seleramu, dengan radio otomatis saat antreanmu habis.</p>
         </div>
         <div className="aivy-feature-card reveal">
           <Users size={22} color="var(--moss-strong)" />
-          <h3>Dengerin bareng</h3>
-          <p>Buka ruang, ajak temen, semua orang denger lagu yang sama di waktu yang sama.</p>
+          <h3>Mendengarkan bersama</h3>
+          <p>Buka sebuah ruang, undang teman, dan dengarkan lagu yang sama secara real-time bersama.</p>
         </div>
         <div className="aivy-feature-card reveal">
           <Heart size={22} color="var(--moss-strong)" />
-          <h3>Playlist kamu</h3>
-          <p>Simpan yang kamu suka, susun playlist sendiri, gampang ditemuin lagi kapan aja.</p>
+          <h3>Koleksi milikmu</h3>
+          <p>Simpan yang kamu suka dan susun playlist sendiri, mudah ditemukan kembali kapan pun.</p>
         </div>
         <div className="aivy-feature-card reveal">
           <Share2 size={22} color="var(--moss-strong)" />
-          <h3>Gampang dibagi</h3>
-          <p>Klik kanan lagu mana aja buat langsung salin link-nya ke temen.</p>
+          <h3>Mudah dibagikan</h3>
+          <p>Klik kanan pada lagu apa pun untuk langsung menyalin tautannya kepada teman.</p>
         </div>
       </section>
 
       <section className="aivy-landing-quote reveal">
-        <blockquote>{"\u201cGa semua hal harus buru-buru. Kadang yang paling nempel itu yang tumbuh pelan-pelan.\u201d"}</blockquote>
+        <blockquote>{"\u201cTidak semua hal perlu terburu-buru. Yang paling membekas biasanya yang tumbuh perlahan.\u201d"}</blockquote>
         <cite>Filosofi di balik AIVY</cite>
       </section>
 
       <section className="aivy-landing-faq reveal">
-        <h2 className="font-display">Pertanyaan yang sering ditanyain</h2>
+        <h2 className="font-display">Pertanyaan yang sering diajukan</h2>
         <div className="aivy-faq-list">
           {FAQS.map((f, i) => (
             <div key={f.q} className={`aivy-faq-item ${faqOpen === i ? "open" : ""}`}>
@@ -171,27 +258,27 @@ export function LandingPage() {
         <div className="aivy-footer-grid">
           <div className="aivy-footer-brand reveal">
             <div className="aivy-brand"><LeafMark size={22} color="var(--moss-strong)" /><span className="word font-display">AIVY</span></div>
-            <p>Terinspirasi dari tanaman ivy yang tumbuh pelan tapi menjalar ke mana-mana — AIVY nemenin kamu jelajah musik dengan ritme sendiri.</p>
+            <p>Terinspirasi dari tanaman ivy yang tumbuh perlahan namun menjalar ke mana-mana — AIVY menemanimu menjelajahi musik dengan ritme sendiri.</p>
           </div>
           <div className="aivy-footer-col reveal">
             <h4>Jelajah</h4>
             <ul>
-              <li>Pencarian musik<span>Temukan lagu & artis baru</span></li>
-              <li>Playlist pribadi<span>Susun koleksi favorit kamu</span></li>
-              <li>Ruang dengerin bareng<span>Dengerin bareng temen real-time</span></li>
+              <li>Pencarian musik<span>Temukan lagu dan artis baru</span></li>
+              <li>Playlist pribadi<span>Susun koleksi favoritmu</span></li>
+              <li>Ruang dengar bersama<span>Dengarkan bersama teman secara real-time</span></li>
             </ul>
           </div>
           <div className="aivy-footer-col reveal">
             <h4>Akun</h4>
             <ul>
-              <li>Masuk dengan Discord<span>Satu klik, tanpa password baru</span></li>
-              <li>Riwayat & suka<span>Ke-simpen otomatis tiap kamu dengerin</span></li>
+              <li>Masuk dengan Discord<span>Satu klik, tanpa kata sandi baru</span></li>
+              <li>Riwayat dan favorit<span>Tersimpan otomatis setiap kamu mendengarkan</span></li>
             </ul>
           </div>
         </div>
         <div className="aivy-footer-bottom">
           <span className="mark"><LeafMark size={16} color="var(--ink-faint)" /> AIVY</span>
-          <span>Dibikin buat yang suka dengerin musik pelan-pelan.</span>
+          <span>Dibuat untuk siapa pun yang menikmati musik dengan tenang.</span>
         </div>
       </footer>
     </div>
@@ -199,10 +286,10 @@ export function LandingPage() {
 }
 
 const LOGIN_ERRORS = {
-  discord_denied: "Kamu batalin proses masuk lewat Discord. Coba lagi kalau berubah pikiran.",
-  no_code: "Proses masuk kegangu di tengah jalan. Coba klik tombolnya sekali lagi ya.",
-  user_not_found: "Akun kamu ga ketemu setelah masuk. Coba ulang beberapa saat lagi.",
-  login_failed: "Ada gangguan pas nyambungin akun Discord kamu. Coba lagi sebentar lagi.",
+  discord_denied: "Proses masuk melalui Discord dibatalkan. Silakan coba lagi kapan saja.",
+  no_code: "Proses masuk terhenti di tengah jalan. Coba klik tombolnya sekali lagi.",
+  user_not_found: "Akun kamu tidak ditemukan setelah proses masuk. Coba ulangi beberapa saat lagi.",
+  login_failed: "Terjadi gangguan saat menghubungkan akun Discord kamu. Silakan coba lagi sebentar lagi.",
 };
 
 export function LoginPage() {
@@ -228,11 +315,11 @@ export function LoginPage() {
         <div className="aivy-blob b1" />
         <div className="aivy-blob b3" />
         <div className="aivy-brand"><LeafMark size={24} color="var(--moss-strong)" /><span className="word font-display">AIVY</span></div>
-        <p className="aivy-login-visual-quote">{"\u201cMusik yang tumbuh pelan bareng selera kamu, bukan yang dijejelin ke kamu.\u201d"}</p>
+        <p className="aivy-login-visual-quote">{"\u201cMusik yang tumbuh perlahan bersama seleramu, bukan yang dipaksakan kepadamu.\u201d"}</p>
         <div className="aivy-login-visual-points">
-          <div className="aivy-login-visual-point"><Music2 size={17} color="var(--moss-strong)" /><span>Beranda yang belajar dari yang kamu suka</span></div>
-          <div className="aivy-login-visual-point"><Users size={17} color="var(--moss-strong)" /><span>Ruang buat dengerin bareng temen real-time</span></div>
-          <div className="aivy-login-visual-point"><ShieldCheck size={17} color="var(--moss-strong)" /><span>Cuma minta info profil dasar Discord kamu</span></div>
+          <div className="aivy-login-visual-point"><Music2 size={17} color="var(--moss-strong)" /><span>Beranda yang terus menyesuaikan diri dengan seleramu</span></div>
+          <div className="aivy-login-visual-point"><Users size={17} color="var(--moss-strong)" /><span>Ruang untuk mendengarkan bersama teman secara real-time</span></div>
+          <div className="aivy-login-visual-point"><ShieldCheck size={17} color="var(--moss-strong)" /><span>Hanya meminta informasi profil dasar Discord kamu</span></div>
         </div>
       </div>
 
@@ -240,7 +327,7 @@ export function LoginPage() {
         <div className="aivy-login-card">
           <LeafMark size={40} color="var(--moss-strong)" />
           <h1 className="font-display">Masuk ke AIVY</h1>
-          <p>Pakai akun Discord kamu buat nyimpen lagu, bikin playlist, dan dengerin bareng temen di ruang.</p>
+          <p>Gunakan akun Discord kamu untuk menyimpan lagu, membuat playlist, dan mendengarkan bersama teman di ruang.</p>
 
           {errorCode && (
             <div className="aivy-login-error" role="alert">
@@ -252,10 +339,10 @@ export function LoginPage() {
           {!authChecked ? (
             <div style={{ padding: "18px 0" }}><IvyFallLoader size={30} /></div>
           ) : (
-            <button className="aivy-btn-primary lg" onClick={login}><LogIn size={17} /> Lanjut dengan Discord</button>
+            <button className="aivy-btn-primary lg" onClick={login}><LogIn size={17} /> Lanjutkan dengan Discord</button>
           )}
-          <span className="aivy-login-fineprint">Kami cuma minta akses nama & foto profil Discord kamu — bukan pesan atau server kamu.</span>
-          <Link to="landing" className="aivy-login-back">{"\u2190 Balik ke halaman depan"}</Link>
+          <span className="aivy-login-fineprint">Kami hanya meminta akses nama dan foto profil Discord kamu — bukan pesan atau server kamu.</span>
+          <Link to="landing" className="aivy-login-back">{"\u2190 Kembali ke halaman depan"}</Link>
         </div>
       </div>
     </div>

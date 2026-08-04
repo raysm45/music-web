@@ -5,12 +5,12 @@ import {
   VolumeX, Heart, Search, Home as HomeIcon, Library, ListMusic, ChevronDown,
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
-  Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2,
+  Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film,
 } from "lucide-react";
 import { usePlayer, useUI } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, parseLRC } from "./lib/utils.js";
+import { formatTime, formatDuration, relativeTime, parseLRC, clamp } from "./lib/utils.js";
 
 export class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -57,12 +57,32 @@ export function VolumeControl() {
   const { volume, muted, setVolume, toggleMute } = usePlayer();
   const { t } = useUI();
   const trackRef = useRef(null);
+  const rootRef = useRef(null);
   const [dragging, setDragging] = useState(false);
+  const [bumping, setBumping] = useState(false);
+  const bumpTimerRef = useRef(null);
   const effective = muted ? 0 : volume;
   const ratioFromEvent = (e) => { const r = trackRef.current.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); };
   const VolIcon = effective === 0 ? VolumeX : effective < 0.5 ? Volume1 : Volume2;
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? -e.deltaY : e.deltaX;
+      const step = delta > 0 ? 0.05 : -0.05;
+      setVolume(clamp(effective + step, 0, 1));
+      setBumping(true);
+      clearTimeout(bumpTimerRef.current);
+      bumpTimerRef.current = setTimeout(() => setBumping(false), 260);
+    };
+    root.addEventListener("wheel", onWheel, { passive: false });
+    return () => { root.removeEventListener("wheel", onWheel); clearTimeout(bumpTimerRef.current); };
+  }, [effective, setVolume]);
+
   return (
-    <div className="aivy-vol">
+    <div className={`aivy-vol ${bumping ? "is-bumping" : ""}`} ref={rootRef}>
       <button className="aivy-icon-btn sm" onClick={toggleMute} aria-label={muted ? t("unmute") : t("mute")}><VolIcon size={17} /></button>
       <div
         ref={trackRef} className="track"
@@ -246,6 +266,24 @@ export function CustomSelect({ value, options, onChange, placeholder, className 
         document.body
       )}
     </div>
+  );
+}
+
+export function Checkbox({ checked, onChange, label, disabled = false, className = "" }) {
+  return (
+    <label className={`aivy-checkbox ${checked ? "is-checked" : ""} ${disabled ? "is-disabled" : ""} ${className}`}>
+      <button
+        type="button"
+        className="aivy-checkbox-box"
+        role="checkbox"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
+      >
+        <Check size={13} className="aivy-checkbox-mark" />
+      </button>
+      {label && <span className="aivy-checkbox-label">{label}</span>}
+    </label>
   );
 }
 
@@ -791,8 +829,27 @@ function QueueUpNextList({ items }) {
   );
 }
 
+function QueueSuggestedRow({ track, onAdd }) {
+  const { liked, toggleLike } = usePlayer();
+  const { t } = useUI();
+  const isLiked = liked.has(String(track.videoId || track.id));
+  return (
+    <div className="aivy-queue-row is-suggested">
+      <QueueTrackMeta track={track} />
+      <div className="aivy-queue-row-actions">
+        <button className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`} onClick={() => toggleLike(track)} aria-label={t("like")}>
+          <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
+        </button>
+        <button className="aivy-icon-btn sm" onClick={onAdd} aria-label={t("menuAddQueue")}>
+          <Plus size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function QueueBody() {
-  const { currentTrack, upNext, history, selectQueuePosition, clearUpNext } = usePlayer();
+  const { currentTrack, upNext, history, selectQueuePosition, clearUpNext, suggestedQueue, promoteSuggestion, room } = usePlayer();
   const { t } = useUI();
 
   if (!currentTrack) {
@@ -814,6 +871,18 @@ export function QueueBody() {
         <QueueUpNextList items={upNext} />
       ) : (
         <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>
+      )}
+
+      {!room && suggestedQueue.length > 0 && (
+        <>
+          <div className="aivy-drawer-sub eyebrow aivy-queue-suggested-head">
+            <Radio size={12} /><span>{t("suggestedSongsLabel")}</span>
+          </div>
+          <div className="aivy-queue-suggested-hint">{t("suggestedSongsHint")}</div>
+          {suggestedQueue.map((tr, i) => (
+            <QueueSuggestedRow key={`s-${tr.id}-${i}`} track={tr} onAdd={() => promoteSuggestion(tr)} />
+          ))}
+        </>
       )}
 
       {history.length > 0 && <div className="aivy-drawer-sub eyebrow">{t("playedLabel")}</div>}
@@ -872,6 +941,7 @@ const NAV_ITEMS = [
   { route: "home", labelKey: "navHome", icon: HomeIcon },
   { route: "search", labelKey: "navSearch", icon: Search },
   { route: "library", labelKey: "navLibrary", icon: Library },
+  { route: "shorts", labelKey: "navShorts", icon: Film },
   { route: "roomLobby", labelKey: "navRooms", icon: Users },
 ];
 
@@ -949,7 +1019,7 @@ export function TopBar({ isMobile }) {
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, [name]);
-  const titleMap = { search: t("navSearch"), library: t("navLibrary"), roomLobby: t("navRooms"), room: t("navRooms"), liked: t("navLikedSongs"), settings: t("navSettings"), home: "" };
+  const titleMap = { search: t("navSearch"), library: t("navLibrary"), roomLobby: t("navRooms"), room: t("navRooms"), liked: t("navLikedSongs"), settings: t("navSettings"), shorts: t("navShorts"), home: "" };
   return (
     <div className={`aivy-topbar ${scrolled ? "scrolled" : ""}`}>
       {isMobile ? (

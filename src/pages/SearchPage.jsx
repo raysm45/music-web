@@ -115,7 +115,7 @@ export function SearchPage() {
             onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)}
             onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) runSearch(query.trim()); }}
           />
-          {query && <button className="aivy-icon-btn sm" style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)" }} onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); }} aria-label={t("clear")}><X size={14} /></button>}
+          {query && <button className="aivy-icon-btn sm aivy-search-clear" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); }} aria-label={t("clear")}><X size={14} /></button>}
         </div>
 
         {focused && query.trim() && suggestions.length > 0 && (

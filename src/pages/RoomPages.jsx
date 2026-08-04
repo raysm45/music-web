@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Users, Lock, Globe, Plus, LogIn, Play, Search as SearchIcon } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
-import { TrackRow, ViewLoading } from "../components.jsx";
+import { TrackRow, ViewLoading, Checkbox } from "../components.jsx";
 import { relativeTime } from "../lib/utils.js";
 import { Api } from "../lib/api.js";
 
@@ -64,8 +64,8 @@ export function RoomLobbyPage() {
           <h3>{t("createRoom")}</h3>
           <input className="aivy-input" placeholder={t("roomNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
           <input className="aivy-input" type="password" placeholder={t("passwordOptional")} value={password} onChange={(e) => setPassword(e.target.value)} />
-          <label className="aivy-check-row"><input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} /> {t("publicRoomHint")}</label>
-          <label className="aivy-check-row"><input type="checkbox" checked={hostOnlyControl} onChange={(e) => setHostOnlyControl(e.target.checked)} /> {t("hostOnlyHint")}</label>
+          <Checkbox checked={isPublic} onChange={setIsPublic} label={t("publicRoomHint")} />
+          <Checkbox checked={hostOnlyControl} onChange={setHostOnlyControl} label={t("hostOnlyHint")} />
           <button className="aivy-btn-primary" disabled={creating} onClick={handleCreate}>{creating ? t("creatingRoom") : t("createRoomBtn")}</button>
         </div>
         <div className="aivy-room-card">

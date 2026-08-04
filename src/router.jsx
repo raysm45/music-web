@@ -8,6 +8,7 @@ const ROUTES = [
   ["library", "/koleksi"],
   ["libraryImport", "/koleksi/import"],
   ["liked", "/liked"],
+  ["shorts", "/shorts"],
   ["settings", "/setting"],
   ["roomLobby", "/ruang"],
   ["room", "/ruang/:id"],

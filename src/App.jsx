@@ -12,6 +12,7 @@ import { ArtistPage, AlbumPage } from "./pages/CatalogPages.jsx";
 import { LibraryPage, LikedPage, PlaylistPage, ImportPage } from "./pages/LibraryPages.jsx";
 import { RoomLobbyPage, RoomPage } from "./pages/RoomPages.jsx";
 import { SettingsPage } from "./pages/SettingsPage.jsx";
+import { ShortsPage } from "./pages/ShortsPage.jsx";
 
 function useIsMobile(breakpoint = 860) {
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia(`(max-width:${breakpoint}px)`).matches);
@@ -30,6 +31,7 @@ const PAGE_BY_ROUTE = {
   library: LibraryPage,
   libraryImport: ImportPage,
   liked: LikedPage,
+  shorts: ShortsPage,
   playlist: PlaylistPage,
   artist: ArtistPage,
   album: AlbumPage,
@@ -61,8 +63,8 @@ function AppInner() {
       {!isMobile && <Sidebar />}
       <main className="aivy-main">
         <TopBar isMobile={isMobile} />
-        <div id="aivy-content-scroll" className={`aivy-content aivy-scroll ${isMobile ? "is-mobile" : ""}`}
-          style={{ paddingBottom: isMobile ? (currentTrack ? 150 : 84) : 24 }}>
+        <div id="aivy-content-scroll" className={`aivy-content aivy-scroll ${isMobile ? "is-mobile" : ""} ${name === "shorts" ? "no-pad" : ""}`}
+          style={{ paddingBottom: name === "shorts" ? 0 : (isMobile ? (currentTrack ? 150 : 84) : 24) }}>
           <ErrorBoundary key={name + JSON.stringify(params)}><Page /></ErrorBoundary>
         </div>
       </main>

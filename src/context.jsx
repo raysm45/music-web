@@ -5,6 +5,7 @@ import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
 import { clamp, uid, debounce } from "./lib/utils.js";
 import { makeT } from "./lib/i18n.js";
+import { useDiscordActivity } from "./lib/discordActivity.js";
 
 export const EQ_BANDS_HZ = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 export const EQ_PRESETS = {
@@ -89,9 +90,19 @@ export function UIProvider({ children }) {
   }, []);
 
   const login = useCallback(() => { window.location.href = Api.discordLoginUrl(); }, []);
+  const loggingOutRef = useRef(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const logout = useCallback(async () => {
+    if (loggingOutRef.current) return;
+    loggingOutRef.current = true;
+    setLoggingOut(true);
+    setAuthUser(null);
+    const withTimeout = (promise, ms) => Promise.race([
+      promise,
+      new Promise((resolve) => setTimeout(resolve, ms)),
+    ]);
     try {
-      await Api.logout();
+      await withTimeout(Api.logout(), 3000);
     } catch {}
     window.location.href = "/";
   }, []);
@@ -135,7 +146,7 @@ export function UIProvider({ children }) {
   const toggleLyrics = useCallback(() => setLyricsOpen((o) => !o), []);
 
   const value = {
-    authUser, authChecked, login, logout,
+    authUser, authChecked, login, logout, loggingOut,
     settings, updateSettings, resetSettings,
     theme, toggleTheme, t,
     toasts, pushToast,
@@ -192,8 +203,13 @@ export function PlayerProvider({ children }) {
   const [room, setRoom] = useState(null);
   const [publicRooms, setPublicRooms] = useState([]);
   const [roomError, setRoomError] = useState(null);
+  const [roomSyncTick, setRoomSyncTick] = useState(0);
+  const roomSyncRef = useRef(null);
+  const [suggestedQueue, setSuggestedQueue] = useState([]);
+  const suggestedQueueRef = useRef([]);
+  useEffect(() => { suggestedQueueRef.current = suggestedQueue; }, [suggestedQueue]);
+  const addToQueueEndRef = useRef(null);
   const socketRef = useRef(null);
-  const applyingRemoteRef = useRef(false);
 
   const audioRef = useRef((() => {
     if (typeof Audio === "undefined") return null;
@@ -266,6 +282,12 @@ export function PlayerProvider({ children }) {
   const currentKey = currentTrack ? currentTrack.id : null;
   const inRoom = !!room;
 
+  const { updateActivity } = useDiscordActivity();
+  useEffect(() => {
+    if (!currentTrack) return;
+    updateActivity({ title: currentTrack.title, artist: currentTrack.artist?.name, isPlaying });
+  }, [currentKey, isPlaying, updateActivity]);
+
   useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []);
 
   const [currentTrackHasLyrics, setCurrentTrackHasLyrics] = useState(true);
@@ -287,7 +309,7 @@ export function PlayerProvider({ children }) {
 
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
-    Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.video_id))))).catch(() => {});
+    Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.videoId || r.id))))).catch(() => {});
     Api.playlists().then(setPlaylists).catch(() => {});
   }, [authUser]);
 
@@ -365,11 +387,12 @@ export function PlayerProvider({ children }) {
         return;
       }
       setIsPreviewClip(resolved.preview);
-      if (audio.src !== resolved.src) audio.src = resolved.src;
+      const isNewSrc = audio.src !== resolved.src;
+      if (isNewSrc) audio.src = resolved.src;
       audio.volume = muted ? 0 : volume;
       wasFadedOutRef.current = false;
       const graph = ensureAudioGraph();
-      if (graph && settings.crossfadeSeconds > 0) {
+      if (graph && settings.crossfadeSeconds > 0 && !inRoom) {
         graph.fadeGain.gain.cancelScheduledValues(graph.ctx.currentTime);
         graph.fadeGain.gain.setValueAtTime(0, graph.ctx.currentTime);
         graph.fadeGain.gain.linearRampToValueAtTime(1, graph.ctx.currentTime + settings.crossfadeSeconds);
@@ -377,10 +400,28 @@ export function PlayerProvider({ children }) {
         graph.fadeGain.gain.cancelScheduledValues(graph.ctx.currentTime);
         graph.fadeGain.gain.setValueAtTime(1, graph.ctx.currentTime);
       }
-      if (isPlaying) { resumeAudioCtx(); audio.play().catch(() => {}); }
+
+      let shouldPlay = isPlaying;
+      if (inRoom) {
+        const sync = roomSyncRef.current;
+        if (sync) {
+          if (sync.hardSeek || isNewSrc) audio.currentTime = sync.position || 0;
+          shouldPlay = isPlaying && sync.allowAutoplay;
+        }
+      }
+      if (shouldPlay) { resumeAudioCtx(); audio.play().catch(() => {}); }
     });
     return () => { cancelled = true; };
   }, [currentKey]);
+
+  useEffect(() => {
+    if (!inRoom) return;
+    const sync = roomSyncRef.current;
+    const audio = audioRef.current;
+    if (!sync || !audio || !currentTrack) return;
+    const drift = Math.abs((audio.currentTime || 0) - (sync.position || 0));
+    if (sync.hardSeek || drift > 1.5) audio.currentTime = sync.position || 0;
+  }, [roomSyncTick, inRoom]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -570,6 +611,52 @@ export function PlayerProvider({ children }) {
     }).catch(() => {});
   }, [inRoom, playSingle, authUser, settings.historyEnabled, shuffle, resumeAudioCtx]);
 
+  const suggestSeqRef = useRef(0);
+  useEffect(() => {
+    if (inRoom || !currentTrack) { setSuggestedQueue([]); return; }
+    const seq = ++suggestSeqRef.current;
+    const seedTrack = currentTrack;
+    const similarArgs = seedTrack.source === "deezer"
+      ? { trackId: seedTrack.id }
+      : { title: seedTrack.title, artist: seedTrack.artist?.name || "" };
+
+    Api.similar(similarArgs).then((res) => {
+      if (seq !== suggestSeqRef.current) return;
+      const knownIds = new Set(queueList.map((t) => String(t.id)));
+      const items = (res?.items || [])
+        .map(normalizeTrack)
+        .filter(Boolean)
+        .filter((t) => t.id !== seedTrack.id && !knownIds.has(String(t.id)));
+      setSuggestedQueue(items.slice(0, 12));
+    }).catch(() => {
+      if (seq !== suggestSeqRef.current) return;
+      setSuggestedQueue([]);
+    });
+  }, [currentKey, inRoom]);
+
+  const continueWithRadio = useCallback(() => {
+    const rq = suggestedQueueRef.current;
+    if (!rq.length) return false;
+    const [nextTrack, ...rest] = rq;
+    setSuggestedQueue(rest);
+    setQueueList((list) => {
+      const newList = [...list, nextTrack];
+      setOrder((ord) => [...ord, newList.length - 1]);
+      return newList;
+    });
+    setPosInOrder((p) => p + 1);
+    setIsPlaying(true);
+    if (authUser && settings.historyEnabled !== false) {
+      Api.addHistory(nextTrack.videoId || nextTrack.id, { title: nextTrack.title, artistName: nextTrack.artist?.name || null, thumbnail: nextTrack.cover, duration: nextTrack.duration }).catch(() => {});
+    }
+    return true;
+  }, [authUser, settings.historyEnabled]);
+
+  const promoteSuggestion = useCallback((track) => {
+    setSuggestedQueue((rq) => rq.filter((t) => t.id !== track.id));
+    addToQueueEndRef.current?.(track);
+  }, []);
+
   const togglePlay = useCallback(() => {
     if (!currentTrack) return;
     resumeAudioCtx();
@@ -582,17 +669,16 @@ export function PlayerProvider({ children }) {
 
   const next = useCallback((auto = false) => {
     if (inRoom) { socketRef.current?.emit("playback-control", { roomId: room.id, action: "next" }); return; }
-    setPosInOrder((p) => {
-      const isLast = p >= order.length - 1;
-      if (isLast) {
-        if (repeat === "all" && order.length) return 0;
-        if (!auto) return p;
-        setIsPlaying(false);
-        return p;
-      }
-      return p + 1;
-    });
-  }, [inRoom, room, order.length, repeat]);
+    const isLast = posInOrder >= order.length - 1;
+    if (isLast) {
+      if (repeat === "all" && order.length) { setPosInOrder(0); return; }
+      if (repeat !== "one" && settings.autoplay !== false && continueWithRadio()) return;
+      if (!auto) return;
+      setIsPlaying(false);
+      return;
+    }
+    setPosInOrder((p) => p + 1);
+  }, [inRoom, room, order.length, posInOrder, repeat, settings.autoplay, continueWithRadio]);
   const nextRef = useRef(next);
   useEffect(() => { nextRef.current = next; }, [next]);
 
@@ -655,6 +741,8 @@ export function PlayerProvider({ children }) {
 
   const addToQueueEnd = useCallback((rawTrack) => {
     const track = normalizeTrack(rawTrack);
+    if (!track) return;
+    setSuggestedQueue((rq) => rq.filter((t) => t.id !== track.id));
     if (inRoom) { socketRef.current?.emit("queue-add", { roomId: room.id, song: track }); pushToast(`${t("toastAddedRoomQueue")} — ${track.title}`); return; }
     setQueueList((list) => {
       const newList = [...list, track];
@@ -663,6 +751,7 @@ export function PlayerProvider({ children }) {
     });
     pushToast(`${t("toastAddedQueue")} — ${track.title}`);
   }, [inRoom, room, pushToast, t]);
+  useEffect(() => { addToQueueEndRef.current = addToQueueEnd; }, [addToQueueEnd]);
 
   const playNextInQueue = useCallback((rawTrack) => {
     const track = normalizeTrack(rawTrack);
@@ -774,6 +863,23 @@ export function PlayerProvider({ children }) {
   const prevMemberCountRef = useRef(0);
   const firstSyncPendingRef = useRef(false);
 
+  const applyRoomState = useCallback((fullRoom, action) => {
+    const isFirstSync = firstSyncPendingRef.current;
+    firstSyncPendingRef.current = false;
+    const allowAutoplay = !isFirstSync || settingsRef.current.autoJoinRoomAudio !== false;
+    const hardSeek = isFirstSync || ["seek", "select", "next", "prev"].includes(action);
+
+    roomSyncRef.current = { position: fullRoom.position || 0, hardSeek, allowAutoplay };
+    setRoomSyncTick((v) => v + 1);
+
+    setRoom(fullRoom);
+    prevMemberCountRef.current = fullRoom.members?.length || 0;
+    setQueueList(fullRoom.queue.map(normalizeTrack));
+    setOrder(fullRoom.queue.map((_, i) => i));
+    setPosInOrder(fullRoom.currentIndex >= 0 ? fullRoom.currentIndex : 0);
+    setIsPlaying(isFirstSync ? (fullRoom.isPlaying && allowAutoplay) : fullRoom.isPlaying);
+  }, []);
+
   const ensureSocket = useCallback(() => {
     if (socketRef.current) return socketRef.current;
     const socket = io(API_BASE, { withCredentials: true, autoConnect: true, transports: ["websocket", "polling"] });
@@ -795,34 +901,10 @@ export function PlayerProvider({ children }) {
       setOrder(queue.map((_, i) => i));
       setPosInOrder(currentIndex >= 0 ? currentIndex : 0);
     });
-    socket.on("playback-sync", (fullRoom) => {
-      applyingRemoteRef.current = true;
-      setRoom(fullRoom);
-      prevMemberCountRef.current = fullRoom.members?.length || 0;
-      const track = fullRoom.currentIndex >= 0 ? normalizeTrack(fullRoom.queue[fullRoom.currentIndex]) : null;
-      setQueueList(fullRoom.queue.map(normalizeTrack));
-      setOrder(fullRoom.queue.map((_, i) => i));
-      setPosInOrder(fullRoom.currentIndex >= 0 ? fullRoom.currentIndex : 0);
-      setIsPlaying(fullRoom.isPlaying);
-      const audio = audioRef.current;
-      const isFirstSync = firstSyncPendingRef.current;
-      firstSyncPendingRef.current = false;
-      const allowAutoplay = !isFirstSync || settingsRef.current.autoJoinRoomAudio !== false;
-      if (audio && track) {
-        resolveAudioSrc(track).then((resolved) => {
-          if (!resolved) return;
-          if (audio.src !== resolved.src) audio.src = resolved.src;
-          audio.currentTime = fullRoom.position || 0;
-          if (fullRoom.isPlaying && allowAutoplay) audio.play().catch(() => {});
-          else audio.pause();
-        });
-      }
-      if (isFirstSync && fullRoom.isPlaying && !allowAutoplay) setIsPlaying(false);
-      applyingRemoteRef.current = false;
-    });
+    socket.on("playback-sync", (fullRoom) => { applyRoomState(fullRoom, fullRoom.action); });
     socketRef.current = socket;
     return socket;
-  }, [resolveAudioSrc]);
+  }, [applyRoomState]);
 
   const refreshPublicRooms = useCallback(() => { Api.publicRooms().then(setPublicRooms).catch(() => {}); }, []);
 
@@ -832,11 +914,11 @@ export function PlayerProvider({ children }) {
     firstSyncPendingRef.current = true;
     socket.emit("create-room", opts, (res) => {
       if (res.error) { setRoomError(res.error); pushToast(res.error); resolve(null); return; }
-      setRoom(res.room);
       setRoomError(null);
+      applyRoomState(res.room, "select");
       resolve(res.room);
     });
-  }), [authUser, ensureSocket, pushToast, t]);
+  }), [authUser, ensureSocket, applyRoomState, pushToast, t]);
 
   const joinRoom = useCallback((id, password) => new Promise((resolve) => {
     if (!authUser) { pushToast(t("toastLoginToJoinRoom")); resolve(null); return; }
@@ -844,15 +926,16 @@ export function PlayerProvider({ children }) {
     firstSyncPendingRef.current = true;
     socket.emit("join-room", { roomId: id, password }, (res) => {
       if (res.error) { setRoomError(res.error); resolve(null); return; }
-      setRoom(res.room);
       setRoomError(null);
+      applyRoomState(res.room, "select");
       resolve(res.room);
     });
-  }), [authUser, ensureSocket, pushToast, t]);
+  }), [authUser, ensureSocket, applyRoomState, pushToast, t]);
 
   const leaveRoom = useCallback(() => {
     socketRef.current?.emit("leave-room");
     setRoom(null);
+    roomSyncRef.current = null;
     setQueueList([]); setOrder([]); setPosInOrder(0); setIsPlaying(false);
   }, []);
 
@@ -871,6 +954,7 @@ export function PlayerProvider({ children }) {
     removeFromQueue, moveQueueItem, clearUpNext, selectQueuePosition,
     playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, refreshPlaylists,
     registerProgressEl,
+    suggestedQueue, promoteSuggestion,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
   };
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;

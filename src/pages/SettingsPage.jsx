@@ -105,7 +105,7 @@ function EqualizerPanel({ eq, onChange, t }) {
 }
 
 export function SettingsPage() {
-  const { settings, updateSettings, resetSettings, authUser, logout, t } = useUI();
+  const { settings, updateSettings, resetSettings, authUser, logout, loggingOut, t } = useUI();
 
   if (!authUser) {
     return <div className="aivy-empty" style={{ paddingTop: 80 }}><div className="title">{t("loginForSettings")}</div></div>;
@@ -163,7 +163,7 @@ export function SettingsPage() {
       <SettingSection title={t("sectionAccount")}>
         <div className="aivy-settings-row">
           <div><div className="label">{t("settingLoggedInAs")}</div><div className="hint">{authUser.username}</div></div>
-          <button className="aivy-btn-ghost" onClick={logout}><LogOut size={14} /> {t("settingLogout")}</button>
+          <button className="aivy-btn-ghost" disabled={loggingOut} onClick={logout}><LogOut size={14} /> {loggingOut ? t("loading") : t("settingLogout")}</button>
         </div>
         <div className="aivy-settings-row">
           <div><div className="label">{t("settingResetAll")}</div><div className="hint">{t("settingResetAllHint")}</div></div>

@@ -76,4 +76,6 @@ export const Api = {
   commitYoutubeImport: (body) => apiSend("/api/import/youtube/commit", "POST", body),
 
   publicRooms: () => apiGet("/api/rooms"),
+
+  discordActivityToken: (code) => apiSend("/api/discord-activity/token", "POST", { code }),
 };
