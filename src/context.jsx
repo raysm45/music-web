@@ -387,8 +387,8 @@ export function PlayerProvider({ children }) {
     setLoadingAudio(true);
     resolveAudioSrc(currentTrack).then((resolved) => {
       if (cancelled) return;
-      setLoadingAudio(false);
       if (!resolved) {
+        setLoadingAudio(false);
         pushToast(`${t("toastAudioUnavailable")} "${currentTrack.title}"`);
         return;
       }
@@ -472,17 +472,26 @@ export function PlayerProvider({ children }) {
       nextRef.current(true);
     };
     const onError = () => { setLoadingAudio(false); };
+    const onCanPlay = () => { setLoadingAudio(false); };
+    const onPlaying = () => { setLoadingAudio(false); };
+    const onWaiting = () => { setLoadingAudio(true); };
     audio.addEventListener("loadedmetadata", syncDuration);
     audio.addEventListener("durationchange", syncDuration);
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onError);
+    audio.addEventListener("canplay", onCanPlay);
+    audio.addEventListener("playing", onPlaying);
+    audio.addEventListener("waiting", onWaiting);
     return () => {
       audio.removeEventListener("loadedmetadata", syncDuration);
       audio.removeEventListener("durationchange", syncDuration);
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
+      audio.removeEventListener("canplay", onCanPlay);
+      audio.removeEventListener("playing", onPlaying);
+      audio.removeEventListener("waiting", onWaiting);
     };
   }, [repeat, inRoom, writeProgress, settings.crossfadeSeconds, settings.autoplay, pushToast, t, clipDuration]);
 
