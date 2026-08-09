@@ -1154,49 +1154,40 @@ function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
   lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
 }
 
-function SidebarQueueCompactRow({ track, active, isPlaying, onClick }) {
-  return (
-    <div className={`aivy-sq-row ${active ? "is-current" : ""}`} onClick={onClick} role={onClick ? "button" : undefined}>
-      {active ? <span className="aivy-queue-eq sm"><EqBars playing={isPlaying} /></span> : (
-        <SmartCover src={track.cover} seed={track.id + track.title} size={26} radius={4} style={{ width: 26, height: 26, flexShrink: 0 }} />
-      )}
-      <span className="t">{track.title}</span>
-    </div>
-  );
-}
-
 function SidebarQueuePanel() {
-  const { currentTrack, isPlaying, upNext, posInOrder, history, selectQueuePosition, clearUpNext } = usePlayer();
+  const [subTab, setSubTab] = useState("queue");
+  const { currentTrack, upNext, history, selectQueuePosition, clearUpNext } = usePlayer();
   const { t } = useUI();
   const recent = history.slice().reverse();
   return (
-    <div className="aivy-sq-cols">
-      <div className="col">
-        <div className="aivy-drawer-sub eyebrow">{t("tabQueue")}</div>
-        {currentTrack && <SidebarQueueCompactRow track={currentTrack} active isPlaying={isPlaying} />}
-        <div className="aivy-drawer-sub eyebrow aivy-queue-upnext-head">
-          <span>{t("upNextLabel")}</span>
-          {upNext.length > 0 && <button className="aivy-queue-clear" onClick={clearUpNext}><Trash2 size={12} /></button>}
-        </div>
-        {upNext.length > 0 ? (
-          upNext.map((tr, i) => (
-            <SidebarQueueCompactRow key={`${tr.id}-${i}`} track={tr} onClick={() => selectQueuePosition(posInOrder + 1 + i)} />
-          ))
-        ) : (
-          <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>
-        )}
+    <>
+      <div className="aivy-sq-subtabs">
+        <button className={subTab === "queue" ? "active" : ""} onClick={() => setSubTab("queue")}>{t("tabQueue")}</button>
+        <button className={subTab === "recent" ? "active" : ""} onClick={() => setSubTab("recent")}>{t("recentlyPlayedLabel")}</button>
       </div>
-      <div className="col">
-        <div className="aivy-drawer-sub eyebrow">{t("recentlyPlayedLabel")}</div>
-        {recent.length > 0 ? (
-          recent.map((tr, i) => (
-            <SidebarQueueCompactRow key={`h-${tr.id}-${i}`} track={tr} onClick={() => selectQueuePosition(history.length - 1 - i)} />
-          ))
-        ) : (
-          <div className="aivy-queue-empty-hint">{t("noRecentlyPlayed")}</div>
-        )}
-      </div>
-    </div>
+      {subTab === "queue" ? (
+        <>
+          <div className="aivy-drawer-sub eyebrow">{t("nowPlaying")}</div>
+          {currentTrack ? <QueueNowPlayingRow track={currentTrack} /> : <div className="aivy-queue-empty-hint">{t("nothingPlaying")}</div>}
+          <div className="aivy-drawer-sub eyebrow aivy-queue-upnext-head">
+            <span>{t("upNextLabel")}</span>
+            {upNext.length > 0 && <button className="aivy-queue-clear" onClick={clearUpNext}><Trash2 size={12} /> {t("clearQueue")}</button>}
+          </div>
+          {upNext.length > 0 ? <QueueUpNextList items={upNext} /> : <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>}
+        </>
+      ) : (
+        <>
+          <div className="aivy-drawer-sub eyebrow">{t("recentlyPlayedLabel")}</div>
+          {recent.length > 0 ? (
+            recent.map((tr, i) => (
+              <QueueHistoryRow key={`h-${tr.id}-${i}`} track={tr} onSelect={() => selectQueuePosition(history.length - 1 - i)} />
+            ))
+          ) : (
+            <div className="aivy-queue-empty-hint">{t("noRecentlyPlayed")}</div>
+          )}
+        </>
+      )}
+    </>
   );
 }
 
