@@ -693,19 +693,17 @@ export function QueueSheet({ open, onClose }) {
 export function RightPanel() {
   const { room } = usePlayer();
   const { t } = useUI();
-  const [tab, setTab] = useState("queue");
+  const [tab, setTab] = useState("now");
   useEffect(() => { if (room) setTab("room"); }, [!!room]);
 
   return (
     <aside className="aivy-rightpanel">
       <div className="aivy-rightpanel-tabs">
         <button className={tab === "now" ? "active" : ""} onClick={() => setTab("now")}>{t("tabNowPlaying")}</button>
-        <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>{t("tabQueue")}</button>
         {room && <button className={tab === "room" ? "active" : ""} onClick={() => setTab("room")}>{t("tabRoom")}</button>}
       </div>
       <div className="aivy-rightpanel-body aivy-scroll">
         {tab === "now" && <NowPlayingPane />}
-        {tab === "queue" && <QueueBody />}
         {tab === "room" && room && <RoomPane />}
       </div>
     </aside>
@@ -1141,12 +1139,42 @@ function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
   lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
 }
 
+function LyricsQueuePanel() {
+  const { currentTrack, upNext, history, selectQueuePosition, clearUpNext } = usePlayer();
+  const { t } = useUI();
+  const recent = history.slice().reverse();
+  return (
+    <div className="aivy-lyrics-queue-cols">
+      <div className="col">
+        <div className="aivy-drawer-sub eyebrow">{t("tabQueue")}</div>
+        {currentTrack && <QueueNowPlayingRow track={currentTrack} />}
+        <div className="aivy-drawer-sub eyebrow aivy-queue-upnext-head">
+          <span>{t("upNextLabel")}</span>
+          {upNext.length > 0 && <button className="aivy-queue-clear" onClick={clearUpNext}><Trash2 size={12} /> {t("clearQueue")}</button>}
+        </div>
+        {upNext.length > 0 ? <QueueUpNextList items={upNext} /> : <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>}
+      </div>
+      <div className="col">
+        <div className="aivy-drawer-sub eyebrow">{t("recentlyPlayedLabel")}</div>
+        {recent.length > 0 ? (
+          recent.map((tr, i) => (
+            <QueueHistoryRow key={`lh-${tr.id}-${i}`} track={tr} onSelect={() => selectQueuePosition(history.length - 1 - i)} />
+          ))
+        ) : (
+          <div className="aivy-queue-empty-hint">{t("noRecentlyPlayed")}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function LyricsOverlay() {
   const { lyricsOpen, closeLyrics, pushToast, t } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext } = usePlayer();
   const [state, setState] = useState({ loading: false, synced: [], plain: "", checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
   const lineRefs = useRef([]);
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
@@ -1256,6 +1284,15 @@ export function LyricsOverlay() {
         <span className="eyebrow">{isPreviewClip ? t("preview30") : t("nowPlaying")}</span>
         <div className="aivy-lyrics-head-actions">
           <button
+            className={`aivy-icon-btn sm ${showQueue ? "active" : ""}`}
+            onClick={() => setShowQueue((v) => !v)}
+            disabled={!currentTrack}
+            aria-label={t("lyricsQueueBtn")}
+            title={t("lyricsQueueBtn")}
+          >
+            <ListMusic size={17} />
+          </button>
+          <button
             className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`}
             onClick={() => currentTrack && toggleLike(currentTrack)}
             disabled={!currentTrack}
@@ -1276,46 +1313,52 @@ export function LyricsOverlay() {
 
       {currentTrack && (
         <div className="aivy-lyrics-main">
-          <div className="aivy-lyrics-side">
-            <div className="aivy-lyrics-track">
-              <div className="cover">
-                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={120} radius={8} style={{ width: "100%", height: "100%" }} />
-              </div>
-              <div className="meta">
-                <div className="t">{currentTrack.title}</div>
-                <div className="a">{currentTrack.artist?.name}</div>
-              </div>
-            </div>
-
-            <div className="aivy-lyrics-fontctrl">
-              <span>{t("fontSize")}</span>
-              {["sm", "md", "lg"].map((sz) => (
-                <button
-                  key={sz}
-                  className={fontSize === sz ? "active" : ""}
-                  onClick={() => setFontSize(sz)}
-                  aria-label={`${t("fontSize")} ${sz}`}
-                >A</button>
-              ))}
-            </div>
-
-            {shareOpen && (
-              <div className="aivy-lyrics-share">
-                <div className="cover-mini">
-                  <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={72} radius={8} style={{ width: "100%", height: "100%" }} />
+          <div className={`aivy-lyrics-side ${showQueue ? "queue-mode" : ""}`}>
+            {showQueue ? (
+              <LyricsQueuePanel />
+            ) : (
+              <>
+                <div className="aivy-lyrics-track">
+                  <div className="cover">
+                    <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={120} radius={8} style={{ width: "100%", height: "100%" }} />
+                  </div>
+                  <div className="meta">
+                    <div className="t">{currentTrack.title}</div>
+                    <div className="a">{currentTrack.artist?.name}</div>
+                  </div>
                 </div>
-                <div className="line">{activeLineText || "\u266a"}</div>
-                <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
-                <button onClick={handleSaveImage}>{t("saveAsImage")}</button>
-              </div>
-            )}
 
-            {nextTrack && (
-              <div className="aivy-lyrics-next">
-                <ListMusic size={14} />
-                <span className="label">{t("upNextLabel")}</span>
-                <span className="name">{nextTrack.title} &mdash; {nextTrack.artist?.name}</span>
-              </div>
+                <div className="aivy-lyrics-fontctrl">
+                  <span>{t("fontSize")}</span>
+                  {["sm", "md", "lg"].map((sz) => (
+                    <button
+                      key={sz}
+                      className={fontSize === sz ? "active" : ""}
+                      onClick={() => setFontSize(sz)}
+                      aria-label={`${t("fontSize")} ${sz}`}
+                    >A</button>
+                  ))}
+                </div>
+
+                {shareOpen && (
+                  <div className="aivy-lyrics-share">
+                    <div className="cover-mini">
+                      <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={72} radius={8} style={{ width: "100%", height: "100%" }} />
+                    </div>
+                    <div className="line">{activeLineText || "\u266a"}</div>
+                    <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
+                    <button onClick={handleSaveImage}>{t("saveAsImage")}</button>
+                  </div>
+                )}
+
+                {nextTrack && (
+                  <div className="aivy-lyrics-next">
+                    <ListMusic size={14} />
+                    <span className="label">{t("upNextLabel")}</span>
+                    <span className="name">{nextTrack.title} &mdash; {nextTrack.artist?.name}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
