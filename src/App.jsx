@@ -57,12 +57,13 @@ function AppInner() {
     return <LoginPage />;
 
   const Page = PAGE_BY_ROUTE[name] || HomePage;
+  const isImmersiveShorts = isMobile && name === "shorts";
 
   return (
     <div className={`aivy-shell ${isMobile ? "is-mobile" : ""}`}>
       {!isMobile && <Sidebar />}
       <main className="aivy-main">
-        <TopBar isMobile={isMobile} />
+        {!isImmersiveShorts && <TopBar isMobile={isMobile} />}
         <div id="aivy-content-scroll" className={`aivy-content aivy-scroll ${isMobile ? "is-mobile" : ""} ${name === "shorts" ? "no-pad" : ""}`}
           style={{ paddingBottom: name === "shorts" ? 0 : (isMobile ? (currentTrack ? 150 : 84) : 24) }}>
           <ErrorBoundary key={name + JSON.stringify(params)}><Page /></ErrorBoundary>
@@ -71,8 +72,8 @@ function AppInner() {
       {!isMobile && <PlayerBar />}
       {!isMobile && <RightPanel />}
 
-      {isMobile && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
-      {isMobile && <MobileTabBar />}
+      {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
+      {isMobile && !isImmersiveShorts && <MobileTabBar />}
       {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); setQueueOpen(true); }} />}
       {isMobile && <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} />}
 

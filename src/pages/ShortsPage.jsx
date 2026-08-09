@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Heart, Plus, VolumeX, Volume2, Music2 } from "lucide-react";
+import { Heart, Plus, VolumeX, Volume2, Music2, ArrowLeft } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
@@ -115,7 +115,8 @@ function ShortCard({ track, muted, onToggleMute }) {
 }
 
 export function ShortsPage() {
-  const { settings } = useUI();
+  const { settings, t } = useUI();
+  const { back } = useRouter();
   const seedRef = useRef(uid("shorts-seed"));
   const [items, setItems] = useState([]);
   const [cursor, setCursor] = useState(0);
@@ -153,6 +154,7 @@ export function ShortsPage() {
 
   return (
     <div className="aivy-shorts-page">
+      <button className="aivy-short-back" onClick={back} aria-label={t("previous")}><ArrowLeft size={18} /></button>
       <div className="aivy-shorts-scroller aivy-scroll">
         {items.map((tr) => <ShortCard key={tr.id} track={tr} muted={muted} onToggleMute={() => setMuted((m) => !m)} />)}
         <div ref={sentinelRef} className="aivy-shorts-sentinel">

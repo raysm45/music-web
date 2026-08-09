@@ -32,6 +32,7 @@
   --player-h-mobile: 62px;
   --tabbar-h: 60px;
   --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
   --font-display: "Fraunces", "Iowan Old Style", serif;
   --font-body: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -776,14 +777,15 @@ svg{ display: block; }
   .aivy-lyrics-line{ transform-origin: left center; }
 }
 
-.aivy-shorts-page{ height: 100%; display: flex; justify-content: center; background: #000; }
+.aivy-shorts-page{ height: 100%; display: flex; justify-content: center; background: #000; position: relative; }
 .aivy-shorts-scroller{ height: 100%; width: min(420px, 100%); overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; }
 .aivy-shorts-scroller::-webkit-scrollbar{ display: none; }
 .aivy-short-slide{ position: relative; height: 100%; width: 100%; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; background: #050505; display: flex; align-items: center; justify-content: center; }
 .aivy-short-media{ position: absolute; inset: 0; overflow: hidden; background: #000; }
-.aivy-short-media iframe{ position: absolute; top: 50%; left: 50%; width: 178vh; height: 100vh; min-width: 100%; transform: translate(-50%, -50%); pointer-events: none; }
+.aivy-short-media iframe{ position: absolute; top: 50%; left: 50%; width: 177.8dvh; height: 100dvh; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); pointer-events: none; }
 .aivy-short-media img{ width: 100%; height: 100%; filter: blur(2px) brightness(0.75); transform: scale(1.1); }
 .aivy-short-scrim{ position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,.15) 60%, rgba(0,0,0,.8) 100%); }
+.aivy-short-back{ position: absolute; top: calc(14px + var(--safe-t)); left: 14px; z-index: 3; width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,.45); backdrop-filter: blur(6px); color: #fff; display: none; align-items: center; justify-content: center; }
 .aivy-short-mute{ position: absolute; top: 18px; right: 16px; z-index: 2; width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,.45); backdrop-filter: blur(6px); color: #fff; display: flex; align-items: center; justify-content: center; }
 .aivy-short-overlay{ position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; padding: 18px 16px calc(24px + var(--safe-b)); }
 .aivy-short-meta{ min-width: 0; color: #fff; }
@@ -796,7 +798,9 @@ svg{ display: block; }
 .aivy-short-action.active{ color: #ff5c7a; }
 .aivy-short-action.primary{ background: var(--moss); color: var(--moss-ink); }
 .aivy-shorts-sentinel{ height: 100%; display: flex; align-items: center; justify-content: center; scroll-snap-align: start; }
-@media (max-width: 640px){
+@media (max-width: 860px){
+  .aivy-shorts-page{ position: fixed; inset: 0; z-index: 30; height: 100dvh; }
+  .aivy-short-back{ display: flex; }
   .aivy-short-overlay{ padding: 14px 12px calc(20px + var(--safe-b)); }
   .aivy-short-action{ width: 40px; height: 40px; }
 }
