@@ -123,6 +123,7 @@ export function ShortsPage() {
   const [loading, setLoading] = useState(false);
   const [muted, setMuted] = useState(false);
   const sentinelRef = useRef(null);
+  const scrollerRef = useRef(null);
   const seenIds = useRef(new Set());
 
   const loadMore = useCallback(async () => {
@@ -152,10 +153,14 @@ export function ShortsPage() {
     return () => io.disconnect();
   }, [loadMore]);
 
+  useEffect(() => {
+    if (items.length > 0 && scrollerRef.current) scrollerRef.current.scrollTop = 0;
+  }, [items.length > 0]);
+
   return (
     <div className="aivy-shorts-page">
       <button className="aivy-short-back" onClick={back} aria-label={t("previous")}><ArrowLeft size={18} /></button>
-      <div className="aivy-shorts-scroller aivy-scroll">
+      <div className="aivy-shorts-scroller aivy-scroll" ref={scrollerRef}>
         {items.map((tr) => <ShortCard key={tr.id} track={tr} muted={muted} onToggleMute={() => setMuted((m) => !m)} />)}
         <div ref={sentinelRef} className="aivy-shorts-sentinel">
           {loading && <IvyFallLoader size={28} />}

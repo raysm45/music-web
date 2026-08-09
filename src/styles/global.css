@@ -778,7 +778,7 @@ svg{ display: block; }
 }
 
 .aivy-shorts-page{ height: 100%; display: flex; justify-content: center; background: #000; position: relative; }
-.aivy-shorts-scroller{ height: 100%; width: min(420px, 100%); overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; }
+.aivy-shorts-scroller{ height: 100%; width: min(420px, 100%); overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; overflow-anchor: none; }
 .aivy-shorts-scroller::-webkit-scrollbar{ display: none; }
 .aivy-short-slide{ position: relative; height: 100%; width: 100%; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; background: #050505; display: flex; align-items: center; justify-content: center; }
 .aivy-short-media{ position: absolute; inset: 0; overflow: hidden; background: #000; }
