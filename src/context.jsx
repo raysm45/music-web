@@ -210,6 +210,7 @@ export function PlayerProvider({ children }) {
   const [roomError, setRoomError] = useState(null);
   const [roomSyncTick, setRoomSyncTick] = useState(0);
   const roomSyncRef = useRef(null);
+  const [chatMessages, setChatMessages] = useState([]);
   const [suggestedQueue, setSuggestedQueue] = useState([]);
   const suggestedQueueRef = useRef([]);
   useEffect(() => { suggestedQueueRef.current = suggestedQueue; }, [suggestedQueue]);
@@ -877,6 +878,7 @@ export function PlayerProvider({ children }) {
     roomSyncRef.current = { position: fullRoom.position || 0, hardSeek, allowAutoplay };
     setRoomSyncTick((v) => v + 1);
 
+    if (isFirstSync) setChatMessages(Array.isArray(fullRoom.chatMessages) ? fullRoom.chatMessages : []);
     setRoom(fullRoom);
     prevMemberCountRef.current = fullRoom.members?.length || 0;
     setQueueList(fullRoom.queue.map(normalizeTrack));
@@ -907,6 +909,12 @@ export function PlayerProvider({ children }) {
       setPosInOrder(currentIndex >= 0 ? currentIndex : 0);
     });
     socket.on("playback-sync", (fullRoom) => { applyRoomState(fullRoom, fullRoom.action); });
+    socket.on("chat-message", (msg) => {
+      setChatMessages((prev) => {
+        const next = [...prev, msg];
+        return next.length > 300 ? next.slice(-300) : next;
+      });
+    });
     socketRef.current = socket;
     return socket;
   }, [applyRoomState]);
@@ -942,7 +950,14 @@ export function PlayerProvider({ children }) {
     setRoom(null);
     roomSyncRef.current = null;
     setQueueList([]); setOrder([]); setPosInOrder(0); setIsPlaying(false);
+    setChatMessages([]);
   }, []);
+
+  const sendChatMessage = useCallback((text) => {
+    const trimmed = (text || "").trim();
+    if (!trimmed || !room || !authUser) return;
+    socketRef.current?.emit("chat-message", { roomId: room.id, text: trimmed.slice(0, 500) });
+  }, [room, authUser]);
 
   useEffect(() => () => { socketRef.current?.disconnect(); }, []);
 
@@ -961,6 +976,7 @@ export function PlayerProvider({ children }) {
     registerProgressEl,
     suggestedQueue, promoteSuggestion,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
+    chatMessages, sendChatMessage,
   };
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;
 }

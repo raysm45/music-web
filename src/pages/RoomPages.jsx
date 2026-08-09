@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Users, Lock, Globe, Plus, LogIn, Play, Search as SearchIcon } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
-import { TrackRow, ViewLoading, Checkbox } from "../components.jsx";
+import { TrackRow, ViewLoading, Checkbox, RoomChat } from "../components.jsx";
 import { relativeTime } from "../lib/utils.js";
 import { Api } from "../lib/api.js";
 
@@ -157,6 +157,13 @@ export function RoomPage() {
         ) : (
           <div className="aivy-empty"><div className="sub">{t("roomQueueEmpty")}</div></div>
         )}
+      </section>
+
+      <section className="aivy-section">
+        <div className="aivy-section-head"><h2 className="aivy-section-title">{t("roomChat")}</h2></div>
+        <div className="aivy-room-chat-standalone">
+          <RoomChat />
+        </div>
       </section>
     </div>
   );

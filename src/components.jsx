@@ -5,12 +5,12 @@ import {
   VolumeX, Heart, Search, Home as HomeIcon, Library, ListMusic, ChevronDown,
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
-  Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film,
+  Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
 } from "lucide-react";
 import { usePlayer, useUI } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, parseLRC, clamp } from "./lib/utils.js";
+import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp } from "./lib/utils.js";
 
 export class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -906,6 +906,62 @@ function NowPlayingPane() {
   );
 }
 
+export function RoomChat() {
+  const { room, chatMessages, sendChatMessage } = usePlayer();
+  const { authUser, t } = useUI();
+  const [draft, setDraft] = useState("");
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chatMessages.length]);
+
+  const handleSend = () => {
+    const text = draft.trim();
+    if (!text || !room) return;
+    sendChatMessage(text);
+    setDraft("");
+  };
+
+  return (
+    <div className="aivy-room-chat">
+      <div className="aivy-chat-messages aivy-scroll" ref={listRef}>
+        {chatMessages.length === 0 ? (
+          <div className="aivy-chat-empty">{t("roomChatEmpty")}</div>
+        ) : (
+          chatMessages.map((m) => {
+            const own = authUser && m.userId === authUser.id;
+            return (
+              <div key={m.id} className={`aivy-chat-msg ${own ? "own" : ""}`}>
+                {!own && <span className="aivy-avatar">{m.username?.slice(0, 1).toUpperCase()}</span>}
+                <div className="bubble">
+                  {!own && <span className="who">{m.username}</span>}
+                  <span className="txt">{m.text}</span>
+                  <span className="time">{formatClockTime(m.createdAt)}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <div className="aivy-chat-input-row">
+        <input
+          className="aivy-input aivy-chat-input"
+          placeholder={t("chatPlaceholder")}
+          value={draft}
+          maxLength={500}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}
+        />
+        <button className="aivy-icon-btn" onClick={handleSend} disabled={!draft.trim()} aria-label={t("send")}>
+          <Send size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RoomPane() {
   const { room, leaveRoom } = usePlayer();
   const { navigate } = useRouter();
@@ -931,6 +987,8 @@ function RoomPane() {
         ))}
       </div>
       {room.hostOnlyControl && <div className="aivy-room-note" style={{ marginTop: 14 }}>{t("hostOnlyNotice")}</div>}
+      <div className="aivy-drawer-sub eyebrow" style={{ marginTop: 14 }}>{t("roomChat")}</div>
+      <RoomChat />
     </div>
   );
 }

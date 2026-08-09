@@ -51,6 +51,14 @@ export function relativeTime(ms) {
   return `${day} hari lalu`;
 }
 
+export function formatClockTime(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
 export function uid(prefix = "id") {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }

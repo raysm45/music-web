@@ -298,6 +298,27 @@ svg{ display: block; }
 .aivy-room-member{ display: flex; align-items: center; gap: 9px; padding: 6px 6px; font-size: 13px; }
 .aivy-room-member .name{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.aivy-room-chat{ display: flex; flex-direction: column; padding: 0 4px; gap: 8px; }
+.aivy-chat-messages{ display: flex; flex-direction: column; gap: 10px; max-height: 320px; min-height: 120px; overflow-y: auto; padding: 4px 2px; }
+.aivy-chat-empty{ color: var(--ink-faint); font-size: 13px; padding: 10px 2px; }
+.aivy-chat-msg{ display: flex; align-items: flex-end; gap: 8px; }
+.aivy-chat-msg .aivy-avatar{ width: 22px; height: 22px; font-size: 10px; }
+.aivy-chat-msg .bubble{ display: flex; flex-direction: column; gap: 2px; background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 7px 11px; max-width: 78%; }
+.aivy-chat-msg .bubble .who{ font-size: 11.5px; font-weight: 700; color: var(--moss-strong); }
+.aivy-chat-msg .bubble .txt{ font-size: 13.5px; color: var(--ink); word-break: break-word; white-space: pre-wrap; }
+.aivy-chat-msg .bubble .time{ align-self: flex-end; font-size: 10px; color: var(--ink-faint); }
+.aivy-chat-msg.own{ flex-direction: row-reverse; }
+.aivy-chat-msg.own .bubble{ background: var(--moss); border-color: var(--moss); }
+.aivy-chat-msg.own .bubble .txt{ color: var(--moss-ink); }
+.aivy-chat-msg.own .bubble .time{ color: var(--moss-ink); opacity: .6; }
+.aivy-chat-input-row{ display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.aivy-chat-input-row .aivy-chat-input{ margin-bottom: 0; }
+.aivy-chat-input-row .aivy-icon-btn{ background: var(--moss); color: var(--moss-ink); }
+.aivy-chat-input-row .aivy-icon-btn:hover{ background: var(--moss-strong); color: var(--moss-ink); }
+.aivy-chat-input-row .aivy-icon-btn:disabled{ background: var(--bg-elev-2); color: var(--ink-faint); }
+.aivy-room-chat-standalone{ background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px; max-width: 560px; }
+.aivy-room-chat-standalone .aivy-chat-messages{ max-height: 380px; }
+
 .aivy-mini-player{ position: fixed; left: 8px; right: 8px; z-index: 40; bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px); background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-md); display: flex; align-items: center; gap: 10px; padding: 7px 8px; min-width: 0; }
 .aivy-mini-player .meta{ min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0; }
 .aivy-mini-player .meta .t{ font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
