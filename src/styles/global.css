@@ -250,6 +250,12 @@ svg{ display: block; }
 .aivy-scrubber:hover .fill, .aivy-scrubber.dragging .fill{ background: var(--moss-strong); }
 .aivy-scrubber .thumb{ position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%; background: var(--ink); transform: translate(-50%,-50%); opacity: 0; transition: opacity var(--dur-fast) var(--ease); left: 0%; }
 .aivy-scrubber:hover .thumb, .aivy-scrubber.dragging .thumb{ opacity: 1; }
+.aivy-scrubber.is-loading{ cursor: default; }
+.aivy-scrubber.is-loading .track{ background: var(--bg-elev-3); }
+
+@keyframes aivy-shine{ 0%{ transform: translateX(-100%); } 100%{ transform: translateX(100%); } }
+.skeleton-shine{ position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg-elev-3); }
+.skeleton-shine::after{ content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 22%, transparent), transparent); animation: aivy-shine 1.35s ease-in-out infinite; }
 .aivy-vol{ display: flex; align-items: center; gap: 8px; }
 .aivy-vol .track{ position: relative; width: 84px; height: 3px; border-radius: 2px; background: var(--bg-elev-3); cursor: pointer; touch-action: none; }
 .aivy-vol .fill{ position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--ink-dim); transition: width 0.08s linear; }
@@ -326,6 +332,7 @@ svg{ display: block; }
 .aivy-mini-player .meta .a{ font-size: 11.5px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aivy-mini-player .mini-progress{ position: absolute; left: 8px; right: 8px; bottom: 0; height: 2px; background: var(--bg-elev-3); border-radius: 2px; overflow: hidden; }
 .aivy-mini-player .mini-progress .fill{ height: 100%; width: 0%; background: var(--moss-strong); }
+.aivy-mini-player .mini-progress.is-loading .skeleton-shine{ border-radius: 2px; }
 .aivy-tabbar{ position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; height: calc(var(--tabbar-h) + var(--safe-b)); padding-bottom: var(--safe-b); background: var(--bg-elev); border-top: 1px solid var(--line); display: flex; align-items: stretch; }
 .aivy-tab{ flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-faint); font-size: 10.5px; font-weight: 600; min-width: 0; }
 .aivy-tab.active{ color: var(--moss-strong); }

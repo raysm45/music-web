@@ -31,13 +31,20 @@ export class ErrorBoundary extends Component {
   }
 }
 
-export function Scrubber({ getRatio, onSeekRatio, registerFill, registerThumb, className = "" }) {
+export function Scrubber({ getRatio, onSeekRatio, registerFill, registerThumb, className = "", loading = false }) {
   const trackRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const ratioFromEvent = (e) => {
     const rect = trackRef.current.getBoundingClientRect();
     return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   };
+  if (loading) {
+    return (
+      <div className={`aivy-scrubber is-loading ${className}`} role="slider" aria-label="Posisi lagu" aria-busy="true">
+        <div className="track skeleton-shine" />
+      </div>
+    );
+  }
   return (
     <div
       ref={trackRef} className={`aivy-scrubber ${dragging ? "dragging" : ""} ${className}`}
@@ -592,8 +599,8 @@ export function PlayerBar() {
         <TransportButtons />
         <div className="aivy-scrubber-row">
           <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
-          <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
-          <span className="aivy-time right font-mono">{formatTime(duration)}</span>
+          <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
+          <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(duration)}</span>
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: "min(20%, 220px)", justifyContent: "flex-end" }}>
@@ -605,7 +612,7 @@ export function PlayerBar() {
 }
 
 export function MiniPlayer({ onExpand }) {
-  const { currentTrack, isPlaying, togglePlay, next } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, next, loadingAudio } = usePlayer();
   const { registerFill } = useScrubberBinding();
   const { t } = useUI();
   if (!currentTrack) return null;
@@ -617,13 +624,13 @@ export function MiniPlayer({ onExpand }) {
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
       </button>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); next(false); }} aria-label={t("next")}><SkipForward size={18} fill="currentColor" /></button>
-      <div className="mini-progress"><div className="fill" ref={registerFill} /></div>
+      <div className={`mini-progress ${loadingAudio ? "is-loading" : ""}`}>{loadingAudio ? <div className="skeleton-shine" /> : <div className="fill" ref={registerFill} />}</div>
     </div>
   );
 }
 
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
-  const { currentTrack, liked, toggleLike, isPreviewClip, currentTrackHasLyrics } = usePlayer();
+  const { currentTrack, liked, toggleLike, isPreviewClip, currentTrackHasLyrics, loadingAudio } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics, t } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
@@ -652,9 +659,9 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")} style={{ flexShrink: 0 }}><Heart size={22} fill={isLiked ? "currentColor" : "none"} /></button>
             </div>
             <div className="aivy-scrubber-row">
-              <span className="aivy-time font-mono">{formatTime(currentTime)}</span>
-              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
-              <span className="aivy-time right font-mono">{formatTime(duration)}</span>
+              <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
+              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
+              <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(duration)}</span>
             </div>
             <TransportButtons big />
           </div>
