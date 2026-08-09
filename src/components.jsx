@@ -567,7 +567,7 @@ export function TransportButtons({ big = false }) {
 export function PlayerBar() {
   const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
-  const { toggleLyrics, t } = useUI();
+  const { toggleLyrics, sidebarQueueOpen, toggleSidebarQueue, t } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
@@ -604,6 +604,7 @@ export function PlayerBar() {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: "min(20%, 220px)", justifyContent: "flex-end" }}>
+        <button className={`aivy-icon-btn sm ${sidebarQueueOpen ? "active" : ""}`} onClick={toggleSidebarQueue} aria-label={t("lyricsQueueBtn")} title={t("lyricsQueueBtn")}><ListMusic size={16} /></button>
         <button className="aivy-icon-btn sm" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label={t("lyrics")} title={lyricsDisabled && currentTrack ? t("lyricsUnavailable") : t("lyrics")}><Mic2 size={16} /></button>
         <VolumeControl />
       </div>
@@ -692,9 +693,23 @@ export function QueueSheet({ open, onClose }) {
 
 export function RightPanel() {
   const { room } = usePlayer();
-  const { t } = useUI();
+  const { sidebarQueueOpen, closeSidebarQueue, t } = useUI();
   const [tab, setTab] = useState("now");
   useEffect(() => { if (room) setTab("room"); }, [!!room]);
+
+  if (sidebarQueueOpen) {
+    return (
+      <aside className="aivy-rightpanel">
+        <div className="aivy-rightpanel-tabs">
+          <span className="aivy-rightpanel-title">{t("lyricsQueueBtn")}</span>
+          <button className="aivy-icon-btn sm" onClick={closeSidebarQueue} aria-label={t("close")}><X size={16} /></button>
+        </div>
+        <div className="aivy-rightpanel-body aivy-scroll">
+          <SidebarQueuePanel />
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside className="aivy-rightpanel">
@@ -1139,26 +1154,43 @@ function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
   lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
 }
 
-function LyricsQueuePanel() {
-  const { currentTrack, upNext, history, selectQueuePosition, clearUpNext } = usePlayer();
+function SidebarQueueCompactRow({ track, active, isPlaying, onClick }) {
+  return (
+    <div className={`aivy-sq-row ${active ? "is-current" : ""}`} onClick={onClick} role={onClick ? "button" : undefined}>
+      {active ? <span className="aivy-queue-eq sm"><EqBars playing={isPlaying} /></span> : (
+        <SmartCover src={track.cover} seed={track.id + track.title} size={26} radius={4} style={{ width: 26, height: 26, flexShrink: 0 }} />
+      )}
+      <span className="t">{track.title}</span>
+    </div>
+  );
+}
+
+function SidebarQueuePanel() {
+  const { currentTrack, isPlaying, upNext, posInOrder, history, selectQueuePosition, clearUpNext } = usePlayer();
   const { t } = useUI();
   const recent = history.slice().reverse();
   return (
-    <div className="aivy-lyrics-queue-cols">
+    <div className="aivy-sq-cols">
       <div className="col">
         <div className="aivy-drawer-sub eyebrow">{t("tabQueue")}</div>
-        {currentTrack && <QueueNowPlayingRow track={currentTrack} />}
+        {currentTrack && <SidebarQueueCompactRow track={currentTrack} active isPlaying={isPlaying} />}
         <div className="aivy-drawer-sub eyebrow aivy-queue-upnext-head">
           <span>{t("upNextLabel")}</span>
-          {upNext.length > 0 && <button className="aivy-queue-clear" onClick={clearUpNext}><Trash2 size={12} /> {t("clearQueue")}</button>}
+          {upNext.length > 0 && <button className="aivy-queue-clear" onClick={clearUpNext}><Trash2 size={12} /></button>}
         </div>
-        {upNext.length > 0 ? <QueueUpNextList items={upNext} /> : <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>}
+        {upNext.length > 0 ? (
+          upNext.map((tr, i) => (
+            <SidebarQueueCompactRow key={`${tr.id}-${i}`} track={tr} onClick={() => selectQueuePosition(posInOrder + 1 + i)} />
+          ))
+        ) : (
+          <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>
+        )}
       </div>
       <div className="col">
         <div className="aivy-drawer-sub eyebrow">{t("recentlyPlayedLabel")}</div>
         {recent.length > 0 ? (
           recent.map((tr, i) => (
-            <QueueHistoryRow key={`lh-${tr.id}-${i}`} track={tr} onSelect={() => selectQueuePosition(history.length - 1 - i)} />
+            <SidebarQueueCompactRow key={`h-${tr.id}-${i}`} track={tr} onClick={() => selectQueuePosition(history.length - 1 - i)} />
           ))
         ) : (
           <div className="aivy-queue-empty-hint">{t("noRecentlyPlayed")}</div>
@@ -1174,7 +1206,6 @@ export function LyricsOverlay() {
   const [state, setState] = useState({ loading: false, synced: [], plain: "", checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
-  const [showQueue, setShowQueue] = useState(false);
   const lineRefs = useRef([]);
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
@@ -1284,15 +1315,6 @@ export function LyricsOverlay() {
         <span className="eyebrow">{isPreviewClip ? t("preview30") : t("nowPlaying")}</span>
         <div className="aivy-lyrics-head-actions">
           <button
-            className={`aivy-icon-btn sm ${showQueue ? "active" : ""}`}
-            onClick={() => setShowQueue((v) => !v)}
-            disabled={!currentTrack}
-            aria-label={t("lyricsQueueBtn")}
-            title={t("lyricsQueueBtn")}
-          >
-            <ListMusic size={17} />
-          </button>
-          <button
             className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`}
             onClick={() => currentTrack && toggleLike(currentTrack)}
             disabled={!currentTrack}
@@ -1313,52 +1335,46 @@ export function LyricsOverlay() {
 
       {currentTrack && (
         <div className="aivy-lyrics-main">
-          <div className={`aivy-lyrics-side ${showQueue ? "queue-mode" : ""}`}>
-            {showQueue ? (
-              <LyricsQueuePanel />
-            ) : (
-              <>
-                <div className="aivy-lyrics-track">
-                  <div className="cover">
-                    <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={120} radius={8} style={{ width: "100%", height: "100%" }} />
-                  </div>
-                  <div className="meta">
-                    <div className="t">{currentTrack.title}</div>
-                    <div className="a">{currentTrack.artist?.name}</div>
-                  </div>
+          <div className="aivy-lyrics-side">
+            <div className="aivy-lyrics-track">
+              <div className="cover">
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={120} radius={8} style={{ width: "100%", height: "100%" }} />
+              </div>
+              <div className="meta">
+                <div className="t">{currentTrack.title}</div>
+                <div className="a">{currentTrack.artist?.name}</div>
+              </div>
+            </div>
+
+            <div className="aivy-lyrics-fontctrl">
+              <span>{t("fontSize")}</span>
+              {["sm", "md", "lg"].map((sz) => (
+                <button
+                  key={sz}
+                  className={fontSize === sz ? "active" : ""}
+                  onClick={() => setFontSize(sz)}
+                  aria-label={`${t("fontSize")} ${sz}`}
+                >A</button>
+              ))}
+            </div>
+
+            {shareOpen && (
+              <div className="aivy-lyrics-share">
+                <div className="cover-mini">
+                  <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={72} radius={8} style={{ width: "100%", height: "100%" }} />
                 </div>
+                <div className="line">{activeLineText || "\u266a"}</div>
+                <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
+                <button onClick={handleSaveImage}>{t("saveAsImage")}</button>
+              </div>
+            )}
 
-                <div className="aivy-lyrics-fontctrl">
-                  <span>{t("fontSize")}</span>
-                  {["sm", "md", "lg"].map((sz) => (
-                    <button
-                      key={sz}
-                      className={fontSize === sz ? "active" : ""}
-                      onClick={() => setFontSize(sz)}
-                      aria-label={`${t("fontSize")} ${sz}`}
-                    >A</button>
-                  ))}
-                </div>
-
-                {shareOpen && (
-                  <div className="aivy-lyrics-share">
-                    <div className="cover-mini">
-                      <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={72} radius={8} style={{ width: "100%", height: "100%" }} />
-                    </div>
-                    <div className="line">{activeLineText || "\u266a"}</div>
-                    <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
-                    <button onClick={handleSaveImage}>{t("saveAsImage")}</button>
-                  </div>
-                )}
-
-                {nextTrack && (
-                  <div className="aivy-lyrics-next">
-                    <ListMusic size={14} />
-                    <span className="label">{t("upNextLabel")}</span>
-                    <span className="name">{nextTrack.title} &mdash; {nextTrack.artist?.name}</span>
-                  </div>
-                )}
-              </>
+            {nextTrack && (
+              <div className="aivy-lyrics-next">
+                <ListMusic size={14} />
+                <span className="label">{t("upNextLabel")}</span>
+                <span className="name">{nextTrack.title} &mdash; {nextTrack.artist?.name}</span>
+              </div>
             )}
           </div>
 

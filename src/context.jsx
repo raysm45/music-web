@@ -52,6 +52,7 @@ export function UIProvider({ children }) {
   const [contextMenu, setContextMenu] = useState(null);
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
   const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [sidebarQueueOpen, setSidebarQueueOpen] = useState(false);
 
   useEffect(() => {
     Api.me()
@@ -144,6 +145,8 @@ export function UIProvider({ children }) {
   const openLyrics = useCallback(() => setLyricsOpen(true), []);
   const closeLyrics = useCallback(() => setLyricsOpen(false), []);
   const toggleLyrics = useCallback(() => setLyricsOpen((o) => !o), []);
+  const toggleSidebarQueue = useCallback(() => setSidebarQueueOpen((o) => !o), []);
+  const closeSidebarQueue = useCallback(() => setSidebarQueueOpen(false), []);
 
   const value = {
     authUser, authChecked, login, logout, loggingOut,
@@ -153,6 +156,7 @@ export function UIProvider({ children }) {
     contextMenu, openContextMenu, closeContextMenu,
     addToPlaylistTarget, openAddToPlaylist, closeAddToPlaylist,
     lyricsOpen, openLyrics, closeLyrics, toggleLyrics,
+    sidebarQueueOpen, toggleSidebarQueue, closeSidebarQueue,
   };
   return <UICtx.Provider value={value}>{children}</UICtx.Provider>;
 }
