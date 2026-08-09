@@ -843,6 +843,7 @@ export function PlayerProvider({ children }) {
       id: s.video_id,
       videoId: s.video_id,
       title: s.title,
+      artist: s.artist_name ? { name: s.artist_name } : null,
       cover: s.thumbnail,
       duration: s.duration,
     }));
@@ -858,7 +859,7 @@ export function PlayerProvider({ children }) {
     setPlaylists((list) => list.map((pl) => (pl.id === playlistId && !pl.songs?.some((s) => (s.videoId || s.id) === key)
       ? { ...pl, songs: [...(pl.songs || []), track] } : pl)));
     try {
-      await Api.addSong(playlistId, key, { title: track.title, thumbnail: track.cover, duration: track.duration });
+      await Api.addSong(playlistId, key, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, duration: track.duration });
       pushToast(t("toastAddedToPlaylist"));
     } catch { pushToast(t("toastAddToPlaylistFailed")); }
   }, [pushToast, t]);
