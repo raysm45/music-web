@@ -87,13 +87,13 @@ export function SearchPage() {
   };
 
   const showBrowse = !query.trim() && !hasSearched;
-  const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.thumbnail, duration: r.duration || null, artist: null } : r));
+  const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.thumbnail, duration: r.duration || null, artist: r.artist ? { name: r.artist } : null } : r));
 
   useEffect(() => {
     if (!results.length) { setLyricsMap({}); return; }
     let cancelled = false;
     setLyricsMap({});
-    const items = results.map((r) => (r.videoId ? { id: r.videoId, title: r.title, artist: null, duration: r.duration || null } : r));
+    const items = results.map((r) => (r.videoId ? { id: r.videoId, title: r.title, artist: r.artist ? { name: r.artist } : null, duration: r.duration || null } : r));
     const found = {};
     const CONCURRENCY = 5;
     let cursor = 0;

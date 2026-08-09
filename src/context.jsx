@@ -174,7 +174,8 @@ function normalizeTrack(raw) {
   if (raw.videoId && !raw.artist?.id) {
     return {
       id: raw.videoId, videoId: raw.videoId, title: raw.title,
-      artist: raw.artist || null, album: raw.album || null, cover: raw.thumbnail || raw.cover || null,
+      artist: raw.artist ? (typeof raw.artist === "string" ? { name: raw.artist } : raw.artist) : null,
+      album: raw.album || null, cover: raw.thumbnail || raw.cover || null,
       duration: raw.duration || null, preview: null, source: "youtube",
     };
   }

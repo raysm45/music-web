@@ -142,8 +142,11 @@ export function RoomPage() {
           <div style={{ marginTop: 10 }}>
             {results.slice(0, 6).map((r) => (
               <div key={r.videoId} className="aivy-row">
-                <div className="meta"><span className="t">{r.title}</span></div>
-                <button className="aivy-icon-btn sm" onClick={() => { addToQueueEnd({ id: r.videoId, videoId: r.videoId, title: r.title, cover: r.thumbnail }); setSearch(""); setResults([]); }} aria-label={t("menuAddQueue")}><Plus size={16} /></button>
+                <div className="meta">
+                  <span className="t">{r.title}</span>
+                  {r.artist && <span className="a">{r.artist}</span>}
+                </div>
+                <button className="aivy-icon-btn sm" onClick={() => { addToQueueEnd({ id: r.videoId, videoId: r.videoId, title: r.title, artist: r.artist ? { name: r.artist } : null, cover: r.thumbnail, duration: r.duration }); setSearch(""); setResults([]); }} aria-label={t("menuAddQueue")}><Plus size={16} /></button>
               </div>
             ))}
           </div>
