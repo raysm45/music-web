@@ -800,6 +800,7 @@ svg{ display: block; }
 .aivy-shorts-sentinel{ height: 100%; display: flex; align-items: center; justify-content: center; scroll-snap-align: start; }
 @media (max-width: 860px){
   .aivy-shorts-page{ position: fixed; inset: 0; z-index: 30; height: 100dvh; }
+  .aivy-shorts-scroller{ width: 100%; }
   .aivy-short-back{ display: flex; }
   .aivy-short-overlay{ padding: 14px 12px calc(20px + var(--safe-b)); }
   .aivy-short-action{ width: 40px; height: 40px; }
