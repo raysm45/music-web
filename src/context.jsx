@@ -315,7 +315,7 @@ export function PlayerProvider({ children }) {
 
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
-    Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.videoId || r.id))))).catch(() => {});
+    Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.video_id ?? r.videoId ?? r.id))))).catch(() => {});
     Api.playlists().then(setPlaylists).catch(() => {});
   }, [authUser]);
 
