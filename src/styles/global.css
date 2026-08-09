@@ -301,6 +301,15 @@ svg{ display: block; }
 .aivy-nowplaying-pane{ display: flex; flex-direction: column; align-items: center; text-align: center; padding: 16px 8px; }
 .aivy-nowplaying-pane .t{ font-family: var(--font-display); font-size: 17px; font-weight: 600; margin-top: 16px; }
 .aivy-nowplaying-pane .a{ font-size: 13px; color: var(--ink-faint); margin-top: 4px; }
+
+.aivy-nextup{ width: 100%; text-align: left; margin-top: 22px; }
+.aivy-nextup-label{ display: flex; align-items: center; gap: 6px; padding: 0 2px 8px; color: var(--ink-faint); }
+.aivy-nextup-row{ width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: var(--radius-md); background: var(--bg-elev); border: 1px solid var(--line); transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.aivy-nextup-row:hover{ background: var(--bg-elev-2); border-color: var(--moss-strong); }
+.aivy-nextup-row .aivy-queue-meta{ flex: 1; min-width: 0; }
+.aivy-nextup-chevron{ flex-shrink: 0; color: var(--ink-faint); }
+.aivy-nextup.compact{ margin-top: 18px; }
+.aivy-nextup.compact .aivy-nextup-row{ background: transparent; }
 .aivy-room-pane-head{ display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 4px 6px 10px; }
 .aivy-room-pane-head .t{ font-family: var(--font-display); font-size: 16px; font-weight: 600; }
 .aivy-room-members{ display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }

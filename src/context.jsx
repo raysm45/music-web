@@ -314,7 +314,9 @@ export function PlayerProvider({ children }) {
       })
       .catch(() => {
         if (seq !== lyricsCheckSeqRef.current) return;
-        setCurrentTrackHasLyrics(true);
+        // Lyrics endpoint returns 404 (which throws) when no lyrics are found,
+        // so any failure here means the mic button should stay disabled.
+        setCurrentTrackHasLyrics(false);
       });
   }, [currentKey]);
 

@@ -665,6 +665,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(duration)}</span>
             </div>
             <TransportButtons big />
+            <NextUpPreview />
           </div>
         )}
       </div>
@@ -722,6 +723,33 @@ export function RightPanel() {
         {tab === "room" && room && <RoomPane />}
       </div>
     </aside>
+  );
+}
+
+function NextUpPreview({ compact }) {
+  const { upNext, suggestedQueue, next, promoteSuggestion } = usePlayer();
+  const { t } = useUI();
+  const queueTrack = upNext[0];
+  const track = queueTrack || suggestedQueue[0];
+  if (!track) return null;
+
+  const isFromQueue = !!queueTrack;
+  const handleClick = () => {
+    if (isFromQueue) { next(); return; }
+    promoteSuggestion(track);
+  };
+
+  return (
+    <div className={`aivy-nextup ${compact ? "compact" : ""}`}>
+      <div className="aivy-nextup-label eyebrow">
+        {isFromQueue ? <ListMusic size={12} /> : <Radio size={12} />}
+        <span>{isFromQueue ? t("nextInQueueLabel") : t("nextRecommendationLabel")}</span>
+      </div>
+      <button type="button" className="aivy-nextup-row" onClick={handleClick}>
+        <QueueTrackMeta track={track} />
+        <ChevronRight size={16} className="aivy-nextup-chevron" />
+      </button>
+    </div>
   );
 }
 
@@ -922,6 +950,7 @@ function NowPlayingPane() {
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
       <button className="aivy-btn-ghost" style={{ marginTop: 16 }} onClick={toggleLyrics} disabled={!currentTrackHasLyrics} title={!currentTrackHasLyrics ? t("lyricsUnavailable") : undefined}><Mic2 size={14} /> {currentTrackHasLyrics ? t("seeLyrics") : t("lyricsUnavailable")}</button>
+      <NextUpPreview compact />
     </div>
   );
 }

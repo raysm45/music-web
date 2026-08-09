@@ -58,6 +58,8 @@ const dict = {
     lyricsNotFound: "Lirik belum ketemu",
     lyricsNotFoundSub: "Coba cari lagu yang lain.",
     upNextLabel: "Berikutnya",
+    nextInQueueLabel: "Berikutnya di Antrean",
+    nextRecommendationLabel: "Rekomendasi Berikutnya",
 
     tabNowPlaying: "Now Playing",
     tabQueue: "Antrean",
@@ -344,6 +346,8 @@ const dict = {
     lyricsNotFound: "No lyrics found yet",
     lyricsNotFoundSub: "Try another song.",
     upNextLabel: "Up next",
+    nextInQueueLabel: "Next in Queue",
+    nextRecommendationLabel: "Next Recommendation",
 
     tabNowPlaying: "Now Playing",
     tabQueue: "Queue",
