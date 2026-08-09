@@ -987,8 +987,6 @@ function RoomPane() {
         ))}
       </div>
       {room.hostOnlyControl && <div className="aivy-room-note" style={{ marginTop: 14 }}>{t("hostOnlyNotice")}</div>}
-      <div className="aivy-drawer-sub eyebrow" style={{ marginTop: 14 }}>{t("roomChat")}</div>
-      <RoomChat />
     </div>
   );
 }
