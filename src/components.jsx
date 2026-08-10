@@ -752,25 +752,6 @@ export function RightPanel() {
     width: rightPanelWidth, setWidth: setRightPanelWidth, min: RIGHTPANEL_MIN_W, max: RIGHTPANEL_MAX_W, side: "right",
   });
 
-  if (rightPanelCollapsed) {
-    return (
-      <button
-        type="button"
-        className="aivy-rightpanel-rail"
-        onClick={toggleRightPanelCollapsed}
-        aria-label={t("expandPanel", "Buka panel")}
-        title={t("expandPanel", "Buka panel")}
-      >
-        {currentTrack && (
-          <span className="aivy-rightpanel-rail-thumb">
-            <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={36} radius={8} style={{ width: "100%", height: "100%" }} />
-          </span>
-        )}
-        <span className="aivy-rightpanel-rail-icon"><PanelRight size={16} /></span>
-      </button>
-    );
-  }
-
   const resizeHandle = (
     <div
       className={`aivy-resize-handle left ${isDragging ? "active" : ""}`}
@@ -781,31 +762,28 @@ export function RightPanel() {
     </div>
   );
 
-  if (sidebarQueueOpen) {
-    return (
-      <aside className="aivy-rightpanel">
-        <div className="aivy-rightpanel-tabs">
-          <button
-            className="aivy-panel-icon-btn"
-            onClick={toggleRightPanelCollapsed}
-            aria-label={t("collapsePanel", "Tutup panel")}
-            title={t("collapsePanel", "Tutup panel")}
-          >
-            <PanelRight size={18} />
-          </button>
-          <span className="aivy-rightpanel-title">{t("lyricsQueueBtn")}</span>
-          <button className="aivy-icon-btn sm" onClick={closeSidebarQueue} aria-label={t("close")}><X size={16} /></button>
-        </div>
-        <div className="aivy-rightpanel-body aivy-scroll">
-          <SidebarQueuePanel />
-        </div>
-        {resizeHandle}
-      </aside>
-    );
-  }
-
-  return (
-    <aside className="aivy-rightpanel">
+  // Shared tabs+body markup — used both by the normal expanded panel and by
+  // the floating hover-preview that peeks out from the collapsed rail.
+  const bodyContent = sidebarQueueOpen ? (
+    <>
+      <div className="aivy-rightpanel-tabs">
+        <button
+          className="aivy-panel-icon-btn"
+          onClick={toggleRightPanelCollapsed}
+          aria-label={t("collapsePanel", "Tutup panel")}
+          title={t("collapsePanel", "Tutup panel")}
+        >
+          <PanelRight size={18} />
+        </button>
+        <span className="aivy-rightpanel-title">{t("lyricsQueueBtn")}</span>
+        <button className="aivy-icon-btn sm" onClick={closeSidebarQueue} aria-label={t("close")}><X size={16} /></button>
+      </div>
+      <div className="aivy-rightpanel-body aivy-scroll">
+        <SidebarQueuePanel />
+      </div>
+    </>
+  ) : (
+    <>
       <div className="aivy-rightpanel-tabs">
         <button
           className="aivy-panel-icon-btn"
@@ -827,6 +805,40 @@ export function RightPanel() {
         {tab === "now" && <NowPlayingPane />}
         {tab === "room" && room && <RoomPane />}
       </div>
+    </>
+  );
+
+  if (rightPanelCollapsed) {
+    return (
+      <aside className="aivy-rightpanel aivy-rightpanel-collapsed">
+        <button
+          type="button"
+          className="aivy-rightpanel-rail"
+          onClick={toggleRightPanelCollapsed}
+          aria-label={t("expandPanel", "Buka panel")}
+          title={t("expandPanel", "Buka panel")}
+        >
+          {currentTrack && (
+            <span className="aivy-rightpanel-rail-thumb">
+              <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={36} radius={8} style={{ width: "100%", height: "100%" }} />
+            </span>
+          )}
+          <span className="aivy-rightpanel-rail-icon"><PanelRight size={16} /></span>
+        </button>
+
+        {/* Floating peek panel: hovering the rail slides the full lyrics/queue
+            panel out slightly forward over the main content, translucent
+            rather than a plain static thumbnail. */}
+        <div className="aivy-rightpanel-hover-preview" style={{ width: rightPanelWidth }}>
+          {bodyContent}
+        </div>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="aivy-rightpanel">
+      {bodyContent}
       {resizeHandle}
     </aside>
   );
@@ -1262,10 +1274,42 @@ export function Sidebar() {
     width: sidebarWidth, setWidth: setSidebarWidth, min: SIDEBAR_MIN_W, max: SIDEBAR_MAX_W, side: "left",
   });
 
-  // Shared full-content markup — used both by the normal expanded sidebar
-  // and by the floating hover-preview that peeks out from the collapsed rail.
-  const fullContent = (
-    <>
+  if (sidebarCollapsed) {
+    return (
+      <aside className="aivy-sidebar aivy-sidebar-rail">
+        <button
+          className="aivy-panel-icon-btn aivy-rail-toggle"
+          onClick={toggleSidebarCollapsed}
+          aria-label={t("expandSidebar", "Buka sidebar")}
+          title={t("expandSidebar", "Buka sidebar")}
+        >
+          <PanelLeft size={18} />
+        </button>
+        <nav className="aivy-nav aivy-nav-rail">
+          {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
+            <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`} title={t(labelKey)} aria-label={t(labelKey)}>
+              <Icon size={18} />
+            </Link>
+          ))}
+        </nav>
+        <div className="aivy-side-footer aivy-side-footer-rail">
+          <button className="aivy-theme-btn" onClick={toggleTheme} title={theme === "dark" ? t("navLightMode") : t("navDarkMode")} aria-label={theme === "dark" ? t("navLightMode") : t("navDarkMode")}>
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+          {authUser ? (
+            <Link to="settings" className="aivy-user-chip aivy-user-chip-rail" title={authUser.username} aria-label={authUser.username}>
+              <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>
+            </Link>
+          ) : (
+            <button className="aivy-login-btn" onClick={login} title={t("navLoginDiscord")} aria-label={t("navLoginDiscord")}><LogIn size={15} /></button>
+          )}
+        </div>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="aivy-sidebar">
       <div className="aivy-sidebar-topline">
         <button
           className="aivy-panel-icon-btn"
@@ -1311,52 +1355,6 @@ export function Sidebar() {
           <button className="aivy-login-btn" onClick={login}><LogIn size={15} /> {t("navLoginDiscord")}</button>
         )}
       </div>
-    </>
-  );
-
-  if (sidebarCollapsed) {
-    return (
-      <aside className="aivy-sidebar aivy-sidebar-rail aivy-sidebar-rail-hoverable">
-        <button
-          className="aivy-panel-icon-btn aivy-rail-toggle"
-          onClick={toggleSidebarCollapsed}
-          aria-label={t("expandSidebar", "Buka sidebar")}
-          title={t("expandSidebar", "Buka sidebar")}
-        >
-          <PanelLeft size={18} />
-        </button>
-        <nav className="aivy-nav aivy-nav-rail">
-          {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
-            <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`} title={t(labelKey)} aria-label={t(labelKey)}>
-              <Icon size={18} />
-            </Link>
-          ))}
-        </nav>
-        <div className="aivy-side-footer aivy-side-footer-rail">
-          <button className="aivy-theme-btn" onClick={toggleTheme} title={theme === "dark" ? t("navLightMode") : t("navDarkMode")} aria-label={theme === "dark" ? t("navLightMode") : t("navDarkMode")}>
-            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
-          {authUser ? (
-            <Link to="settings" className="aivy-user-chip aivy-user-chip-rail" title={authUser.username} aria-label={authUser.username}>
-              <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>
-            </Link>
-          ) : (
-            <button className="aivy-login-btn" onClick={login} title={t("navLoginDiscord")} aria-label={t("navLoginDiscord")}><LogIn size={15} /></button>
-          )}
-        </div>
-
-        {/* Floating peek panel: on hover, slides out slightly forward over the
-            main content with a translucent glassy background — not a plain thumbnail. */}
-        <div className="aivy-sidebar-hover-preview" style={{ width: sidebarWidth }}>
-          {fullContent}
-        </div>
-      </aside>
-    );
-  }
-
-  return (
-    <aside className="aivy-sidebar">
-      {fullContent}
 
       <div
         className={`aivy-resize-handle right ${isDragging ? "active" : ""}`}
