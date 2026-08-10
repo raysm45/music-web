@@ -711,8 +711,8 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(duration)}</span>
             </div>
             <TransportButtons big />
-            <NextUpPreview />
             <AboutArtistSection track={currentTrack} onNavigate={onClose} />
+            <NextUpPreview />
           </div>
         )}
       </div>
@@ -809,8 +809,12 @@ export function RightPanel() {
         >
           <PanelRight size={18} />
         </button>
-        <button className={tab === "now" ? "active" : ""} onClick={() => setTab("now")}>{t("tabNowPlaying")}</button>
-        {room && <button className={tab === "room" ? "active" : ""} onClick={() => setTab("room")}>{t("tabRoom")}</button>}
+        {room && (
+          <>
+            <button className={`aivy-rightpanel-tab-icon ${tab === "now" ? "active" : ""}`} onClick={() => setTab("now")} aria-label={t("tabNowPlaying")} title={t("tabNowPlaying")}><Music2 size={15} /></button>
+            <button className={tab === "room" ? "active" : ""} onClick={() => setTab("room")}>{t("tabRoom")}</button>
+          </>
+        )}
       </div>
       <div className="aivy-rightpanel-body aivy-scroll">
         {tab === "now" && <NowPlayingPane />}
@@ -911,13 +915,15 @@ function NextUpPreview({ compact }) {
 
   return (
     <div className={`aivy-nextup ${compact ? "compact" : ""}`}>
-      <div className="aivy-nextup-label eyebrow">
-        {isFromQueue ? <ListMusic size={12} /> : <Radio size={12} />}
-        <span>{isFromQueue ? t("nextInQueueLabel") : t("nextRecommendationLabel")}</span>
-      </div>
       <button type="button" className="aivy-nextup-row" onClick={handleClick}>
-        <QueueTrackMeta track={track} />
-        <ChevronRight size={16} className="aivy-nextup-chevron" />
+        <div className="aivy-nextup-label eyebrow">
+          {isFromQueue ? <ListMusic size={12} /> : <Radio size={12} />}
+          <span>{isFromQueue ? t("nextInQueueLabel") : t("nextRecommendationLabel")}</span>
+        </div>
+        <div className="aivy-nextup-row-main">
+          <QueueTrackMeta track={track} />
+          <ChevronRight size={16} className="aivy-nextup-chevron" />
+        </div>
       </button>
     </div>
   );
@@ -1120,8 +1126,8 @@ function NowPlayingPane() {
       <div className="t">{currentTrack.title}</div>
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
-      <NextUpPreview compact />
       <AboutArtistSection track={currentTrack} />
+      <NextUpPreview compact />
     </div>
   );
 }
