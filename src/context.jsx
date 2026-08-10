@@ -25,7 +25,7 @@ export const SIDEBAR_MAX_W = 360;
 export const SIDEBAR_COLLAPSED_W = 72;
 export const RIGHTPANEL_MIN_W = 260;
 export const RIGHTPANEL_MAX_W = 440;
-export const RIGHTPANEL_COLLAPSED_W = 16;
+export const RIGHTPANEL_COLLAPSED_W = 56;
 const PANEL_PREFS_KEY = "aivy_panel_prefs";
 const DEFAULT_PANEL_PREFS = {
   sidebarWidth: 236,

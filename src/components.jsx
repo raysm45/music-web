@@ -740,7 +740,7 @@ export function QueueSheet({ open, onClose }) {
 }
 
 export function RightPanel() {
-  const { room } = usePlayer();
+  const { room, currentTrack } = usePlayer();
   const {
     sidebarQueueOpen, closeSidebarQueue, t,
     rightPanelWidth, setRightPanelWidth, rightPanelCollapsed, toggleRightPanelCollapsed,
@@ -761,6 +761,11 @@ export function RightPanel() {
         aria-label={t("expandPanel", "Buka panel")}
         title={t("expandPanel", "Buka panel")}
       >
+        {currentTrack && (
+          <span className="aivy-rightpanel-rail-thumb">
+            <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={36} radius={8} style={{ width: "100%", height: "100%" }} />
+          </span>
+        )}
         <span className="aivy-rightpanel-rail-icon"><PanelRight size={16} /></span>
       </button>
     );

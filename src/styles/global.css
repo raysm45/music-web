@@ -298,20 +298,32 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
 
-/* Collapsed right panel: a thin hover-reveal rail. Idle it sits quiet at the edge;
-   hovering pulls it in and lifts its opacity a touch to invite a click; clicking opens the panel full width. */
+/* Collapsed right panel: a wider hover-reveal rail. Idle it sits quiet at the edge, showing a
+   dimmed hint of the now-playing thumbnail; hovering lifts its opacity to invite a click and
+   surfaces the thumbnail + expand icon clearly; clicking opens the panel full width. */
 .aivy-rightpanel-rail{
   grid-area: right; width: 100%; height: 100%; min-width: 0; position: relative;
   background: var(--bg-elev); border: none; border-left: 1px solid var(--line);
-  cursor: pointer; padding: 0; opacity: 0.6; transform: translateX(4px);
+  cursor: pointer; padding: 0; opacity: 0.75; transform: translateX(2px);
+  display: flex; align-items: center; justify-content: center;
   transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .aivy-rightpanel-rail:hover, .aivy-rightpanel-rail:focus-visible{
   opacity: 1; transform: translateX(0); background: var(--bg-elev-2);
 }
+.aivy-rightpanel-rail-thumb{
+  display: flex; width: 36px; height: 36px; border-radius: 8px; overflow: hidden;
+  opacity: 0.55; filter: saturate(0.85);
+  transition: opacity var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-thumb{
+  opacity: 1; filter: saturate(1); transform: scale(1.04);
+}
 .aivy-rightpanel-rail-icon{
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   display: flex; color: var(--ink-faint); opacity: 0;
+  background: color-mix(in srgb, var(--bg-elev) 55%, transparent);
+  border-radius: 8px; padding: 6px;
   transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .aivy-rightpanel-rail:hover .aivy-rightpanel-rail-icon{ opacity: 1; color: var(--ink); }
