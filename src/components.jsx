@@ -756,7 +756,7 @@ function useArtistAbout(track) {
 function AboutArtistSection({ track, onNavigate }) {
   const artist = useArtistAbout(track);
   const { navigate } = useRouter();
-  const { pushToast, t } = useUI();
+  const { pushToast, t, settings } = useUI();
   const [following, setFollowing] = useState(false);
 
   useEffect(() => { setFollowing(false); }, [artist?.id]);
@@ -776,21 +776,24 @@ function AboutArtistSection({ track, onNavigate }) {
 
   return (
     <div className="aivy-nowplaying-about">
-      <div className="eyebrow">{t("aboutArtistLabel")}</div>
-      {(artist.banner || artist.image) && (
-        <button type="button" className="aivy-nowplaying-about-banner" onClick={goToArtist} aria-label={artist.name}>
-          <SmartCover src={artist.banner || artist.image} seed={"banner" + (artist.id || artist.name)} size={480} radius={14} style={{ width: "100%", height: "100%" }} />
-        </button>
-      )}
-      {artist.bio && <p className="aivy-nowplaying-about-bio">{artist.bio}</p>}
-      <div className="aivy-nowplaying-about-foot">
-        <button type="button" className="aivy-nowplaying-about-name" onClick={goToArtist}>
-          <SmartCover src={artist.image} seed={"artist" + (artist.id || artist.name)} size={44} radius={999} style={{ width: 36, height: 36, borderRadius: "50%" }} />
-          <span>{artist.name}</span>
-        </button>
-        <button type="button" className={following ? "aivy-chip active" : "aivy-btn-ghost"} onClick={handleFollow}>
-          {following ? <><Check size={13} /> {t("following")}</> : t("follow")}
-        </button>
+      <button type="button" className="aivy-nowplaying-about-banner" onClick={goToArtist} aria-label={artist.name}>
+        {(artist.banner || artist.image) && (
+          <SmartCover src={artist.banner || artist.image} seed={"banner" + (artist.id || artist.name)} size={480} radius={0} style={{ width: "100%", height: "100%" }} />
+        )}
+        <div className="aivy-nowplaying-about-banner-fade" />
+        <span className="aivy-nowplaying-about-eyebrow">{t("aboutArtistLabel")}</span>
+      </button>
+      <div className="aivy-nowplaying-about-body">
+        <button type="button" className="aivy-nowplaying-about-name" onClick={goToArtist}>{artist.name}</button>
+        <div className="aivy-nowplaying-about-row">
+          {artist.listeners != null && (
+            <span className="aivy-nowplaying-about-listeners">{artist.listeners.toLocaleString(settings.language === "en" ? "en-US" : "id-ID")} {t("listenersMonthly")}</span>
+          )}
+          <button type="button" className={following ? "aivy-chip active" : "aivy-btn-ghost sm"} onClick={handleFollow}>
+            {following ? <><Check size={13} /> {t("following")}</> : t("follow")}
+          </button>
+        </div>
+        {artist.bio && <p className="aivy-nowplaying-about-bio">{artist.bio}</p>}
       </div>
     </div>
   );
