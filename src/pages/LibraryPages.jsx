@@ -85,8 +85,8 @@ export function LikedPage() {
       </div>
       {likedTracks === null ? null : likedTracks.length > 0 ? (
         <>
-          <div className="aivy-hero-actions"><button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(likedTracks, 0)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button></div>
-          <div>{likedTracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={likedTracks} showAlbum onRemove={() => handleUnlike(tr)} removeLabel={t("menuRemoveLiked")} queueMode="context" />)}</div>
+          <div className="aivy-hero-actions"><button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(likedTracks, 0, { type: "library", label: t("navLikedSongs") })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button></div>
+          <div>{likedTracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={likedTracks} showAlbum onRemove={() => handleUnlike(tr)} removeLabel={t("menuRemoveLiked")} queueMode="context" source={{ type: "library", label: t("navLikedSongs") }} />)}</div>
         </>
       ) : (
         <div className="aivy-empty"><Heart size={38} color="var(--ink-faint)" /><div className="title">{t("noLikedYet")}</div><div className="sub">{t("noLikedYetSub")}</div></div>
@@ -124,7 +124,7 @@ export function PlaylistPage() {
         <div className="aivy-hero-meta"><div className="eyebrow">{t("playlistLabel")}</div><h1 className="font-display">{pl.name}</h1><div className="stats"><span>{pl.songs?.length || 0} {t("songsCount")}</span></div></div>
       </div>
       <div className="aivy-hero-actions">
-        {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
+        {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
         <button className="aivy-btn-ghost" onClick={() => setConfirmDelete(true)}>{t("deletePlaylistBtn")}</button>
       </div>
       <ConfirmDialog
@@ -136,7 +136,7 @@ export function PlaylistPage() {
         onConfirm={() => { setConfirmDelete(false); deletePlaylist(pl.id); navigate("library"); }}
       />
       {pl.songs?.length > 0 ? (
-        <div>{pl.songs.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, tr.id)} removeLabel={t("removeFromThisPlaylist")} queueMode="context" />)}</div>
+        <div>{pl.songs.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, tr.id)} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} />)}</div>
       ) : (
         <div className="aivy-empty"><div className="title">{t("playlistEmpty")}</div><div className="sub">{t("playlistEmptySub")}</div></div>
       )}

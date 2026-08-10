@@ -197,7 +197,7 @@ export function SearchPage() {
 
       {hasSearched && (
         searching ? <SkeletonList count={8} /> : (
-          sortedList.length ? <div>{sortedList.map((tr, i) => <TrackRow key={tr.id + i} track={tr} index={i} list={sortedList} queueMode="radio" />)}</div> : (
+          sortedList.length ? <div>{sortedList.map((tr, i) => <TrackRow key={tr.id + i} track={tr} index={i} list={sortedList} queueMode="radio" source={{ type: "search" }} />)}</div> : (
             <div className="aivy-empty"><Search size={34} color="var(--ink-faint)" /><div className="title">{t("noResults")}</div><div className="sub">{t("noResultsSub")}</div></div>
           )
         )

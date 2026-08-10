@@ -205,6 +205,7 @@ export function PlayerProvider({ children }) {
   const [liked, setLiked] = useState(() => new Set());
   const [playlists, setPlaylists] = useState([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
+  const [playSource, setPlaySource] = useState(null); // { type: "library"|"search", label? } | null — dari mana track ini pertama kali diputar
 
   const audioGraphRef = useRef(null);
   const fadeTimerRef = useRef(null);
@@ -537,7 +538,7 @@ export function PlayerProvider({ children }) {
     return [startIndex, ...rest];
   }, []);
 
-  const playList = useCallback((rawList, startIndex = 0) => {
+  const playList = useCallback((rawList, startIndex = 0, source = null) => {
     resumeAudioCtx();
     const list = rawList.map(normalizeTrack).filter(Boolean);
     if (!list.length) return;
@@ -554,13 +555,14 @@ export function PlayerProvider({ children }) {
 
     setPosInOrder(shuffle ? 0 : safeStart);
     setIsPlaying(true);
+    setPlaySource(source);
     if (authUser && settings.historyEnabled !== false) {
       const t = list[clamp(startIndex, 0, list.length - 1)];
       Api.addHistory(t.videoId || t.id, { title: t.title, artistName: t.artist?.name || null, thumbnail: t.cover, duration: t.duration }).catch(() => {});
     }
   }, [inRoom, room, buildOrder, shuffle, authUser, settings.historyEnabled, resumeAudioCtx]);
 
-  const playSingle = useCallback((rawTrack) => {
+  const playSingle = useCallback((rawTrack, source = null) => {
     resumeAudioCtx();
     const track = normalizeTrack(rawTrack);
     if (!track) return;
@@ -576,6 +578,7 @@ export function PlayerProvider({ children }) {
       return;
     }
 
+    setPlaySource(source);
     const existingIdx = queueList.findIndex((t) => t.id === track.id);
     if (existingIdx !== -1) {
       const posInOrder = order.indexOf(existingIdx);
@@ -592,17 +595,18 @@ export function PlayerProvider({ children }) {
   }, [inRoom, room, queueList, order, authUser, settings.historyEnabled, resumeAudioCtx]);
 
   const radioSeqRef = useRef(0);
-  const playRadio = useCallback((rawTrack) => {
+  const playRadio = useCallback((rawTrack, source = null) => {
     resumeAudioCtx();
     const track = normalizeTrack(rawTrack);
     if (!track) return;
-    if (inRoom) { playSingle(track); return; }
+    if (inRoom) { playSingle(track, source); return; }
 
     const seq = ++radioSeqRef.current;
     setQueueList([track]);
     setOrder([0]);
     setPosInOrder(0);
     setIsPlaying(true);
+    setPlaySource(source);
     if (authUser && settings.historyEnabled !== false) {
       Api.addHistory(track.videoId || track.id, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, duration: track.duration }).catch(() => {});
     }
@@ -983,7 +987,7 @@ export function PlayerProvider({ children }) {
 
   const value = {
     queueList, order, posInOrder, currentTrack, upNext, history,
-    currentTrackHasLyrics,
+    currentTrackHasLyrics, playSource,
     isPlaying, currentTime, duration: clipDuration, isPreviewClip, loadingAudio,
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,

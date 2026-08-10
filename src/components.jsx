@@ -327,7 +327,7 @@ export function filterExplicit(tracks, settings) {
   return tracks.filter((tr) => !tr?.explicit);
 }
 
-export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single" }) {
+export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single", source = null }) {
   const { currentTrack, isPlaying, togglePlay, playSingle, playList, playRadio, selectQueuePosition, liked, toggleLike } = usePlayer();
   const { openContextMenu, t } = useUI();
   const { navigate } = useRouter();
@@ -337,10 +337,10 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
 
   const handlePlay = () => {
     if (isCurrent) { togglePlay(); return; }
-    if (queueMode === "context" && list && list.length) { playList(list, index); return; }
-    if (queueMode === "radio") { playRadio(track); return; }
+    if (queueMode === "context" && list && list.length) { playList(list, index, source); return; }
+    if (queueMode === "radio") { playRadio(track, source); return; }
     if (queueMode === "queue") { selectQueuePosition(index); return; }
-    playSingle(track);
+    playSingle(track, source);
   };
   const handleContext = (e) => { e.preventDefault(); openContextMenu(e.clientX, e.clientY, items); };
 
@@ -631,26 +631,23 @@ export function MiniPlayer({ onExpand }) {
 }
 
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
-  const { currentTrack, liked, toggleLike, isPreviewClip, currentTrackHasLyrics, loadingAudio } = usePlayer();
+  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio } = usePlayer();
   const { navigate } = useRouter();
-  const { toggleLyrics, t } = useUI();
+  const { t } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
-  const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
       <div className={`aivy-sheet ${open ? "open" : ""}`} aria-hidden={!open}>
         <div className="aivy-sheet-head">
           <button className="aivy-icon-btn" onClick={onClose} aria-label={t("close")}><ChevronDown size={22} /></button>
-          <span className="eyebrow">{isPreviewClip ? t("preview30") : t("nowPlaying")}</span>
-          <div style={{ display: "flex", gap: 2 }}>
-            <button className="aivy-icon-btn" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label={t("lyrics")} title={lyricsDisabled && currentTrack ? t("lyricsUnavailable") : t("lyrics")}><Mic2 size={19} /></button>
-            <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={19} /></button>
-          </div>
+          {isPreviewClip ? <span className="eyebrow">{t("preview30")}</span> : <span />}
+          <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={19} /></button>
         </div>
         {currentTrack && (
           <div className="aivy-sheet-body aivy-scroll">
+            <PlayingFromLabel />
             <div className="aivy-sheet-art"><SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={20} style={{ width: "100%", height: "100%" }} /></div>
             <div className="aivy-sheet-meta">
               <div>
@@ -666,6 +663,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             </div>
             <TransportButtons big />
             <NextUpPreview />
+            <AboutArtistSection track={currentTrack} onNavigate={onClose} />
           </div>
         )}
       </div>
@@ -723,6 +721,78 @@ export function RightPanel() {
         {tab === "room" && room && <RoomPane />}
       </div>
     </aside>
+  );
+}
+
+function PlayingFromLabel() {
+  const { playSource } = usePlayer();
+  const { t } = useUI();
+  if (playSource?.type !== "library" || !playSource.label) return null;
+  return (
+    <div className="aivy-nowplaying-source">
+      <Library size={12} />
+      <span>{t("playingFromLabel")} <strong>{playSource.label}</strong></span>
+    </div>
+  );
+}
+
+function useArtistAbout(track) {
+  const [artist, setArtist] = useState(null);
+  const artistKey = track?.artist?.id || track?.artist?.name || null;
+
+  useEffect(() => {
+    setArtist(null);
+    if (!artistKey) return;
+    let alive = true;
+    import("./lib/api.js").then(({ Api }) => {
+      Api.artist(artistKey).then((res) => { if (alive) setArtist(res); }).catch(() => { if (alive) setArtist(null); });
+    });
+    return () => { alive = false; };
+  }, [artistKey]);
+
+  return artist;
+}
+
+function AboutArtistSection({ track, onNavigate }) {
+  const artist = useArtistAbout(track);
+  const { navigate } = useRouter();
+  const { pushToast, t } = useUI();
+  const [following, setFollowing] = useState(false);
+
+  useEffect(() => { setFollowing(false); }, [artist?.id]);
+
+  if (!track?.artist || !artist) return null;
+
+  const goToArtist = () => {
+    navigate("artist", { params: { id: artist.id || artist.name } });
+    onNavigate?.();
+  };
+
+  const handleFollow = (e) => {
+    e.stopPropagation();
+    setFollowing((f) => !f);
+    pushToast(following ? `${t("unfollowedToast")} ${artist.name}` : `${t("followedToast")} ${artist.name}`);
+  };
+
+  return (
+    <div className="aivy-nowplaying-about">
+      <div className="eyebrow">{t("aboutArtistLabel")}</div>
+      {(artist.banner || artist.image) && (
+        <button type="button" className="aivy-nowplaying-about-banner" onClick={goToArtist} aria-label={artist.name}>
+          <SmartCover src={artist.banner || artist.image} seed={"banner" + (artist.id || artist.name)} size={480} radius={14} style={{ width: "100%", height: "100%" }} />
+        </button>
+      )}
+      {artist.bio && <p className="aivy-nowplaying-about-bio">{artist.bio}</p>}
+      <div className="aivy-nowplaying-about-foot">
+        <button type="button" className="aivy-nowplaying-about-name" onClick={goToArtist}>
+          <SmartCover src={artist.image} seed={"artist" + (artist.id || artist.name)} size={44} radius={999} style={{ width: 36, height: 36, borderRadius: "50%" }} />
+          <span>{artist.name}</span>
+        </button>
+        <button type="button" className={following ? "aivy-chip active" : "aivy-btn-ghost"} onClick={handleFollow}>
+          {following ? <><Check size={13} /> {t("following")}</> : t("follow")}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -940,17 +1010,18 @@ export function QueueBody() {
 }
 
 function NowPlayingPane() {
-  const { currentTrack, isPreviewClip, currentTrackHasLyrics } = usePlayer();
-  const { toggleLyrics, t } = useUI();
+  const { currentTrack, isPreviewClip } = usePlayer();
+  const { t } = useUI();
   if (!currentTrack) return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>;
   return (
     <div className="aivy-nowplaying-pane">
+      <PlayingFromLabel />
       <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={240} radius={16} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
       <div className="t">{currentTrack.title}</div>
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
-      <button className="aivy-btn-ghost" style={{ marginTop: 16 }} onClick={toggleLyrics} disabled={!currentTrackHasLyrics} title={!currentTrackHasLyrics ? t("lyricsUnavailable") : undefined}><Mic2 size={14} /> {currentTrackHasLyrics ? t("seeLyrics") : t("lyricsUnavailable")}</button>
       <NextUpPreview compact />
+      <AboutArtistSection track={currentTrack} />
     </div>
   );
 }

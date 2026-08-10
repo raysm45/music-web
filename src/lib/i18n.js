@@ -60,6 +60,8 @@ const dict = {
     upNextLabel: "Berikutnya",
     nextInQueueLabel: "Berikutnya di Antrean",
     nextRecommendationLabel: "Rekomendasi Berikutnya",
+    aboutArtistLabel: "Tentang Artis",
+    playingFromLabel: "Memutar dari",
 
     tabNowPlaying: "Now Playing",
     tabQueue: "Antrean",
@@ -348,6 +350,8 @@ const dict = {
     upNextLabel: "Up next",
     nextInQueueLabel: "Next in Queue",
     nextRecommendationLabel: "Next Recommendation",
+    aboutArtistLabel: "About the Artist",
+    playingFromLabel: "Playing from",
 
     tabNowPlaying: "Now Playing",
     tabQueue: "Queue",
