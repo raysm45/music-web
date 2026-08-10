@@ -127,6 +127,40 @@ body.aivy-resizing *{ user-select: none !important; }
 /* Collapsed left sidebar: a slim icon-only rail instead of hiding everything */
 .aivy-sidebar-rail{ align-items: center; padding: 16px 10px 14px; gap: 4px; }
 .aivy-sidebar-rail .aivy-rail-toggle{ margin-bottom: 14px; }
+
+/* Hover peek: hovering the collapsed rail slides a translucent full-sidebar
+   panel out slightly forward over the main content, instead of just showing
+   a static thumbnail. It stays glassy/see-through even fully shown. */
+.aivy-sidebar-rail-hoverable{ overflow: visible; }
+.aivy-sidebar-hover-preview{
+  position: absolute;
+  top: 6px; bottom: 6px; left: 6px;
+  min-width: 200px;
+  display: flex; flex-direction: column;
+  padding: 20px 14px 14px;
+  background: color-mix(in srgb, var(--bg-elev) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 18px 46px rgba(0,0,0,.32), 0 2px 10px rgba(0,0,0,.18);
+  z-index: 40;
+  opacity: 0;
+  transform: translateX(-14px) scale(.97);
+  transform-origin: left center;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+}
+.aivy-sidebar-rail-hoverable:hover .aivy-sidebar-hover-preview,
+.aivy-sidebar-rail-hoverable:focus-within .aivy-sidebar-hover-preview{
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+  transition-delay: 120ms;
+}
+/* small buffer so moving the cursor from the rail into the preview doesn't
+   flicker it closed */
+.aivy-sidebar-hover-preview::before{ content: ""; position: absolute; top: 0; bottom: 0; left: -12px; width: 12px; }
 .aivy-nav-rail{ width: 100%; align-items: center; gap: 4px; }
 .aivy-nav-rail .aivy-nav-item{ width: 44px; height: 40px; padding: 0; justify-content: center; gap: 0; }
 .aivy-side-footer-rail{ width: 100%; align-items: center; gap: 8px; }

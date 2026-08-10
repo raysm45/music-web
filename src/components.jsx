@@ -1262,42 +1262,10 @@ export function Sidebar() {
     width: sidebarWidth, setWidth: setSidebarWidth, min: SIDEBAR_MIN_W, max: SIDEBAR_MAX_W, side: "left",
   });
 
-  if (sidebarCollapsed) {
-    return (
-      <aside className="aivy-sidebar aivy-sidebar-rail">
-        <button
-          className="aivy-panel-icon-btn aivy-rail-toggle"
-          onClick={toggleSidebarCollapsed}
-          aria-label={t("expandSidebar", "Buka sidebar")}
-          title={t("expandSidebar", "Buka sidebar")}
-        >
-          <PanelLeft size={18} />
-        </button>
-        <nav className="aivy-nav aivy-nav-rail">
-          {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
-            <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`} title={t(labelKey)} aria-label={t(labelKey)}>
-              <Icon size={18} />
-            </Link>
-          ))}
-        </nav>
-        <div className="aivy-side-footer aivy-side-footer-rail">
-          <button className="aivy-theme-btn" onClick={toggleTheme} title={theme === "dark" ? t("navLightMode") : t("navDarkMode")} aria-label={theme === "dark" ? t("navLightMode") : t("navDarkMode")}>
-            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
-          {authUser ? (
-            <Link to="settings" className="aivy-user-chip aivy-user-chip-rail" title={authUser.username} aria-label={authUser.username}>
-              <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>
-            </Link>
-          ) : (
-            <button className="aivy-login-btn" onClick={login} title={t("navLoginDiscord")} aria-label={t("navLoginDiscord")}><LogIn size={15} /></button>
-          )}
-        </div>
-      </aside>
-    );
-  }
-
-  return (
-    <aside className="aivy-sidebar">
+  // Shared full-content markup — used both by the normal expanded sidebar
+  // and by the floating hover-preview that peeks out from the collapsed rail.
+  const fullContent = (
+    <>
       <div className="aivy-sidebar-topline">
         <button
           className="aivy-panel-icon-btn"
@@ -1343,6 +1311,52 @@ export function Sidebar() {
           <button className="aivy-login-btn" onClick={login}><LogIn size={15} /> {t("navLoginDiscord")}</button>
         )}
       </div>
+    </>
+  );
+
+  if (sidebarCollapsed) {
+    return (
+      <aside className="aivy-sidebar aivy-sidebar-rail aivy-sidebar-rail-hoverable">
+        <button
+          className="aivy-panel-icon-btn aivy-rail-toggle"
+          onClick={toggleSidebarCollapsed}
+          aria-label={t("expandSidebar", "Buka sidebar")}
+          title={t("expandSidebar", "Buka sidebar")}
+        >
+          <PanelLeft size={18} />
+        </button>
+        <nav className="aivy-nav aivy-nav-rail">
+          {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
+            <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`} title={t(labelKey)} aria-label={t(labelKey)}>
+              <Icon size={18} />
+            </Link>
+          ))}
+        </nav>
+        <div className="aivy-side-footer aivy-side-footer-rail">
+          <button className="aivy-theme-btn" onClick={toggleTheme} title={theme === "dark" ? t("navLightMode") : t("navDarkMode")} aria-label={theme === "dark" ? t("navLightMode") : t("navDarkMode")}>
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+          {authUser ? (
+            <Link to="settings" className="aivy-user-chip aivy-user-chip-rail" title={authUser.username} aria-label={authUser.username}>
+              <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>
+            </Link>
+          ) : (
+            <button className="aivy-login-btn" onClick={login} title={t("navLoginDiscord")} aria-label={t("navLoginDiscord")}><LogIn size={15} /></button>
+          )}
+        </div>
+
+        {/* Floating peek panel: on hover, slides out slightly forward over the
+            main content with a translucent glassy background — not a plain thumbnail. */}
+        <div className="aivy-sidebar-hover-preview" style={{ width: sidebarWidth }}>
+          {fullContent}
+        </div>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="aivy-sidebar">
+      {fullContent}
 
       <div
         className={`aivy-resize-handle right ${isDragging ? "active" : ""}`}
