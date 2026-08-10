@@ -724,39 +724,10 @@ svg{ display: block; }
 }
 .aivy-lyrics-overlay.open{ opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
 .aivy-lyrics-bg{
-  position: absolute; inset: -40px; background-size: cover; background-position: center;
-  filter: blur(46px) brightness(.55) saturate(1.35); opacity: .6; z-index: 0;
-  transform: translateZ(0) scale(1.12);
-  transform-origin: center;
-  will-change: transform;
+  position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(130% 70% at 50% -10%, var(--lyrics-accent, var(--moss)) 0%, transparent 62%);
+  opacity: .5;
   transition: opacity var(--dur-slow) var(--ease);
-  animation: aivy-lyrics-drift 26s ease-in-out infinite;
-}
-.aivy-lyrics-glow{
-  position: absolute; inset: -35%; z-index: 0; pointer-events: none; opacity: .65;
-  background: conic-gradient(from 0deg at 50% 45%,
-    color-mix(in srgb, var(--moss-strong) 75%, transparent),
-    color-mix(in srgb, var(--gold) 70%, transparent),
-    color-mix(in srgb, var(--berry-strong) 75%, transparent),
-    color-mix(in srgb, var(--moss-strong) 75%, transparent));
-  filter: blur(55px) saturate(1.5);
-  mix-blend-mode: screen;
-  transform: translateZ(0);
-  transform-origin: center;
-  will-change: transform;
-  animation: aivy-lyrics-spin 16s linear infinite;
-}
-@keyframes aivy-lyrics-drift{
-  0%{ transform: translateZ(0) scale(1.12) translate(0,0); }
-  50%{ transform: translateZ(0) scale(1.12) translate(-2.5%, 2%); }
-  100%{ transform: translateZ(0) scale(1.12) translate(0,0); }
-}
-@keyframes aivy-lyrics-spin{
-  from{ transform: translateZ(0) rotate(0deg); }
-  to{ transform: translateZ(0) rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce){
-  .aivy-lyrics-bg, .aivy-lyrics-glow{ animation: none; }
 }
 .aivy-lyrics-scrim{ position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 45%, transparent) 0%, var(--bg) 85%); }
 .aivy-lyrics-head{ position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: calc(16px + env(safe-area-inset-top,0px)) 20px 8px; flex-shrink: 0; }

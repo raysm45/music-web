@@ -1220,16 +1220,63 @@ function SidebarQueuePanel() {
   );
 }
 
+const dominantColorCache = new Map();
+function extractDominantColor(url) {
+  if (!url) return Promise.resolve(null);
+  if (dominantColorCache.has(url)) return Promise.resolve(dominantColorCache.get(url));
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const size = 16;
+        const canvas = document.createElement("canvas");
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, size, size);
+        const { data } = ctx.getImageData(0, 0, size, size);
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 128) continue;
+          const rr = data[i], gg = data[i + 1], bb = data[i + 2];
+          const max = Math.max(rr, gg, bb), min = Math.min(rr, gg, bb);
+          const lightness = (max + min) / 2;
+          if (lightness > 245 || lightness < 12) continue; // skip near-white/near-black
+          r += rr; g += gg; b += bb; count++;
+        }
+        if (!count) { r = 140; g = 150; b = 120; count = 1; }
+        const color = `rgb(${Math.round(r / count)}, ${Math.round(g / count)}, ${Math.round(b / count)})`;
+        dominantColorCache.set(url, color);
+        resolve(color);
+      } catch (e) {
+        resolve(null); // e.g. tainted canvas from a non-CORS image host
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
 export function LyricsOverlay() {
   const { lyricsOpen, closeLyrics, pushToast, t } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext } = usePlayer();
   const [state, setState] = useState({ loading: false, synced: [], plain: "", checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
+  const [accentColor, setAccentColor] = useState(null);
   const lineRefs = useRef([]);
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    setAccentColor(dominantColorCache.get(currentTrack?.cover) || null);
+    if (currentTrack?.cover) {
+      extractDominantColor(currentTrack.cover).then((c) => { if (!cancelled) setAccentColor(c); });
+    }
+    return () => { cancelled = true; };
+  }, [currentTrack?.cover]);
 
   useEffect(() => {
     if (!lyricsOpen) return;
@@ -1328,10 +1375,7 @@ export function LyricsOverlay() {
   return (
     <div className={`aivy-lyrics-overlay ${lyricsOpen ? "open" : ""}`}>
       {currentTrack?.cover && (
-        <>
-          <div className="aivy-lyrics-bg" style={{ backgroundImage: `url(${currentTrack.cover})` }} />
-          <div className="aivy-lyrics-glow" />
-        </>
+        <div className="aivy-lyrics-bg" style={accentColor ? { "--lyrics-accent": accentColor } : undefined} />
       )}
       <div className="aivy-lyrics-scrim" />
 
