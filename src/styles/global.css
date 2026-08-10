@@ -115,22 +115,17 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-resize-grip{ opacity: 0; color: var(--ink-faint); background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-pill); width: 16px; height: 26px; display: flex; align-items: center; justify-content: center; transition: opacity var(--dur-fast) var(--ease); pointer-events: none; }
 .aivy-resize-handle:hover .aivy-resize-grip, .aivy-resize-handle.active .aivy-resize-grip{ opacity: 1; }
 
-/* Round collapse/expand toggle, tucked on the panel's inner border, revealed on hover */
-.aivy-panel-toggle{ width: 24px; height: 24px; border-radius: 50%; background: var(--bg-elev-2); border: 1px solid var(--line); color: var(--ink-dim); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-pop); transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); z-index: 27; }
-.aivy-panel-toggle:hover{ background: var(--moss); color: var(--moss-ink); border-color: var(--moss); }
-.aivy-panel-toggle.edge{ position: absolute; top: 50%; opacity: 0; pointer-events: none; }
-.aivy-panel-toggle.edge:not(.left){ right: -12px; transform: translateY(-50%) scale(.82); }
-.aivy-panel-toggle.edge.left{ left: -12px; transform: translateY(-50%) scale(.82); }
-.aivy-sidebar:hover .aivy-panel-toggle.edge, .aivy-rightpanel:hover .aivy-panel-toggle.edge{ opacity: 1; pointer-events: auto; transform: translateY(-50%) scale(1); }
+/* Plain sidebar/panel toggle icon — no arrow, no circle badge, just the icon itself */
+.aivy-panel-icon-btn{ width: 26px; height: 26px; border-radius: var(--radius-sm); background: transparent; border: none; color: var(--ink-dim); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+.aivy-panel-icon-btn:hover{ background: var(--bg-elev-2); color: var(--ink); }
+/* Floating variant used when the panel is fully collapsed, so there's still a way back in */
+.aivy-panel-icon-btn.floating{ position: fixed; top: 18px; z-index: 45; background: var(--bg-elev); border: 1px solid var(--line); box-shadow: var(--shadow-pop); animation: aivy-fade-in var(--dur-base) var(--ease); }
+.aivy-panel-icon-btn.floating.left{ left: 14px; }
+.aivy-panel-icon-btn.floating.right{ right: 14px; }
 
-/* Thin hover strip shown at the viewport edge when a panel is collapsed, to bring it back */
-.aivy-edge-trigger{ position: fixed; top: 0; bottom: var(--player-h); width: 18px; z-index: 45; display: flex; align-items: center; }
-.aivy-edge-trigger.left{ left: 0; justify-content: flex-start; }
-.aivy-edge-trigger.right{ right: 0; justify-content: flex-end; }
-.aivy-panel-toggle.rail{ opacity: 0; transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease); }
-.aivy-edge-trigger.left .aivy-panel-toggle.rail{ transform: translateX(-8px); }
-.aivy-edge-trigger.right .aivy-panel-toggle.rail{ transform: translateX(8px); }
-.aivy-edge-trigger:hover .aivy-panel-toggle.rail{ opacity: 1; transform: translateX(0); pointer-events: auto; }
+/* Top-left header row: toggle icon sits directly beside the brand text, same row, same baseline */
+.aivy-sidebar-topline{ display: flex; align-items: center; gap: 6px; padding: 4px 8px 22px 6px; }
+.aivy-sidebar-topline .aivy-brand{ padding: 0; }
 .aivy-brand{ display: flex; align-items: center; gap: 10px; padding: 4px 8px 22px; min-width: 0; }
 .aivy-brand .mark{ flex-shrink: 0; }
 .aivy-brand .word{ font-family: var(--font-display); font-size: 21px; font-weight: 620; letter-spacing: .01em; white-space: nowrap; }
@@ -300,6 +295,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-rightpanel-tabs button.active{ color: var(--ink); border-bottom-color: var(--moss-strong); }
 .aivy-rightpanel-tabs .aivy-rightpanel-title{ flex: 1; padding: 13px 6px 13px 14px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
 .aivy-rightpanel-tabs .aivy-icon-btn{ margin: 6px 8px; flex: none; }
+.aivy-rightpanel-tabs .aivy-panel-icon-btn{ flex: none; margin: 6px 4px 6px 8px; padding: 0; border-bottom: none; }
 .aivy-rightpanel-body{ flex: 1; min-height: 0; overflow-y: auto; padding: 10px; }
 .aivy-drawer-sub{ padding: 12px 10px 6px; }
 .aivy-queue-upnext-head{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }

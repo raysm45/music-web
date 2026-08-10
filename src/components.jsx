@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
+  PanelLeft, PanelRight,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -753,50 +754,46 @@ export function RightPanel() {
 
   if (rightPanelCollapsed) {
     return (
-      <div className="aivy-edge-trigger right">
-        <button
-          className="aivy-panel-toggle rail"
-          onClick={toggleRightPanelCollapsed}
-          aria-label={t("expandPanel", "Buka panel")}
-          title={t("expandPanel", "Buka panel")}
-        >
-          <ChevronLeft size={14} />
-        </button>
-      </div>
+      <button
+        className="aivy-panel-icon-btn floating right"
+        onClick={toggleRightPanelCollapsed}
+        aria-label={t("expandPanel", "Buka panel")}
+        title={t("expandPanel", "Buka panel")}
+      >
+        <PanelRight size={18} />
+      </button>
     );
   }
 
-  const resizeControls = (
-    <>
-      <button
-        className="aivy-panel-toggle edge left"
-        onClick={toggleRightPanelCollapsed}
-        aria-label={t("collapsePanel", "Tutup panel")}
-        title={t("collapsePanel", "Tutup panel")}
-      >
-        <ChevronRight size={14} />
-      </button>
-      <div
-        className={`aivy-resize-handle left ${isDragging ? "active" : ""}`}
-        onMouseDown={onDragStart}
-        onTouchStart={onDragStart}
-      >
-        <span className="aivy-resize-grip"><GripVertical size={12} /></span>
-      </div>
-    </>
+  const resizeHandle = (
+    <div
+      className={`aivy-resize-handle left ${isDragging ? "active" : ""}`}
+      onMouseDown={onDragStart}
+      onTouchStart={onDragStart}
+    >
+      <span className="aivy-resize-grip"><GripVertical size={12} /></span>
+    </div>
   );
 
   if (sidebarQueueOpen) {
     return (
       <aside className="aivy-rightpanel">
         <div className="aivy-rightpanel-tabs">
+          <button
+            className="aivy-panel-icon-btn"
+            onClick={toggleRightPanelCollapsed}
+            aria-label={t("collapsePanel", "Tutup panel")}
+            title={t("collapsePanel", "Tutup panel")}
+          >
+            <PanelRight size={18} />
+          </button>
           <span className="aivy-rightpanel-title">{t("lyricsQueueBtn")}</span>
           <button className="aivy-icon-btn sm" onClick={closeSidebarQueue} aria-label={t("close")}><X size={16} /></button>
         </div>
         <div className="aivy-rightpanel-body aivy-scroll">
           <SidebarQueuePanel />
         </div>
-        {resizeControls}
+        {resizeHandle}
       </aside>
     );
   }
@@ -804,6 +801,14 @@ export function RightPanel() {
   return (
     <aside className="aivy-rightpanel">
       <div className="aivy-rightpanel-tabs">
+        <button
+          className="aivy-panel-icon-btn"
+          onClick={toggleRightPanelCollapsed}
+          aria-label={t("collapsePanel", "Tutup panel")}
+          title={t("collapsePanel", "Tutup panel")}
+        >
+          <PanelRight size={18} />
+        </button>
         <button className={tab === "now" ? "active" : ""} onClick={() => setTab("now")}>{t("tabNowPlaying")}</button>
         {room && <button className={tab === "room" ? "active" : ""} onClick={() => setTab("room")}>{t("tabRoom")}</button>}
       </div>
@@ -811,7 +816,7 @@ export function RightPanel() {
         {tab === "now" && <NowPlayingPane />}
         {tab === "room" && room && <RoomPane />}
       </div>
-      {resizeControls}
+      {resizeHandle}
     </aside>
   );
 }
@@ -1233,22 +1238,30 @@ export function Sidebar() {
 
   if (sidebarCollapsed) {
     return (
-      <div className="aivy-edge-trigger left">
-        <button
-          className="aivy-panel-toggle rail"
-          onClick={toggleSidebarCollapsed}
-          aria-label={t("expandSidebar", "Buka sidebar")}
-          title={t("expandSidebar", "Buka sidebar")}
-        >
-          <ChevronRight size={14} />
-        </button>
-      </div>
+      <button
+        className="aivy-panel-icon-btn floating left"
+        onClick={toggleSidebarCollapsed}
+        aria-label={t("expandSidebar", "Buka sidebar")}
+        title={t("expandSidebar", "Buka sidebar")}
+      >
+        <PanelLeft size={18} />
+      </button>
     );
   }
 
   return (
     <aside className="aivy-sidebar">
-      <Link to="home" className="aivy-brand"><LeafMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">AIVY<small>{t("appTagline")}</small></div></Link>
+      <div className="aivy-sidebar-topline">
+        <button
+          className="aivy-panel-icon-btn"
+          onClick={toggleSidebarCollapsed}
+          aria-label={t("collapseSidebar", "Tutup sidebar")}
+          title={t("collapseSidebar", "Tutup sidebar")}
+        >
+          <PanelLeft size={18} />
+        </button>
+        <Link to="home" className="aivy-brand"><LeafMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">AIVY<small>{t("appTagline")}</small></div></Link>
+      </div>
       <nav className="aivy-nav">
         {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
           <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`}><Icon size={18} /><span>{t(labelKey)}</span></Link>
@@ -1284,14 +1297,6 @@ export function Sidebar() {
         )}
       </div>
 
-      <button
-        className="aivy-panel-toggle edge"
-        onClick={toggleSidebarCollapsed}
-        aria-label={t("collapseSidebar", "Tutup sidebar")}
-        title={t("collapseSidebar", "Tutup sidebar")}
-      >
-        <ChevronLeft size={14} />
-      </button>
       <div
         className={`aivy-resize-handle right ${isDragging ? "active" : ""}`}
         onMouseDown={onDragStart}
