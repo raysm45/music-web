@@ -20,6 +20,31 @@ const DEFAULT_EQ = { enabled: false, preset: "flat", preamp: 0, bands: [...EQ_PR
 const UICtx = createContext(null);
 export function useUI() { return useContext(UICtx); }
 
+export const SIDEBAR_MIN_W = 200;
+export const SIDEBAR_MAX_W = 360;
+export const RIGHTPANEL_MIN_W = 260;
+export const RIGHTPANEL_MAX_W = 440;
+const PANEL_PREFS_KEY = "aivy_panel_prefs";
+const DEFAULT_PANEL_PREFS = {
+  sidebarWidth: 236,
+  sidebarCollapsed: false,
+  rightPanelWidth: 300,
+  rightPanelCollapsed: false,
+};
+function loadPanelPrefs() {
+  try {
+    const raw = localStorage.getItem(PANEL_PREFS_KEY);
+    if (!raw) return DEFAULT_PANEL_PREFS;
+    const parsed = JSON.parse(raw);
+    return {
+      sidebarWidth: clamp(Number(parsed.sidebarWidth) || DEFAULT_PANEL_PREFS.sidebarWidth, SIDEBAR_MIN_W, SIDEBAR_MAX_W),
+      sidebarCollapsed: !!parsed.sidebarCollapsed,
+      rightPanelWidth: clamp(Number(parsed.rightPanelWidth) || DEFAULT_PANEL_PREFS.rightPanelWidth, RIGHTPANEL_MIN_W, RIGHTPANEL_MAX_W),
+      rightPanelCollapsed: !!parsed.rightPanelCollapsed,
+    };
+  } catch { return DEFAULT_PANEL_PREFS; }
+}
+
 const DEFAULT_SETTINGS = {
   audioQuality: "preview",
   autoplay: true,
@@ -53,6 +78,11 @@ export function UIProvider({ children }) {
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [sidebarQueueOpen, setSidebarQueueOpen] = useState(false);
+  const [panelPrefs, setPanelPrefs] = useState(loadPanelPrefs);
+
+  useEffect(() => {
+    try { localStorage.setItem(PANEL_PREFS_KEY, JSON.stringify(panelPrefs)); } catch {}
+  }, [panelPrefs]);
 
   useEffect(() => {
     Api.me()
@@ -148,6 +178,19 @@ export function UIProvider({ children }) {
   const toggleSidebarQueue = useCallback(() => setSidebarQueueOpen((o) => !o), []);
   const closeSidebarQueue = useCallback(() => setSidebarQueueOpen(false), []);
 
+  const setSidebarWidth = useCallback((w) => {
+    setPanelPrefs((p) => ({ ...p, sidebarWidth: clamp(Math.round(w), SIDEBAR_MIN_W, SIDEBAR_MAX_W) }));
+  }, []);
+  const setRightPanelWidth = useCallback((w) => {
+    setPanelPrefs((p) => ({ ...p, rightPanelWidth: clamp(Math.round(w), RIGHTPANEL_MIN_W, RIGHTPANEL_MAX_W) }));
+  }, []);
+  const toggleSidebarCollapsed = useCallback(() => {
+    setPanelPrefs((p) => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }));
+  }, []);
+  const toggleRightPanelCollapsed = useCallback(() => {
+    setPanelPrefs((p) => ({ ...p, rightPanelCollapsed: !p.rightPanelCollapsed }));
+  }, []);
+
   const value = {
     authUser, authChecked, login, logout, loggingOut,
     settings, updateSettings, resetSettings,
@@ -157,6 +200,14 @@ export function UIProvider({ children }) {
     addToPlaylistTarget, openAddToPlaylist, closeAddToPlaylist,
     lyricsOpen, openLyrics, closeLyrics, toggleLyrics,
     sidebarQueueOpen, toggleSidebarQueue, closeSidebarQueue,
+    sidebarWidth: panelPrefs.sidebarWidth,
+    sidebarCollapsed: panelPrefs.sidebarCollapsed,
+    setSidebarWidth,
+    toggleSidebarCollapsed,
+    rightPanelWidth: panelPrefs.rightPanelWidth,
+    rightPanelCollapsed: panelPrefs.rightPanelCollapsed,
+    setRightPanelWidth,
+    toggleRightPanelCollapsed,
   };
   return <UICtx.Provider value={value}>{children}</UICtx.Provider>;
 }

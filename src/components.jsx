@@ -7,10 +7,58 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
 } from "lucide-react";
-import { usePlayer, useUI } from "./context.jsx";
+import {
+  usePlayer, useUI,
+  SIDEBAR_MIN_W, SIDEBAR_MAX_W, RIGHTPANEL_MIN_W, RIGHTPANEL_MAX_W,
+} from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
 import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp } from "./lib/utils.js";
+
+// Drag-to-resize for the left sidebar / right panel. `side` tells the hook which
+// screen edge the panel is anchored to, so dragging right/left maps to grow/shrink correctly.
+function usePanelResize({ width, setWidth, min, max, side }) {
+  const draggingRef = useRef(false);
+  const startRef = useRef({ x: 0, width: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    function onMove(e) {
+      if (!draggingRef.current) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const delta = clientX - startRef.current.x;
+      const next = side === "left" ? startRef.current.width + delta : startRef.current.width - delta;
+      setWidth(clamp(Math.round(next), min, max));
+    }
+    function onUp() {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      setIsDragging(false);
+      document.body.classList.remove("aivy-resizing");
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [min, max, setWidth, side]);
+
+  const onDragStart = useCallback((e) => {
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    draggingRef.current = true;
+    startRef.current = { x: clientX, width };
+    setIsDragging(true);
+    document.body.classList.add("aivy-resizing");
+  }, [width]);
+
+  return { onDragStart, isDragging };
+}
 
 export class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -692,9 +740,51 @@ export function QueueSheet({ open, onClose }) {
 
 export function RightPanel() {
   const { room } = usePlayer();
-  const { sidebarQueueOpen, closeSidebarQueue, t } = useUI();
+  const {
+    sidebarQueueOpen, closeSidebarQueue, t,
+    rightPanelWidth, setRightPanelWidth, rightPanelCollapsed, toggleRightPanelCollapsed,
+  } = useUI();
   const [tab, setTab] = useState("now");
   useEffect(() => { if (room) setTab("room"); }, [!!room]);
+
+  const { onDragStart, isDragging } = usePanelResize({
+    width: rightPanelWidth, setWidth: setRightPanelWidth, min: RIGHTPANEL_MIN_W, max: RIGHTPANEL_MAX_W, side: "right",
+  });
+
+  if (rightPanelCollapsed) {
+    return (
+      <div className="aivy-edge-trigger right">
+        <button
+          className="aivy-panel-toggle rail"
+          onClick={toggleRightPanelCollapsed}
+          aria-label={t("expandPanel", "Buka panel")}
+          title={t("expandPanel", "Buka panel")}
+        >
+          <ChevronLeft size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  const resizeControls = (
+    <>
+      <button
+        className="aivy-panel-toggle edge left"
+        onClick={toggleRightPanelCollapsed}
+        aria-label={t("collapsePanel", "Tutup panel")}
+        title={t("collapsePanel", "Tutup panel")}
+      >
+        <ChevronRight size={14} />
+      </button>
+      <div
+        className={`aivy-resize-handle left ${isDragging ? "active" : ""}`}
+        onMouseDown={onDragStart}
+        onTouchStart={onDragStart}
+      >
+        <span className="aivy-resize-grip"><GripVertical size={12} /></span>
+      </div>
+    </>
+  );
 
   if (sidebarQueueOpen) {
     return (
@@ -706,6 +796,7 @@ export function RightPanel() {
         <div className="aivy-rightpanel-body aivy-scroll">
           <SidebarQueuePanel />
         </div>
+        {resizeControls}
       </aside>
     );
   }
@@ -720,6 +811,7 @@ export function RightPanel() {
         {tab === "now" && <NowPlayingPane />}
         {tab === "room" && room && <RoomPane />}
       </div>
+      {resizeControls}
     </aside>
   );
 }
@@ -1124,13 +1216,35 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const { name } = useRouter();
-  const { theme, toggleTheme, authUser, login, t } = useUI();
+  const {
+    theme, toggleTheme, authUser, login, t,
+    sidebarWidth, setSidebarWidth, sidebarCollapsed, toggleSidebarCollapsed,
+  } = useUI();
   const { playlists, createPlaylist } = usePlayer();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const inputRef = useRef(null);
   useEffect(() => { if (creating) inputRef.current?.focus(); }, [creating]);
   const submitCreate = () => { const val = newName.trim(); if (val) createPlaylist(val); setNewName(""); setCreating(false); };
+
+  const { onDragStart, isDragging } = usePanelResize({
+    width: sidebarWidth, setWidth: setSidebarWidth, min: SIDEBAR_MIN_W, max: SIDEBAR_MAX_W, side: "left",
+  });
+
+  if (sidebarCollapsed) {
+    return (
+      <div className="aivy-edge-trigger left">
+        <button
+          className="aivy-panel-toggle rail"
+          onClick={toggleSidebarCollapsed}
+          aria-label={t("expandSidebar", "Buka sidebar")}
+          title={t("expandSidebar", "Buka sidebar")}
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <aside className="aivy-sidebar">
@@ -1168,6 +1282,22 @@ export function Sidebar() {
         ) : (
           <button className="aivy-login-btn" onClick={login}><LogIn size={15} /> {t("navLoginDiscord")}</button>
         )}
+      </div>
+
+      <button
+        className="aivy-panel-toggle edge"
+        onClick={toggleSidebarCollapsed}
+        aria-label={t("collapseSidebar", "Tutup sidebar")}
+        title={t("collapseSidebar", "Tutup sidebar")}
+      >
+        <ChevronLeft size={14} />
+      </button>
+      <div
+        className={`aivy-resize-handle right ${isDragging ? "active" : ""}`}
+        onMouseDown={onDragStart}
+        onTouchStart={onDragStart}
+      >
+        <span className="aivy-resize-grip"><GripVertical size={12} /></span>
       </div>
     </aside>
   );

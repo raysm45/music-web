@@ -42,9 +42,10 @@ const PAGE_BY_ROUTE = {
 
 function AppInner() {
   const { name, params } = useRouter();
-  const { authChecked, authUser } = useUI();
+  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed } = useUI();
   const { currentTrack } = usePlayer();
   const isMobile = useIsMobile(860);
+  const isPanelCompact = useIsMobile(1240);
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
 
@@ -59,8 +60,15 @@ function AppInner() {
   const Page = PAGE_BY_ROUTE[name] || HomePage;
   const isImmersiveShorts = isMobile && name === "shorts";
 
+  const shellStyle = {
+    "--sidebar-w": sidebarCollapsed ? "0px" : `${sidebarWidth}px`,
+  };
+  if (!isPanelCompact) {
+    shellStyle["--rightpanel-w"] = rightPanelCollapsed ? "0px" : `${rightPanelWidth}px`;
+  }
+
   return (
-    <div className={`aivy-shell ${isMobile ? "is-mobile" : ""}`}>
+    <div className={`aivy-shell ${isMobile ? "is-mobile" : ""}`} style={shellStyle}>
       {!isMobile && <Sidebar />}
       <main className="aivy-main">
         {!isImmersiveShorts && <TopBar isMobile={isMobile} />}
