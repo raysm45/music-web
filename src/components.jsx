@@ -755,12 +755,13 @@ export function RightPanel() {
   if (rightPanelCollapsed) {
     return (
       <button
-        className="aivy-panel-icon-btn floating right"
+        type="button"
+        className="aivy-rightpanel-rail"
         onClick={toggleRightPanelCollapsed}
         aria-label={t("expandPanel", "Buka panel")}
         title={t("expandPanel", "Buka panel")}
       >
-        <PanelRight size={18} />
+        <span className="aivy-rightpanel-rail-icon"><PanelRight size={16} /></span>
       </button>
     );
   }
@@ -1258,14 +1259,35 @@ export function Sidebar() {
 
   if (sidebarCollapsed) {
     return (
-      <button
-        className="aivy-panel-icon-btn floating left"
-        onClick={toggleSidebarCollapsed}
-        aria-label={t("expandSidebar", "Buka sidebar")}
-        title={t("expandSidebar", "Buka sidebar")}
-      >
-        <PanelLeft size={18} />
-      </button>
+      <aside className="aivy-sidebar aivy-sidebar-rail">
+        <button
+          className="aivy-panel-icon-btn aivy-rail-toggle"
+          onClick={toggleSidebarCollapsed}
+          aria-label={t("expandSidebar", "Buka sidebar")}
+          title={t("expandSidebar", "Buka sidebar")}
+        >
+          <PanelLeft size={18} />
+        </button>
+        <nav className="aivy-nav aivy-nav-rail">
+          {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
+            <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`} title={t(labelKey)} aria-label={t(labelKey)}>
+              <Icon size={18} />
+            </Link>
+          ))}
+        </nav>
+        <div className="aivy-side-footer aivy-side-footer-rail">
+          <button className="aivy-theme-btn" onClick={toggleTheme} title={theme === "dark" ? t("navLightMode") : t("navDarkMode")} aria-label={theme === "dark" ? t("navLightMode") : t("navDarkMode")}>
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+          {authUser ? (
+            <Link to="settings" className="aivy-user-chip aivy-user-chip-rail" title={authUser.username} aria-label={authUser.username}>
+              <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>
+            </Link>
+          ) : (
+            <button className="aivy-login-btn" onClick={login} title={t("navLoginDiscord")} aria-label={t("navLoginDiscord")}><LogIn size={15} /></button>
+          )}
+        </div>
+      </aside>
     );
   }
 

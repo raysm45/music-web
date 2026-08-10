@@ -118,16 +118,21 @@ body.aivy-resizing *{ user-select: none !important; }
 /* Plain sidebar/panel toggle icon — no arrow, no circle badge, just the icon itself */
 .aivy-panel-icon-btn{ width: 26px; height: 26px; border-radius: var(--radius-sm); background: transparent; border: none; color: var(--ink-dim); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
 .aivy-panel-icon-btn:hover{ background: var(--bg-elev-2); color: var(--ink); }
-/* Floating variant used when the panel is fully collapsed, so there's still a way back in */
-.aivy-panel-icon-btn.floating{ position: fixed; top: 18px; z-index: 45; background: var(--bg-elev); border: 1px solid var(--line); box-shadow: var(--shadow-pop); animation: aivy-fade-in var(--dur-base) var(--ease); }
-.aivy-panel-icon-btn.floating.left{ left: 14px; }
-.aivy-panel-icon-btn.floating.right{ right: 14px; }
-
 /* Top-left header row: toggle icon sits directly beside the brand text, same row, same baseline */
 .aivy-sidebar-topline{ display: flex; align-items: center; gap: 0; padding: 4px 8px 22px 6px; }
 .aivy-sidebar-topline .aivy-brand{ padding: 0; }
 .aivy-sidebar-topline .aivy-panel-icon-btn{ width: 0; min-width: 0; opacity: 0; margin-right: 0; overflow: hidden; pointer-events: none; transition: width var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease), margin-right var(--dur-fast) var(--ease); }
 .aivy-sidebar:hover .aivy-sidebar-topline .aivy-panel-icon-btn{ width: 26px; opacity: 1; margin-right: 6px; pointer-events: auto; }
+
+/* Collapsed left sidebar: a slim icon-only rail instead of hiding everything */
+.aivy-sidebar-rail{ align-items: center; padding: 16px 10px 14px; gap: 4px; }
+.aivy-sidebar-rail .aivy-rail-toggle{ margin-bottom: 14px; }
+.aivy-nav-rail{ width: 100%; align-items: center; gap: 4px; }
+.aivy-nav-rail .aivy-nav-item{ width: 44px; height: 40px; padding: 0; justify-content: center; gap: 0; }
+.aivy-side-footer-rail{ width: 100%; align-items: center; gap: 8px; }
+.aivy-side-footer-rail .aivy-theme-btn{ width: 40px; height: 36px; padding: 0; justify-content: center; gap: 0; }
+.aivy-side-footer-rail .aivy-login-btn{ width: 40px; height: 36px; padding: 0; }
+.aivy-user-chip-rail{ padding: 0; justify-content: center; }
 .aivy-brand{ display: flex; align-items: center; gap: 10px; padding: 4px 8px 22px; min-width: 0; }
 .aivy-brand .mark{ flex-shrink: 0; }
 .aivy-brand .word{ font-family: var(--font-display); font-size: 21px; font-weight: 620; letter-spacing: .01em; white-space: nowrap; }
@@ -292,6 +297,24 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-vol.is-bumping .fill{ background: var(--moss-strong); }
 
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
+
+/* Collapsed right panel: a thin hover-reveal rail. Idle it sits quiet at the edge;
+   hovering pulls it in and lifts its opacity a touch to invite a click; clicking opens the panel full width. */
+.aivy-rightpanel-rail{
+  grid-area: right; width: 100%; height: 100%; min-width: 0; position: relative;
+  background: var(--bg-elev); border: none; border-left: 1px solid var(--line);
+  cursor: pointer; padding: 0; opacity: 0.6; transform: translateX(4px);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.aivy-rightpanel-rail:hover, .aivy-rightpanel-rail:focus-visible{
+  opacity: 1; transform: translateX(0); background: var(--bg-elev-2);
+}
+.aivy-rightpanel-rail-icon{
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; color: var(--ink-faint); opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-icon{ opacity: 1; color: var(--ink); }
 .aivy-rightpanel-tabs{ display: flex; flex-shrink: 0; }
 .aivy-rightpanel-tabs button{ flex: 1; padding: 13px 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-faint); border-bottom: 2px solid transparent; }
 .aivy-rightpanel-tabs button.active{ color: var(--ink); border-bottom-color: var(--moss-strong); }

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { RouterProvider, useRouter } from "./router.jsx";
-import { UIProvider, PlayerProvider, useUI, usePlayer } from "./context.jsx";
+import {
+  UIProvider, PlayerProvider, useUI, usePlayer,
+  SIDEBAR_COLLAPSED_W, RIGHTPANEL_COLLAPSED_W,
+} from "./context.jsx";
 import {
   ErrorBoundary, Sidebar, MobileTabBar, TopBar, PlayerBar, MiniPlayer, NowPlayingSheet, QueueSheet,
   RightPanel, GlobalContextMenu, AddToPlaylistModal, ToastHost, ViewLoading, LyricsOverlay,
@@ -61,10 +64,10 @@ function AppInner() {
   const isImmersiveShorts = isMobile && name === "shorts";
 
   const shellStyle = {
-    "--sidebar-w": sidebarCollapsed ? "0px" : `${sidebarWidth}px`,
+    "--sidebar-w": sidebarCollapsed ? `${SIDEBAR_COLLAPSED_W}px` : `${sidebarWidth}px`,
   };
   if (!isPanelCompact) {
-    shellStyle["--rightpanel-w"] = rightPanelCollapsed ? "0px" : `${rightPanelWidth}px`;
+    shellStyle["--rightpanel-w"] = rightPanelCollapsed ? `${RIGHTPANEL_COLLAPSED_W}px` : `${rightPanelWidth}px`;
   }
 
   return (
