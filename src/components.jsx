@@ -1330,7 +1330,6 @@ export function LyricsOverlay() {
       {currentTrack?.cover && (
         <>
           <div className="aivy-lyrics-bg" style={{ backgroundImage: `url(${currentTrack.cover})` }} />
-          <div className="aivy-lyrics-bg alt" style={{ backgroundImage: `url(${currentTrack.cover})` }} />
           <div className="aivy-lyrics-glow" />
         </>
       )}
