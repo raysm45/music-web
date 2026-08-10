@@ -809,6 +809,7 @@ export function RightPanel() {
         >
           <PanelRight size={18} />
         </button>
+        {!room && tab === "now" && <RightPanelSourceLabel />}
         {room && (
           <>
             <button className={`aivy-rightpanel-tab-icon ${tab === "now" ? "active" : ""}`} onClick={() => setTab("now")} aria-label={t("tabNowPlaying")} title={t("tabNowPlaying")}><Music2 size={15} /></button>
@@ -834,6 +835,20 @@ function PlayingFromLabel() {
       <Library size={12} />
       <span>{t("playingFromLabel")} <strong>{playSource.label}</strong></span>
     </div>
+  );
+}
+
+// Shown inline in the right-panel tabs row, right next to the collapse icon, instead of
+// the old "Playing from" line above the cover art. Sits at the icon's left edge so that
+// when the icon reveals itself on hover, this label glides right with it (see .aivy-rightpanel-source).
+function RightPanelSourceLabel() {
+  const { playSource } = usePlayer();
+  if (playSource?.type !== "library" || !playSource.label) return null;
+  return (
+    <span className="aivy-rightpanel-source">
+      <Library size={12} />
+      <span>{playSource.label}</span>
+    </span>
   );
 }
 
@@ -1121,7 +1136,6 @@ function NowPlayingPane() {
   if (!currentTrack) return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>;
   return (
     <div className="aivy-nowplaying-pane">
-      <PlayingFromLabel />
       <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={240} radius={16} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
       <div className="t">{currentTrack.title}</div>
       <div className="a">{currentTrack.artist?.name}</div>
