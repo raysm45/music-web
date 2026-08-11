@@ -811,15 +811,18 @@ export function RightPanel() {
   if (rightPanelCollapsed) {
     return (
       <aside className="aivy-rightpanel aivy-rightpanel-collapsed">
-        <button
-          type="button"
-          className="aivy-rightpanel-rail"
-          onClick={toggleRightPanelCollapsed}
-          aria-label={t("expandPanel", "Buka panel")}
-          title={t("expandPanel", "Buka panel")}
-        >
-          <span className="aivy-rightpanel-rail-peek">{bodyContent}</span>
-          <span className="aivy-rightpanel-rail-icons">
+        <div className="aivy-rightpanel-rail-wrap" style={{ "--rightpanel-peek-w": `${rightPanelWidth}px` }}>
+          {/* Natural, un-squished sidebar content sitting behind the rail — revealed
+              only as a clipped, semi-transparent sliver when the rail slides forward. */}
+          <div className="aivy-rightpanel-rail-ghost">{bodyContent}</div>
+
+          <button
+            type="button"
+            className="aivy-rightpanel-rail"
+            onClick={toggleRightPanelCollapsed}
+            aria-label={t("expandPanel", "Buka panel")}
+            title={t("expandPanel", "Buka panel")}
+          >
             {currentTrack && (
               <span className="aivy-rightpanel-rail-thumb">
                 <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={36} radius={8} style={{ width: "100%", height: "100%" }} />
@@ -829,8 +832,8 @@ export function RightPanel() {
               <ChevronRight size={16} className="arrow-idle" />
               <ChevronLeft size={16} className="arrow-hover" />
             </span>
-          </span>
-        </button>
+          </button>
+        </div>
       </aside>
     );
   }
