@@ -334,13 +334,13 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow .arrow-idle{ display: none; }
 .aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow .arrow-hover{ display: block; position: static; opacity: 1; }
 
-/* Hover peek: hovering the collapsed rail pulls a semi-transparent preview of the
-   full panel out slightly toward the content (a small nudge left), not a solid
-   opaque panel and not just a thumbnail — you can still see through it a bit. */
+/* Hover peek: hovering the collapsed rail nudges out just a small sliver of the
+   full panel (Spotify-style peek) — a little translucent edge showing a hint of
+   content, not the whole panel sliding open. Mostly clipped by its own narrow width. */
 .aivy-rightpanel-hover-preview{
   position: absolute;
   top: 6px; bottom: 6px; right: 6px;
-  min-width: 220px;
+  width: 96px;
   display: flex; flex-direction: column;
   background: color-mix(in srgb, var(--bg-elev) 58%, transparent);
   backdrop-filter: blur(6px);
@@ -351,9 +351,9 @@ body.aivy-resizing *{ user-select: none !important; }
   overflow: hidden;
   z-index: 40;
   opacity: 0;
-  transform: translateX(10px);
+  transform: translateX(18px);
   pointer-events: none;
-  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease), width var(--dur-base) var(--ease);
 }
 .aivy-rightpanel-hover-preview::before{
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -362,9 +362,9 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-rightpanel-collapsed:hover .aivy-rightpanel-hover-preview,
 .aivy-rightpanel-collapsed:focus-within .aivy-rightpanel-hover-preview{
   opacity: 0.92;
-  transform: translateX(-2px);
-  pointer-events: auto;
-  transition-delay: 100ms;
+  transform: translateX(0);
+  pointer-events: none;
+  transition-delay: 60ms;
 }
 .aivy-rightpanel-tabs{ display: flex; flex-shrink: 0; }
 .aivy-rightpanel-tabs button{ flex: 1; padding: 13px 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-faint); border-bottom: 2px solid transparent; }

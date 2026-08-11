@@ -829,10 +829,9 @@ export function RightPanel() {
           </span>
         </button>
 
-        {/* Floating peek panel: hovering the rail slides the full lyrics/queue
-            panel out slightly forward over the main content, translucent
-            rather than a plain static thumbnail. */}
-        <div className="aivy-rightpanel-hover-preview" style={{ width: rightPanelWidth }}>
+        {/* Floating peek panel: hovering the rail nudges out just a small sliver of the
+            panel (Spotify-style), not the full width — mostly clipped, semi-transparent. */}
+        <div className="aivy-rightpanel-hover-preview">
           {bodyContent}
         </div>
       </aside>
