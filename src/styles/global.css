@@ -298,58 +298,45 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
 
-/* Collapsed right panel: a slim rail, not fully hidden. Idle it shows a dimmed
-   now-playing thumbnail with a right-pointing arrow (closed / "pull this way to
-   open"). On hover, the rail itself slides forward (left) a little — it doesn't
-   spawn a separate floating layer — which opens up a small clipped gap at its
-   trailing edge. Behind the rail sits the real sidebar UI at its natural, un-
-   squished width; that gap simply reveals a thin, semi-transparent sliver of it. */
+/* Collapsed right panel: a slim rail, not fully hidden. Idle it shows a
+   right-pointing arrow in the middle (closed / "pull this way to open"), no
+   cover thumbnail. On hover, the rail ITSELF (same single element, no layer
+   behind or in front) widens a little, revealing the real sidebar UI at its
+   natural, un-squished width — just clipped by the rail's own growing edge —
+   at reduced opacity. The arrow flips to point left. */
 .aivy-rightpanel-collapsed{ overflow: visible; }
-
-.aivy-rightpanel-rail-wrap{
-  position: absolute; top: 0; right: 0; bottom: 0;
-  width: 56px; overflow: hidden;
-  border-radius: var(--radius-lg, 16px) 0 0 var(--radius-lg, 16px);
-  z-index: 40;
-  transition: width var(--dur-base) var(--ease);
-}
-.aivy-rightpanel-collapsed:hover .aivy-rightpanel-rail-wrap,
-.aivy-rightpanel-collapsed:focus-within .aivy-rightpanel-rail-wrap{
-  width: 98px; /* 56px rail + ~42px reveal */
-}
-
-/* the real panel content, full natural width, sitting behind the rail at all times */
-.aivy-rightpanel-rail-ghost{
-  position: absolute; top: 0; right: 0; bottom: 0;
-  width: var(--rightpanel-peek-w, 320px);
-  display: flex; flex-direction: column;
-  opacity: 0.4;
-  pointer-events: none;
-}
 
 .aivy-rightpanel-rail{
   position: absolute; top: 0; right: 0; bottom: 0;
-  width: 56px; min-width: 0;
+  width: 56px; min-width: 0; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-elev); border: none; border-left: 1px solid var(--line);
+  border-radius: var(--radius-lg, 16px) 0 0 var(--radius-lg, 16px);
   cursor: pointer; padding: 0;
-  transition: transform var(--dur-base) var(--ease), background var(--dur-base) var(--ease);
+  z-index: 40;
+  transition: width var(--dur-base) var(--ease), background var(--dur-base) var(--ease);
 }
-.aivy-rightpanel-collapsed:hover .aivy-rightpanel-rail,
-.aivy-rightpanel-collapsed:focus-within .aivy-rightpanel-rail{
-  transform: translateX(-42px);
+.aivy-rightpanel-rail:hover, .aivy-rightpanel-rail:focus-visible{
+  width: 108px;
   background: color-mix(in srgb, var(--bg-elev) 96%, transparent);
 }
-.aivy-rightpanel-rail-thumb{
-  display: flex; width: 36px; height: 36px; border-radius: 8px; overflow: hidden;
-  opacity: 0.55; filter: saturate(0.85);
-  transition: opacity var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease);
+
+/* the real panel content — natural width, not squished, just clipped by the
+   rail's own overflow as it grows */
+.aivy-rightpanel-rail-peek{
+  position: absolute; top: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column;
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease);
 }
-.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-thumb{
-  opacity: 0.3; filter: saturate(1);
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-peek,
+.aivy-rightpanel-rail:focus-visible .aivy-rightpanel-rail-peek{
+  opacity: 0.4;
+  transition-delay: 60ms;
 }
+
 .aivy-rightpanel-rail-arrow{
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; border-radius: 50%;
   color: var(--ink-faint);

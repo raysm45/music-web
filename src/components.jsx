@@ -740,7 +740,7 @@ export function QueueSheet({ open, onClose }) {
 }
 
 export function RightPanel() {
-  const { room, currentTrack } = usePlayer();
+  const { room } = usePlayer();
   const {
     sidebarQueueOpen, closeSidebarQueue, t,
     rightPanelWidth, setRightPanelWidth, rightPanelCollapsed, toggleRightPanelCollapsed,
@@ -811,29 +811,21 @@ export function RightPanel() {
   if (rightPanelCollapsed) {
     return (
       <aside className="aivy-rightpanel aivy-rightpanel-collapsed">
-        <div className="aivy-rightpanel-rail-wrap" style={{ "--rightpanel-peek-w": `${rightPanelWidth}px` }}>
-          {/* Natural, un-squished sidebar content sitting behind the rail — revealed
-              only as a clipped, semi-transparent sliver when the rail slides forward. */}
-          <div className="aivy-rightpanel-rail-ghost">{bodyContent}</div>
-
-          <button
-            type="button"
-            className="aivy-rightpanel-rail"
-            onClick={toggleRightPanelCollapsed}
-            aria-label={t("expandPanel", "Buka panel")}
-            title={t("expandPanel", "Buka panel")}
-          >
-            {currentTrack && (
-              <span className="aivy-rightpanel-rail-thumb">
-                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={36} radius={8} style={{ width: "100%", height: "100%" }} />
-              </span>
-            )}
-            <span className="aivy-rightpanel-rail-arrow">
-              <ChevronRight size={16} className="arrow-idle" />
-              <ChevronLeft size={16} className="arrow-hover" />
-            </span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className="aivy-rightpanel-rail"
+          onClick={toggleRightPanelCollapsed}
+          aria-label={t("expandPanel", "Buka panel")}
+          title={t("expandPanel", "Buka panel")}
+        >
+          {/* Real sidebar UI at its natural width, clipped by the rail's own edge —
+              this IS the collapse control growing, not a separate layer behind/in front. */}
+          <span className="aivy-rightpanel-rail-peek" style={{ width: rightPanelWidth }}>{bodyContent}</span>
+          <span className="aivy-rightpanel-rail-arrow">
+            <ChevronRight size={16} className="arrow-idle" />
+            <ChevronLeft size={16} className="arrow-hover" />
+          </span>
+        </button>
       </aside>
     );
   }
