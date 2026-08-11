@@ -1297,35 +1297,51 @@ export function QueueBody() {
 
   return (
     <>
-      <div className="aivy-drawer-sub eyebrow">{t("nowPlaying")}</div>
-      <QueueNowPlayingRow track={currentTrack} />
+      <div className="aivy-queue-section">
+        <div className="aivy-drawer-sub eyebrow">{t("nowPlaying")}</div>
+        <div className="aivy-queue-card aivy-queue-now-card">
+          <QueueNowPlayingRow track={currentTrack} />
+        </div>
+      </div>
 
-      <div className="aivy-drawer-sub eyebrow aivy-queue-upnext-head">
-        <span>{t("upNextLabel")}</span>
-        {upNext.length > 0 && (
-          <button className="aivy-queue-clear" onClick={clearUpNext}><Trash2 size={12} /> {t("clearQueue")}</button>
+      <div className="aivy-queue-section">
+        <div className="aivy-drawer-sub eyebrow aivy-queue-upnext-head">
+          <span>{t("upNextLabel")}{upNext.length > 0 ? ` \u00b7 ${upNext.length}` : ""}</span>
+          {upNext.length > 0 && (
+            <button className="aivy-queue-clear" onClick={clearUpNext}><Trash2 size={12} /> {t("clearQueue")}</button>
+          )}
+        </div>
+        {upNext.length > 0 ? (
+          <div className="aivy-queue-card">
+            <QueueUpNextList items={upNext} />
+          </div>
+        ) : (
+          <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>
         )}
       </div>
-      {upNext.length > 0 ? (
-        <QueueUpNextList items={upNext} />
-      ) : (
-        <div className="aivy-queue-empty-hint">{t("queueUpNextEmpty")}</div>
-      )}
 
       {!room && suggestedQueue.length > 0 && (
-        <>
+        <div className="aivy-queue-section">
           <div className="aivy-drawer-sub eyebrow aivy-queue-suggested-head">
             <Radio size={12} /><span>{t("suggestedSongsLabel")}</span>
           </div>
           <div className="aivy-queue-suggested-hint">{t("suggestedSongsHint")}</div>
-          <QueueSuggestedRow track={suggestedQueue[0]} onAdd={() => promoteSuggestion(suggestedQueue[0])} />
-        </>
+          <div className="aivy-queue-card aivy-queue-suggested-card">
+            <QueueSuggestedRow track={suggestedQueue[0]} onAdd={() => promoteSuggestion(suggestedQueue[0])} />
+          </div>
+        </div>
       )}
 
-      {history.length > 0 && <div className="aivy-drawer-sub eyebrow">{t("playedLabel")}</div>}
-      {history.map((tr, i) => (
-        <QueueHistoryRow key={`h-${tr.id}-${i}`} track={tr} onSelect={() => selectQueuePosition(i)} />
-      ))}
+      {history.length > 0 && (
+        <div className="aivy-queue-section">
+          <div className="aivy-drawer-sub eyebrow">{t("playedLabel")}</div>
+          <div className="aivy-queue-card aivy-queue-history-card">
+            {history.map((tr, i) => (
+              <QueueHistoryRow key={`h-${tr.id}-${i}`} track={tr} onSelect={() => selectQueuePosition(i)} />
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1434,9 +1450,9 @@ function RoomPane() {
 
 const NAV_ITEMS = [
   { route: "home", labelKey: "navHome", icon: HomeIcon },
+  { route: "shorts", labelKey: "navShorts", icon: Film },
   { route: "search", labelKey: "navSearch", icon: Search },
   { route: "library", labelKey: "navLibrary", icon: Library },
-  { route: "shorts", labelKey: "navShorts", icon: Film },
   { route: "roomLobby", labelKey: "navRooms", icon: Users },
 ];
 

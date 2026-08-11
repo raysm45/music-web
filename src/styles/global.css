@@ -411,8 +411,25 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-queue-meta .a{ font-size: 12px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
 .aivy-queue-row-actions{ display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .aivy-queue-eq{ width: 26px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--moss-strong); }
-.aivy-queue-sheet-body{ align-items: stretch; padding: 6px 14px calc(28px + var(--safe-b)); }
+.aivy-queue-sheet-body{ align-items: stretch; padding: 4px 16px calc(28px + var(--safe-b)); gap: 26px; }
 .aivy-queue-sheet-body .aivy-queue-meta img, .aivy-queue-sheet-body .aivy-queue-meta svg{ width: 44px; height: 44px; }
+
+/* Mobile queue redesign: group rows into clean divided cards instead of loose floating pills */
+.aivy-queue-sheet-body .aivy-drawer-sub{ padding: 0 2px 2px; }
+.aivy-queue-section{ display: flex; flex-direction: column; gap: 8px; }
+.aivy-queue-card{ background: var(--bg-elev); border-radius: var(--radius-md); overflow: hidden; }
+.aivy-queue-card .aivy-queue-row{ border-radius: 0; background: transparent; padding: 10px 12px 10px 8px; border-bottom: 1px solid var(--line); }
+.aivy-queue-card .aivy-queue-row:last-child{ border-bottom: none; }
+.aivy-queue-card .aivy-queue-row:hover{ background: var(--bg-elev-2); }
+.aivy-queue-card .aivy-queue-row.is-dragging{ background: var(--bg-elev-3); border-radius: var(--radius-sm); }
+.aivy-queue-now-card{ border: 1px solid var(--moss-strong); }
+.aivy-queue-now-card .aivy-queue-row{ padding: 10px 12px; }
+.aivy-queue-suggested-card{ background: transparent; border: 1px dashed var(--line); }
+.aivy-queue-suggested-card .aivy-queue-row{ background: transparent; border-bottom: none; }
+.aivy-queue-suggested-card .aivy-queue-row:hover{ background: var(--bg-elev); }
+.aivy-queue-history-card .aivy-queue-row{ opacity: .68; }
+.aivy-queue-history-card .aivy-queue-row:hover{ opacity: 1; }
+.aivy-queue-upnext-head span{ display: flex; align-items: center; }
 .aivy-nowplaying-pane{ display: flex; flex-direction: column; align-items: center; text-align: center; padding: 16px 8px; }
 .aivy-nowplaying-pane .t{ font-family: var(--font-display); font-size: 17px; font-weight: 600; margin-top: 16px; }
 .aivy-nowplaying-pane .a{ font-size: 13px; color: var(--ink-faint); margin-top: 4px; }
