@@ -376,7 +376,11 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-rightpanel-tabs .aivy-icon-btn{ margin: 6px 8px; flex: none; }
 /* Toggle icon is hidden by default and only reveals itself (pushing the source label right) when the cursor is over the right sidebar */
 .aivy-rightpanel-tabs .aivy-panel-icon-btn{ flex: none; width: 0; min-width: 0; height: 26px; margin: 6px 0 6px 8px; padding: 0; border-bottom: none; opacity: 0; overflow: hidden; pointer-events: none; transition: width var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease), margin var(--dur-fast) var(--ease); }
-.aivy-rightpanel:hover .aivy-rightpanel-tabs .aivy-panel-icon-btn{ width: 26px; margin: 6px 4px 6px 8px; opacity: 1; pointer-events: auto; }
+/* Hover-reveal for the collapse toggle icon (next to the tabs) — only when
+   the panel is genuinely expanded. Excluded while collapsed+peeking: that
+   state already has its own always-visible arrow overlay marking the toggle,
+   so showing this icon too on hover would just duplicate it. */
+.aivy-rightpanel:hover:not(.aivy-rightpanel-collapsed) .aivy-rightpanel-tabs .aivy-panel-icon-btn{ width: 26px; margin: 6px 4px 6px 8px; opacity: 1; pointer-events: auto; }
 .aivy-rightpanel-tabs .aivy-rightpanel-source{ display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; padding: 0 10px 0 8px; font-size: 12px; color: var(--ink-faint); overflow: hidden; transition: padding var(--dur-fast) var(--ease); }
 .aivy-rightpanel-tabs .aivy-rightpanel-source svg{ flex-shrink: 0; }
 .aivy-rightpanel-tabs .aivy-rightpanel-source span{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-dim); font-weight: 600; }
