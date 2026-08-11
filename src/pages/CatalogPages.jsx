@@ -51,6 +51,7 @@ export function ArtistPage() {
         </button>
       </div>
       {artist.tags?.length > 0 && <div className="aivy-tagrow">{artist.tags.map((tag) => <span key={tag} className="aivy-chip">{tag}</span>)}</div>}
+      {artist.bio && <p className="aivy-bio">{artist.bio}</p>}
       {tracks?.length > 0 && (
         <section className="aivy-section">
           <div className="aivy-section-head"><h2 className="aivy-section-title">{t("popularSongs")}</h2></div>
@@ -68,7 +69,6 @@ export function ArtistPage() {
           <div className="aivy-hrow aivy-scroll">{artist.relatedArtists.map((a) => <CardArtist key={a.id} artist={a} />)}</div>
         </section>
       )}
-      {artist.bio && <p className="aivy-bio">{artist.bio}</p>}
     </div>
   );
 }

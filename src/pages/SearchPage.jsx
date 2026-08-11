@@ -35,6 +35,30 @@ export function SearchPage() {
     if (authUser && settings.searchHistoryEnabled !== false) Api.recentSearches(8).then(setRecent).catch(() => {});
   }, [authUser, settings.searchHistoryEnabled]);
 
+  // Sync search box with ?q= from the URL (e.g. deep link or browser back/forward)
+  useEffect(() => {
+    const initialQ = new URLSearchParams(window.location.search).get("q");
+    if (initialQ && initialQ.trim()) {
+      setQuery(initialQ);
+      doSearch(initialQ);
+    }
+    const onPop = () => {
+      const q = new URLSearchParams(window.location.search).get("q") || "";
+      setQuery(q);
+      if (q.trim()) doSearch(q); else { setResults([]); setHasSearched(false); setArtistHit(null); }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const syncUrlQuery = (q) => {
+    const url = new URL(window.location.href);
+    if (q && q.trim()) url.searchParams.set("q", q.trim());
+    else url.searchParams.delete("q");
+    window.history.replaceState({}, "", url.pathname + url.search);
+  };
+
   const doSearch = async (q) => {
     const trimmed = q.trim();
     if (!trimmed) { setResults([]); setHasSearched(false); setSearching(false); setArtistHit(null); return; }
@@ -74,6 +98,7 @@ export function SearchPage() {
     setQuery(q);
     setFocused(false);
     setSuggestions([]);
+    syncUrlQuery(q);
     if (authUser && settings.searchHistoryEnabled !== false) {
       Api.recordSearch(q).then(() => Api.recentSearches(8).then(setRecent)).catch(() => {});
     }
@@ -129,7 +154,7 @@ export function SearchPage() {
             onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)}
             onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) runSearch(query.trim()); }}
           />
-          {query && <button className="aivy-icon-btn sm aivy-search-clear" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); }} aria-label={t("clear")}><X size={14} /></button>}
+          {query && <button className="aivy-icon-btn sm aivy-search-clear" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={14} /></button>}
         </div>
 
         {focused && query.trim() && suggestions.length > 0 && (

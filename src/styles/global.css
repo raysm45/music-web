@@ -586,7 +586,8 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-artist-banner img{ width: 100%; height: 100%; }
 .aivy-artist-banner-fade{ position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, var(--bg) 92%); }
 .aivy-artist-hero{ margin-top: -64px; position: relative; z-index: 1; align-items: flex-end; }
-.aivy-artist-hero .art{ box-shadow: 0 10px 30px rgba(0,0,0,.35); border: 3px solid var(--bg); }
+.aivy-artist-hero .art{ border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,.35); border: 3px solid var(--bg); }
+.aivy-artist-hero .art img, .aivy-artist-hero .art svg{ border-radius: 50%; }
 @media (max-width: 860px){
   .aivy-artist-banner{ margin: -6px -16px 0; height: 160px; }
   .aivy-artist-hero{ margin-top: -48px; }
