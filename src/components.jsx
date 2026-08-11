@@ -744,6 +744,7 @@ export function RightPanel() {
   const {
     sidebarQueueOpen, closeSidebarQueue, t,
     rightPanelWidth, setRightPanelWidth, rightPanelCollapsed, toggleRightPanelCollapsed,
+    rightPanelPeek, setRightPanelPeek,
   } = useUI();
   const [tab, setTab] = useState("now");
   useEffect(() => { if (room) setTab("room"); }, [!!room]);
@@ -815,15 +816,25 @@ export function RightPanel() {
           type="button"
           className="aivy-rightpanel-rail"
           onClick={toggleRightPanelCollapsed}
+          onMouseEnter={() => setRightPanelPeek(true)}
+          onMouseLeave={() => setRightPanelPeek(false)}
+          onFocus={() => setRightPanelPeek(true)}
+          onBlur={() => setRightPanelPeek(false)}
           aria-label={t("expandPanel", "Buka panel")}
           title={t("expandPanel", "Buka panel")}
         >
-          {/* Real sidebar UI at its natural width, clipped by the rail's own edge —
-              this IS the collapse control growing, not a separate layer behind/in front. */}
-          <span className="aivy-rightpanel-rail-peek" style={{ width: rightPanelWidth }}>{bodyContent}</span>
-          <span className="aivy-rightpanel-rail-arrow">
-            <ChevronRight size={16} className="arrow-idle" />
-            <ChevronLeft size={16} className="arrow-hover" />
+          {/* Real sidebar UI at its natural width. Hovering doesn't grow this rail
+              itself or spawn a layer — it pushes the MAIN content column over a
+              little (via the grid track width in App.jsx), and that extra room is
+              what lets this sliver of UI show, semi-transparent. */}
+          <span className="aivy-rightpanel-rail-peek-wrap">
+            <span className="aivy-rightpanel-rail-peek" style={{ width: rightPanelWidth }}>{bodyContent}</span>
+          </span>
+          <span className="aivy-rightpanel-rail-arrow-wrap">
+            <span className="aivy-rightpanel-rail-arrow">
+              <ChevronRight size={16} className="arrow-idle" />
+              <ChevronLeft size={16} className="arrow-hover" />
+            </span>
           </span>
         </button>
       </aside>

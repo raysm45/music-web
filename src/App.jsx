@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { RouterProvider, useRouter } from "./router.jsx";
 import {
   UIProvider, PlayerProvider, useUI, usePlayer,
-  SIDEBAR_COLLAPSED_W, RIGHTPANEL_COLLAPSED_W,
+  SIDEBAR_COLLAPSED_W, RIGHTPANEL_COLLAPSED_W, RIGHTPANEL_PEEK_W,
 } from "./context.jsx";
 import {
   ErrorBoundary, Sidebar, MobileTabBar, TopBar, PlayerBar, MiniPlayer, NowPlayingSheet, QueueSheet,
@@ -45,7 +45,7 @@ const PAGE_BY_ROUTE = {
 
 function AppInner() {
   const { name, params } = useRouter();
-  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed } = useUI();
+  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek } = useUI();
   const { currentTrack } = usePlayer();
   const isMobile = useIsMobile(860);
   const isPanelCompact = useIsMobile(1240);
@@ -67,7 +67,9 @@ function AppInner() {
     "--sidebar-w": sidebarCollapsed ? `${SIDEBAR_COLLAPSED_W}px` : `${sidebarWidth}px`,
   };
   if (!isPanelCompact) {
-    shellStyle["--rightpanel-w"] = rightPanelCollapsed ? `${RIGHTPANEL_COLLAPSED_W}px` : `${rightPanelWidth}px`;
+    shellStyle["--rightpanel-w"] = rightPanelCollapsed
+      ? `${RIGHTPANEL_COLLAPSED_W + (rightPanelPeek ? RIGHTPANEL_PEEK_W : 0)}px`
+      : `${rightPanelWidth}px`;
   }
 
   return (

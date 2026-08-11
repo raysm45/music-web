@@ -26,6 +26,9 @@ export const SIDEBAR_COLLAPSED_W = 72;
 export const RIGHTPANEL_MIN_W = 260;
 export const RIGHTPANEL_MAX_W = 440;
 export const RIGHTPANEL_COLLAPSED_W = 56;
+// How much extra room the main content grid column gives up, on hover, so a
+// small peek of the collapsed right panel can show without floating on top.
+export const RIGHTPANEL_PEEK_W = 52;
 const PANEL_PREFS_KEY = "aivy_panel_prefs";
 const DEFAULT_PANEL_PREFS = {
   sidebarWidth: 236,
@@ -192,6 +195,10 @@ export function UIProvider({ children }) {
   const toggleRightPanelCollapsed = useCallback(() => {
     setPanelPrefs((p) => ({ ...p, rightPanelCollapsed: !p.rightPanelCollapsed }));
   }, []);
+  // Not persisted — just whether the mouse is hovering the collapsed right-panel
+  // rail right now, so the main content grid column can nudge over to make room
+  // for a small peek of the panel underneath.
+  const [rightPanelPeek, setRightPanelPeek] = useState(false);
 
   const value = {
     authUser, authChecked, login, logout, loggingOut,
@@ -210,6 +217,7 @@ export function UIProvider({ children }) {
     rightPanelCollapsed: panelPrefs.rightPanelCollapsed,
     setRightPanelWidth,
     toggleRightPanelCollapsed,
+    rightPanelPeek, setRightPanelPeek,
   };
   return <UICtx.Provider value={value}>{children}</UICtx.Provider>;
 }
