@@ -298,19 +298,20 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
 
-/* Collapsed right panel: a wider hover-reveal rail. Idle it sits quiet at the edge, showing a
-   dimmed hint of the now-playing thumbnail; hovering lifts its opacity to invite a click and
-   surfaces the thumbnail + expand icon clearly; clicking opens the panel full width. */
+/* Collapsed right panel: a slim rail, not fully hidden. Idle it shows a dimmed
+   now-playing thumbnail with a right-pointing arrow in the middle (closed / "pull
+   this way to open"). Hovering flips the arrow to point left, nudges the rail
+   slightly leftward, and reveals a semi-transparent peek of the full panel. */
 .aivy-rightpanel-collapsed{ overflow: visible; }
 .aivy-rightpanel-rail{
   width: 100%; height: 100%; min-width: 0; position: relative;
   background: var(--bg-elev); border: none; border-left: 1px solid var(--line);
-  cursor: pointer; padding: 0; opacity: 0.75; transform: translateX(2px);
+  cursor: pointer; padding: 0; opacity: 0.75;
   display: flex; align-items: center; justify-content: center;
   transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .aivy-rightpanel-rail:hover, .aivy-rightpanel-rail:focus-visible{
-  opacity: 1; transform: translateX(0); background: var(--bg-elev-2);
+  opacity: 1; transform: translateX(-4px); background: var(--bg-elev-2);
 }
 .aivy-rightpanel-rail-thumb{
   display: flex; width: 36px; height: 36px; border-radius: 8px; overflow: hidden;
@@ -318,45 +319,52 @@ body.aivy-resizing *{ user-select: none !important; }
   transition: opacity var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 .aivy-rightpanel-rail:hover .aivy-rightpanel-rail-thumb{
-  opacity: 1; filter: saturate(1); transform: scale(1.04);
+  opacity: 0.3; filter: saturate(1);
 }
-.aivy-rightpanel-rail-icon{
+.aivy-rightpanel-rail-arrow{
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  display: flex; color: var(--ink-faint); opacity: 0;
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  color: var(--ink-faint);
   background: color-mix(in srgb, var(--bg-elev) 55%, transparent);
-  border-radius: 8px; padding: 6px;
-  transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-icon{ opacity: 1; color: var(--ink); }
+.aivy-rightpanel-rail-arrow .arrow-idle{ display: block; transition: opacity var(--dur-fast) var(--ease); }
+.aivy-rightpanel-rail-arrow .arrow-hover{ display: none; position: absolute; opacity: 0; }
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow{ color: var(--ink); background: color-mix(in srgb, var(--bg-elev) 80%, transparent); }
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow .arrow-idle{ display: none; }
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow .arrow-hover{ display: block; position: static; opacity: 1; }
 
-/* Hover peek: hovering the collapsed rail slides a translucent full lyrics/queue
-   panel out slightly forward (toward the content) over the main area, instead of
-   just showing a static thumbnail. It stays glassy/see-through even fully shown. */
+/* Hover peek: hovering the collapsed rail pulls a semi-transparent preview of the
+   full panel out slightly toward the content (a small nudge left), not a solid
+   opaque panel and not just a thumbnail — you can still see through it a bit. */
 .aivy-rightpanel-hover-preview{
   position: absolute;
   top: 6px; bottom: 6px; right: 6px;
   min-width: 220px;
   display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--bg-elev) 82%, transparent);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elev) 58%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   border-radius: var(--radius-lg, 16px);
-  box-shadow: 0 18px 46px rgba(0,0,0,.32), 0 2px 10px rgba(0,0,0,.18);
+  box-shadow: 0 18px 40px rgba(0,0,0,.28);
   overflow: hidden;
   z-index: 40;
   opacity: 0;
-  transform: translateX(14px) scale(.97);
-  transform-origin: right center;
+  transform: translateX(10px);
   pointer-events: none;
   transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
 }
+.aivy-rightpanel-hover-preview::before{
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: color-mix(in srgb, var(--bg-elev) 12%, transparent);
+}
 .aivy-rightpanel-collapsed:hover .aivy-rightpanel-hover-preview,
 .aivy-rightpanel-collapsed:focus-within .aivy-rightpanel-hover-preview{
-  opacity: 1;
-  transform: translateX(0) scale(1);
+  opacity: 0.92;
+  transform: translateX(-2px);
   pointer-events: auto;
-  transition-delay: 120ms;
+  transition-delay: 100ms;
 }
 .aivy-rightpanel-tabs{ display: flex; flex-shrink: 0; }
 .aivy-rightpanel-tabs button{ flex: 1; padding: 13px 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-faint); border-bottom: 2px solid transparent; }

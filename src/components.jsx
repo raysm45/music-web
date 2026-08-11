@@ -823,7 +823,10 @@ export function RightPanel() {
               <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={36} radius={8} style={{ width: "100%", height: "100%" }} />
             </span>
           )}
-          <span className="aivy-rightpanel-rail-icon"><PanelRight size={16} /></span>
+          <span className="aivy-rightpanel-rail-arrow">
+            <ChevronRight size={16} className="arrow-idle" />
+            <ChevronLeft size={16} className="arrow-hover" />
+          </span>
         </button>
 
         {/* Floating peek panel: hovering the rail slides the full lyrics/queue
