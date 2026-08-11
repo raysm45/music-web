@@ -322,9 +322,11 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 
 /* the real panel content — natural width, not squished, just clipped by the
-   rail's own overflow as it grows */
+   rail's own overflow as it grows. Anchored to the LEFT so widening the rail
+   reveals more of the panel's own beginning (icon/thumbnail/title), not a
+   random middle slice. */
 .aivy-rightpanel-rail-peek{
-  position: absolute; top: 0; right: 0; bottom: 0;
+  position: absolute; top: 0; left: 0; bottom: 0;
   display: flex; flex-direction: column;
   opacity: 0;
   transition: opacity var(--dur-base) var(--ease);
@@ -335,12 +337,21 @@ body.aivy-resizing *{ user-select: none !important; }
   transition-delay: 60ms;
 }
 
+/* the arrow badge stays pinned near the rail's original (right) edge instead of
+   re-centering into the widened box, so it doesn't sit stacked on top of the
+   newly revealed content as the rail grows. */
 .aivy-rightpanel-rail-arrow{
-  position: relative; z-index: 1;
+  position: absolute; top: 50%; right: 15px; transform: translateY(-50%);
+  z-index: 1;
   display: flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; border-radius: 50%;
   color: var(--ink-faint);
   background: color-mix(in srgb, var(--bg-elev) 55%, transparent);
+  transition: right var(--dur-base) var(--ease);
+}
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow,
+.aivy-rightpanel-rail:focus-visible .aivy-rightpanel-rail-arrow{
+  right: 12px;
 }
 .aivy-rightpanel-rail-arrow .arrow-idle{ display: block; }
 .aivy-rightpanel-rail-arrow .arrow-hover{ display: none; }
