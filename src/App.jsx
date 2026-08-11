@@ -73,7 +73,7 @@ function AppInner() {
   }
 
   return (
-    <div className={`aivy-shell ${isMobile ? "is-mobile" : ""}`} style={shellStyle}>
+    <div className={`aivy-shell ${isMobile ? "is-mobile" : ""} ${rightPanelCollapsed && rightPanelPeek ? "is-rightpanel-peeking" : ""}`} style={shellStyle}>
       {!isMobile && <Sidebar />}
       <main className="aivy-main">
         {!isImmersiveShorts && <TopBar isMobile={isMobile} />}

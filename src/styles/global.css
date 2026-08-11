@@ -98,6 +98,13 @@ svg{ display: block; }
   grid-template-areas: "side main right" "player player player";
   transition: grid-template-columns var(--dur-slow) var(--ease);
 }
+/* Hover-peek on the collapsed right panel: its own, slower timing so the
+   reveal doesn't feel rushed — separate from --dur-slow, which also drives
+   unrelated transitions (sheets, view-enter, click-to-collapse) that should
+   stay at their normal speed. */
+.aivy-shell.is-rightpanel-peeking{
+  transition: grid-template-columns 620ms var(--ease);
+}
 .aivy-shell.is-mobile{ grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: "main"; }
 /* while dragging a resize handle, kill the transition so the panel tracks the cursor 1:1 */
 body.aivy-resizing .aivy-shell{ transition: none; }
@@ -328,12 +335,12 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-rightpanel-rail-peek{
   display: flex; flex-direction: column;
   opacity: 0;
-  transition: opacity var(--dur-base) var(--ease);
+  transition: opacity 620ms var(--ease);
 }
 .aivy-rightpanel-rail:hover .aivy-rightpanel-rail-peek,
 .aivy-rightpanel-rail:focus-visible .aivy-rightpanel-rail-peek{
   opacity: 0.4;
-  transition-delay: 60ms;
+  transition-delay: 120ms;
 }
 
 /* Overlay, not a flex slot: pinned to the rail's own left edge (same spot the
