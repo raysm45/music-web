@@ -306,7 +306,7 @@ body.aivy-resizing *{ user-select: none !important; }
    semi-transparent sliver of the real panel UI. The arrow flips to point left. */
 .aivy-rightpanel-rail{
   width: 100%; height: 100%; min-width: 0; overflow: hidden;
-  display: flex; flex-direction: row; align-items: stretch;
+  display: flex; flex-direction: row; align-items: stretch; position: relative;
   background: var(--bg-elev); border: none; border-left: 1px solid var(--line);
   cursor: pointer; padding: 0;
   transition: background var(--dur-base) var(--ease);
@@ -315,8 +315,9 @@ body.aivy-resizing *{ user-select: none !important; }
   background: color-mix(in srgb, var(--bg-elev) 96%, transparent);
 }
 
-/* fills whatever extra room the grid track gives up on hover/focus — 0 width
-   idle, so nothing shows until the column has actually grown */
+/* fills the whole rail — extra room the grid track gives up on hover/focus is
+   0 width idle, so nothing shows until the column has actually grown. The
+   arrow overlay (below) sits on top of this, not beside it. */
 .aivy-rightpanel-rail-peek-wrap{
   flex: 1 1 auto; min-width: 0; overflow: hidden;
 }
@@ -335,10 +336,13 @@ body.aivy-resizing *{ user-select: none !important; }
   transition-delay: 60ms;
 }
 
-/* fixed 56px icon column, always at the rail's own edge */
+/* Overlay, not a flex slot: pinned to the rail's own left edge (same spot the
+   peek content starts from), floating on top of it. Rides along with that
+   edge as the column widens on hover instead of sitting in a separate box. */
 .aivy-rightpanel-rail-arrow-wrap{
-  flex: 0 0 56px; width: 56px;
+  position: absolute; left: 0; top: 0; bottom: 0; width: 56px;
   display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 1;
 }
 .aivy-rightpanel-rail-arrow{
   display: flex; align-items: center; justify-content: center;

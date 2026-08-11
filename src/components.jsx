@@ -826,7 +826,12 @@ export function RightPanel() {
           {/* Real sidebar UI at its natural width. Hovering doesn't grow this rail
               itself or spawn a layer — it pushes the MAIN content column over a
               little (via the grid track width in App.jsx), and that extra room is
-              what lets this sliver of UI show, semi-transparent. */}
+              what lets this sliver of UI show, semi-transparent. The peek content
+              fills the whole rail (no separate side-by-side slot for the arrow).
+              The arrow itself is an overlay sitting ON TOP of that content, pinned
+              to the rail's own left edge — the same spot the content starts from —
+              so it rides along as the column widens instead of living in its own
+              box beside the content. */}
           <span className="aivy-rightpanel-rail-peek-wrap">
             <span className="aivy-rightpanel-rail-peek" style={{ width: rightPanelWidth }}>{bodyContent}</span>
           </span>
