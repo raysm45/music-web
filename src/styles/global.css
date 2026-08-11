@@ -445,6 +445,31 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-nowplaying-about-row .aivy-chip{ flex-shrink: 0; }
 .aivy-nowplaying-about-bio{ margin: 14px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-dim); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .aivy-nowplaying-pane .aivy-nowplaying-about{ text-align: left; }
+
+/* Compact credits card — Main Artist + any known writers, each a name/role
+   pair, with a "Show all" link to the full CreditsModal breakdown. */
+.aivy-credits-card{ width: 100%; margin-top: 14px; border-radius: var(--radius-lg); background: var(--bg-elev); border: 1px solid var(--line-soft); padding: 16px 18px 6px; }
+.aivy-credits-card-head{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.aivy-credits-card-title{ font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--ink); }
+.aivy-credits-showall{ font-size: 12.5px; font-weight: 600; color: var(--ink-faint); background: none; border: none; padding: 4px 2px; }
+.aivy-credits-showall:hover{ color: var(--ink); }
+.aivy-credits-card-list{ display: flex; flex-direction: column; }
+.aivy-credits-card-row{ display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.aivy-credits-card-row:first-child{ border-top: none; }
+.aivy-credits-card-row .who{ min-width: 0; }
+.aivy-credits-card-row .name{ font-size: 14px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-credits-card-row .role{ font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-credits-card-row .aivy-chip{ padding: 6px 14px; font-size: 12px; }
+
+/* Full breakdown modal, opened via "Show all" */
+.aivy-credits-modal{ width: min(440px, 100%); padding: 24px 22px; }
+.aivy-credits-modal-body{ margin-top: 4px; max-height: 60vh; overflow-y: auto; }
+.aivy-credits-modal-song{ font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink-dim); margin-bottom: 18px; }
+.aivy-credits-group{ margin-bottom: 20px; }
+.aivy-credits-group .label{ font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.aivy-credits-group .names{ font-size: 13.5px; line-height: 1.5; color: var(--ink-dim); }
+.aivy-credits-group .names strong{ color: var(--ink); font-weight: 700; }
+.aivy-credits-source{ font-size: 12px; line-height: 1.5; color: var(--ink-faint); padding-top: 14px; border-top: 1px solid var(--line-soft); }
 .aivy-room-pane-head{ display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 4px 6px 10px; }
 .aivy-room-pane-head .t{ font-family: var(--font-display); font-size: 16px; font-weight: 600; }
 .aivy-room-members{ display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }

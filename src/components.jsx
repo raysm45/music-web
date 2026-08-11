@@ -712,6 +712,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             </div>
             <TransportButtons big />
             <AboutArtistSection track={currentTrack} onNavigate={onClose} />
+            <CreditsCard track={currentTrack} />
             <NextUpPreview />
           </div>
         )}
@@ -943,6 +944,127 @@ function AboutArtistSection({ track, onNavigate }) {
   );
 }
 
+// Reads whatever credit data the track actually has and fills in sensible
+// fallbacks around it. Today the API only gives us `track.artist` (one main
+// artist), so most tracks will just show that single row — once the backend
+// starts sending `track.credits` (writers, producer, source, per-person role
+// tags), this same component fills out into the full breakdown automatically,
+// no UI changes needed on that day.
+function useCreditsData(track) {
+  return useMemo(() => {
+    const mainArtistName = track?.artist?.name || null;
+    const c = track?.credits || null;
+
+    const contributors = [];
+    if (mainArtistName) contributors.push({ name: mainArtistName, roleKey: "mainArtistRole", isMainArtist: true });
+    (c?.contributors || []).forEach((p) => {
+      if (p?.name) contributors.push({ name: p.name, role: (p.roles || []).join(", ") || null });
+    });
+
+    const performedBy = c?.performedBy?.length ? c.performedBy : (mainArtistName ? [mainArtistName] : []);
+    const writtenBy = c?.writtenBy || [];
+    const producedBy = c?.producedBy || [];
+    const source = c?.source || [];
+
+    return {
+      hasAnything: contributors.length > 0,
+      contributors,
+      title: track?.title || "",
+      performedBy, writtenBy, producedBy, source,
+    };
+  }, [track]);
+}
+
+// Compact "Credits" card — mirrors the Main Artist / Composer / Arranger rows
+// you'd see on Spotify, using only what we actually know about the track.
+// Tapping "Show all" opens the full breakdown (CreditsModal) with roles
+// grouped by Performed by / Written by / Produced by / Source.
+function CreditsCard({ track }) {
+  const { t, openCredits } = useUI();
+  const data = useCreditsData(track);
+  const [following, setFollowing] = useState(false);
+
+  if (!data.hasAnything) return null;
+
+  return (
+    <div className="aivy-credits-card">
+      <div className="aivy-credits-card-head">
+        <span className="aivy-credits-card-title">{t("creditsLabel")}</span>
+        <button type="button" className="aivy-credits-showall" onClick={() => openCredits(track)}>{t("showAllLabel")}</button>
+      </div>
+      <div className="aivy-credits-card-list">
+        {data.contributors.slice(0, 4).map((p, i) => (
+          <div className="aivy-credits-card-row" key={i}>
+            <div className="who">
+              <div className="name">{p.name}</div>
+              <div className="role">{p.isMainArtist ? t(p.roleKey) : p.role}</div>
+            </div>
+            {p.isMainArtist && (
+              <button
+                type="button"
+                className={following ? "aivy-chip active" : "aivy-chip"}
+                onClick={() => setFollowing((f) => !f)}
+              >
+                {following ? <><Check size={13} /> {t("following")}</> : t("follow")}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Full-screen breakdown, opened from CreditsCard's "Show all". Any group with
+// no data collapses away instead of printing an awkward empty line, except
+// "Produced by" which follows the reference pattern of showing an em dash
+// when the producer isn't known yet.
+export function CreditsModal() {
+  const { creditsTrack, closeCredits, t } = useUI();
+  if (!creditsTrack) return null;
+  const data = useCreditsData(creditsTrack);
+
+  return (
+    <div className="aivy-modal-backdrop" onClick={closeCredits}>
+      <div className="aivy-modal aivy-credits-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="aivy-modal-head">
+          <div className="aivy-modal-title">{t("creditsLabel")}</div>
+          <button className="aivy-icon-btn sm" onClick={closeCredits} aria-label={t("close")}><X size={17} /></button>
+        </div>
+        <div className="aivy-credits-modal-body aivy-scroll">
+          <div className="aivy-credits-modal-song">{data.title}</div>
+
+          {data.performedBy.length > 0 && (
+            <div className="aivy-credits-group">
+              <div className="label">{t("performedByLabel")}</div>
+              <div className="names">{data.performedBy.join(", ")}</div>
+            </div>
+          )}
+
+          {data.writtenBy.length > 0 && (
+            <div className="aivy-credits-group">
+              <div className="label">{t("writtenByLabel")}</div>
+              <div className="names">
+                <strong>{data.writtenBy[0]}</strong>
+                {data.writtenBy.length > 1 ? `, ${data.writtenBy.slice(1).join(", ")}` : ""}
+              </div>
+            </div>
+          )}
+
+          <div className="aivy-credits-group">
+            <div className="label">{t("producedByLabel")}</div>
+            <div className="names">{data.producedBy.length > 0 ? data.producedBy.join(", ") : "\u2013"}</div>
+          </div>
+
+          {data.source.length > 0 && (
+            <div className="aivy-credits-source">{t("sourceLabel")}: {data.source.join(", ")}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NextUpPreview({ compact }) {
   const { upNext, suggestedQueue, next, promoteSuggestion } = usePlayer();
   const { t } = useUI();
@@ -1169,6 +1291,7 @@ function NowPlayingPane() {
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
       <AboutArtistSection track={currentTrack} />
+      <CreditsCard track={currentTrack} />
       <NextUpPreview compact />
     </div>
   );

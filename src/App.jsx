@@ -6,7 +6,7 @@ import {
 } from "./context.jsx";
 import {
   ErrorBoundary, Sidebar, MobileTabBar, TopBar, PlayerBar, MiniPlayer, NowPlayingSheet, QueueSheet,
-  RightPanel, GlobalContextMenu, AddToPlaylistModal, ToastHost, ViewLoading, LyricsOverlay,
+  RightPanel, GlobalContextMenu, AddToPlaylistModal, CreditsModal, ToastHost, ViewLoading, LyricsOverlay,
 } from "./components.jsx";
 import { LandingPage, LoginPage } from "./pages/AuthPages.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
@@ -91,6 +91,7 @@ function AppInner() {
       {isMobile && <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} />}
 
       <AddToPlaylistModal />
+      <CreditsModal />
       <LyricsOverlay />
       <GlobalContextMenu />
       <ToastHost isMobile={isMobile} />

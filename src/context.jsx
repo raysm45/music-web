@@ -81,6 +81,7 @@ export function UIProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
+  const [creditsTrack, setCreditsTrack] = useState(null);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [sidebarQueueOpen, setSidebarQueueOpen] = useState(false);
   const [panelPrefs, setPanelPrefs] = useState(loadPanelPrefs);
@@ -177,6 +178,9 @@ export function UIProvider({ children }) {
   const openAddToPlaylist = useCallback((track) => setAddToPlaylistTarget(track), []);
   const closeAddToPlaylist = useCallback(() => setAddToPlaylistTarget(null), []);
 
+  const openCredits = useCallback((track) => setCreditsTrack(track), []);
+  const closeCredits = useCallback(() => setCreditsTrack(null), []);
+
   const openLyrics = useCallback(() => setLyricsOpen(true), []);
   const closeLyrics = useCallback(() => setLyricsOpen(false), []);
   const toggleLyrics = useCallback(() => setLyricsOpen((o) => !o), []);
@@ -207,6 +211,7 @@ export function UIProvider({ children }) {
     toasts, pushToast,
     contextMenu, openContextMenu, closeContextMenu,
     addToPlaylistTarget, openAddToPlaylist, closeAddToPlaylist,
+    creditsTrack, openCredits, closeCredits,
     lyricsOpen, openLyrics, closeLyrics, toggleLyrics,
     sidebarQueueOpen, toggleSidebarQueue, closeSidebarQueue,
     sidebarWidth: panelPrefs.sidebarWidth,
