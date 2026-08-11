@@ -14,7 +14,7 @@ import {
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp } from "./lib/utils.js";
+import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch } from "./lib/utils.js";
 
 // Drag-to-resize for the left sidebar / right panel. `side` tells the hook which
 // screen edge the panel is anchored to, so dragging right/left maps to grow/shrink correctly.
@@ -883,17 +883,29 @@ function RightPanelSourceLabel() {
 
 function useArtistAbout(track) {
   const [artist, setArtist] = useState(null);
+  const hasId = !!track?.artist?.id;
   const artistKey = track?.artist?.id || track?.artist?.name || null;
+  const artistName = track?.artist?.name || null;
 
   useEffect(() => {
     setArtist(null);
     if (!artistKey) return;
     let alive = true;
     import("./lib/api.js").then(({ Api }) => {
-      Api.artist(artistKey).then((res) => { if (alive) setArtist(res); }).catch(() => { if (alive) setArtist(null); });
+      Api.artist(artistKey).then((res) => {
+        if (!alive) return;
+        // When we only had a name to go on (no reliable id, e.g. Liked Songs or
+        // imported tracks), make sure the resolved artist actually matches what
+        // we looked up, instead of trusting a fuzzy same-ish-sounding result.
+        if (!hasId && res?.name && !isRelevantArtistMatch(res.name, artistName)) {
+          setArtist(null);
+          return;
+        }
+        setArtist(res);
+      }).catch(() => { if (alive) setArtist(null); });
     });
     return () => { alive = false; };
-  }, [artistKey]);
+  }, [artistKey, hasId, artistName]);
 
   return artist;
 }

@@ -88,3 +88,19 @@ export function debounce(fn, ms) {
     t = setTimeout(() => fn(...args), ms);
   };
 }
+export function isRelevantArtistMatch(name, q) {
+  const norm = (s) => (s || "")
+    .toLowerCase()
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const n = norm(name), query = norm(q);
+  if (!n || !query) return false;
+  if (n === query || n.includes(query) || query.includes(n)) return true;
+  const nameWords = n.split(" ").filter(Boolean);
+  if (!nameWords.length) return false;
+  const queryWords = new Set(query.split(" ").filter(Boolean));
+  const matched = nameWords.filter((w) => queryWords.has(w)).length;
+  return matched / nameWords.length >= 0.8;
+}

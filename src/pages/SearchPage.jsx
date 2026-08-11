@@ -5,7 +5,7 @@ import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
 import { TrackRow, SkeletonList } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
-import { debounce } from "../lib/utils.js";
+import { debounce, isRelevantArtistMatch } from "../lib/utils.js";
 
 const GENRE_SHORTCUTS = ["Pop", "Hip-Hop", "R&B", "Indie", "Rock", "Electronic", "Jazz", "Dangdut", "K-Pop", "Reggae", "Klasik", "Akustik"];
 
@@ -69,7 +69,7 @@ export function SearchPage() {
 
     Api.artistQuick(trimmed).then((res) => {
       if (seq !== requestSeqRef.current) return;
-      setArtistHit(res || null);
+      setArtistHit(res && isRelevantArtistMatch(res.name, trimmed) ? res : null);
     }).catch(() => {
       if (seq !== requestSeqRef.current) return;
       setArtistHit(null);
