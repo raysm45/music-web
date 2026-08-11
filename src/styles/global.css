@@ -299,24 +299,53 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
 
 /* Collapsed right panel: a slim rail, not fully hidden. Idle it shows a dimmed
-   now-playing thumbnail with a right-pointing arrow in the middle (closed / "pull
-   this way to open"). Hovering flips the arrow to point left, nudges the rail
-   slightly leftward, and reveals a semi-transparent peek of the full panel. */
+   now-playing thumbnail with a right-pointing arrow (closed / "pull this way to
+   open"). On hover, the rail ITSELF widens a little (no separate floating layer)
+   revealing a clipped, semi-transparent sliver of the full panel underneath the
+   icons, and the arrow flips to point left. */
 .aivy-rightpanel-collapsed{ overflow: visible; }
 .aivy-rightpanel-rail{
-  width: 100%; height: 100%; min-width: 0; position: relative;
-  background: var(--bg-elev); border: none; border-left: 1px solid var(--line);
-  cursor: pointer; padding: 0; opacity: 0.75;
-  display: flex; align-items: center; justify-content: center;
-  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: 56px; min-width: 0;
+  display: flex; flex-direction: row; align-items: stretch;
+  background: color-mix(in srgb, var(--bg-elev) 96%, transparent);
+  border: none; border-left: 1px solid var(--line);
+  border-radius: var(--radius-lg, 16px) 0 0 var(--radius-lg, 16px);
+  cursor: pointer; padding: 0; overflow: hidden;
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+  z-index: 40;
+  transition: width var(--dur-base) var(--ease), background var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
 }
 .aivy-rightpanel-rail:hover, .aivy-rightpanel-rail:focus-visible{
-  opacity: 1; transform: translateX(-4px); background: var(--bg-elev-2);
+  width: 128px;
+  background: color-mix(in srgb, var(--bg-elev) 62%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: -10px 0 28px rgba(0,0,0,.24);
 }
+
+/* the clipped sliver of real panel content revealed to the left of the icons */
+.aivy-rightpanel-rail-peek{
+  flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column;
+  opacity: 0; transform: translateX(8px); pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+}
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-peek,
+.aivy-rightpanel-rail:focus-visible .aivy-rightpanel-rail-peek{
+  opacity: 0.85; transform: translateX(0); transition-delay: 60ms;
+}
+
+/* fixed-width icon column, always pinned to the right edge of the rail */
+.aivy-rightpanel-rail-icons{
+  flex: 0 0 56px; width: 56px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  border-left: 1px solid transparent;
+}
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-icons{ border-left-color: color-mix(in srgb, var(--line) 70%, transparent); }
 .aivy-rightpanel-rail-thumb{
   display: flex; width: 36px; height: 36px; border-radius: 8px; overflow: hidden;
   opacity: 0.55; filter: saturate(0.85);
-  transition: opacity var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  transition: opacity var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease);
 }
 .aivy-rightpanel-rail:hover .aivy-rightpanel-rail-thumb{
   opacity: 0.3; filter: saturate(1);
@@ -328,44 +357,11 @@ body.aivy-resizing *{ user-select: none !important; }
   color: var(--ink-faint);
   background: color-mix(in srgb, var(--bg-elev) 55%, transparent);
 }
-.aivy-rightpanel-rail-arrow .arrow-idle{ display: block; transition: opacity var(--dur-fast) var(--ease); }
-.aivy-rightpanel-rail-arrow .arrow-hover{ display: none; position: absolute; opacity: 0; }
+.aivy-rightpanel-rail-arrow .arrow-idle{ display: block; }
+.aivy-rightpanel-rail-arrow .arrow-hover{ display: none; }
 .aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow{ color: var(--ink); background: color-mix(in srgb, var(--bg-elev) 80%, transparent); }
 .aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow .arrow-idle{ display: none; }
-.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow .arrow-hover{ display: block; position: static; opacity: 1; }
-
-/* Hover peek: hovering the collapsed rail nudges out just a small sliver of the
-   full panel (Spotify-style peek) — a little translucent edge showing a hint of
-   content, not the whole panel sliding open. Mostly clipped by its own narrow width. */
-.aivy-rightpanel-hover-preview{
-  position: absolute;
-  top: 6px; bottom: 6px; right: 6px;
-  width: 96px;
-  display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--bg-elev) 58%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  border-radius: var(--radius-lg, 16px);
-  box-shadow: 0 18px 40px rgba(0,0,0,.28);
-  overflow: hidden;
-  z-index: 40;
-  opacity: 0;
-  transform: translateX(18px);
-  pointer-events: none;
-  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease), width var(--dur-base) var(--ease);
-}
-.aivy-rightpanel-hover-preview::before{
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: color-mix(in srgb, var(--bg-elev) 12%, transparent);
-}
-.aivy-rightpanel-collapsed:hover .aivy-rightpanel-hover-preview,
-.aivy-rightpanel-collapsed:focus-within .aivy-rightpanel-hover-preview{
-  opacity: 0.92;
-  transform: translateX(0);
-  pointer-events: none;
-  transition-delay: 60ms;
-}
+.aivy-rightpanel-rail:hover .aivy-rightpanel-rail-arrow .arrow-hover{ display: block; }
 .aivy-rightpanel-tabs{ display: flex; flex-shrink: 0; }
 .aivy-rightpanel-tabs button{ flex: 1; padding: 13px 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-faint); border-bottom: 2px solid transparent; }
 .aivy-rightpanel-tabs button.active{ color: var(--ink); border-bottom-color: var(--moss-strong); }

@@ -818,22 +818,19 @@ export function RightPanel() {
           aria-label={t("expandPanel", "Buka panel")}
           title={t("expandPanel", "Buka panel")}
         >
-          {currentTrack && (
-            <span className="aivy-rightpanel-rail-thumb">
-              <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={36} radius={8} style={{ width: "100%", height: "100%" }} />
+          <span className="aivy-rightpanel-rail-peek">{bodyContent}</span>
+          <span className="aivy-rightpanel-rail-icons">
+            {currentTrack && (
+              <span className="aivy-rightpanel-rail-thumb">
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={36} radius={8} style={{ width: "100%", height: "100%" }} />
+              </span>
+            )}
+            <span className="aivy-rightpanel-rail-arrow">
+              <ChevronRight size={16} className="arrow-idle" />
+              <ChevronLeft size={16} className="arrow-hover" />
             </span>
-          )}
-          <span className="aivy-rightpanel-rail-arrow">
-            <ChevronRight size={16} className="arrow-idle" />
-            <ChevronLeft size={16} className="arrow-hover" />
           </span>
         </button>
-
-        {/* Floating peek panel: hovering the rail nudges out just a small sliver of the
-            panel (Spotify-style), not the full width — mostly clipped, semi-transparent. */}
-        <div className="aivy-rightpanel-hover-preview">
-          {bodyContent}
-        </div>
       </aside>
     );
   }
