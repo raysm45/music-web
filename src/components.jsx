@@ -944,16 +944,54 @@ function AboutArtistSection({ track, onNavigate }) {
   );
 }
 
-// Reads whatever credit data the track actually has and fills in sensible
-// fallbacks around it. Today the API only gives us `track.artist` (one main
-// artist), so most tracks will just show that single row — once the backend
-// starts sending `track.credits` (writers, producer, source, per-person role
-// tags), this same component fills out into the full breakdown automatically,
-// no UI changes needed on that day.
+// Module-level cache so CreditsCard and CreditsModal (and re-mounts while
+// scrubbing the queue) don't both re-fetch the same track's credits.
+// Value is either a pending Promise, the resolved credits object, or null
+// (fetched but MusicBrainz had nothing for this track).
+const creditsFetchCache = new Map();
+
+// Search/queue/room track objects only carry `track.artist` (one main
+// artist) — the fuller breakdown (writers, producer, source, per-person role
+// tags) lives behind `GET /api/track/:id` as `credits`, so it's fetched
+// lazily here the first time a track becomes visible in the credits UI.
+// Only real Deezer-backed tracks (numeric id) have that endpoint; tracks
+// that only exist as a raw YouTube result use their videoId as `id` and are
+// skipped, same as before — they just show whatever `track.artist` gives.
 function useCreditsData(track) {
+  const trackId = track?.id;
+  const hasOwnCredits = !!track?.credits;
+  const [fetchedCredits, setFetchedCredits] = useState(null);
+
+  useEffect(() => {
+    setFetchedCredits(null);
+    if (hasOwnCredits || !trackId || !/^\d+$/.test(String(trackId))) return;
+
+    let alive = true;
+    const applyResult = (credits) => { if (alive) setFetchedCredits(credits); };
+
+    const cached = creditsFetchCache.get(trackId);
+    if (cached !== undefined) {
+      if (cached && typeof cached.then === "function") cached.then(applyResult);
+      else applyResult(cached);
+      return () => { alive = false; };
+    }
+
+    const promise = import("./lib/api.js")
+      .then(({ Api }) => Api.track(trackId))
+      .then((full) => full?.credits || null)
+      .catch(() => null);
+    creditsFetchCache.set(trackId, promise);
+    promise.then((credits) => {
+      creditsFetchCache.set(trackId, credits);
+      applyResult(credits);
+    });
+
+    return () => { alive = false; };
+  }, [trackId, hasOwnCredits]);
+
   return useMemo(() => {
     const mainArtistName = track?.artist?.name || null;
-    const c = track?.credits || null;
+    const c = track?.credits || fetchedCredits || null;
 
     const contributors = [];
     if (mainArtistName) contributors.push({ name: mainArtistName, roleKey: "mainArtistRole", isMainArtist: true });
@@ -972,7 +1010,7 @@ function useCreditsData(track) {
       title: track?.title || "",
       performedBy, writtenBy, producedBy, source,
     };
-  }, [track]);
+  }, [track, fetchedCredits]);
 }
 
 // Compact "Credits" card — mirrors the Main Artist / Composer / Arranger rows
