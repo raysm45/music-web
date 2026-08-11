@@ -723,6 +723,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
 
 export function QueueSheet({ open, onClose }) {
   const { t } = useUI();
+  const [tab, setTab] = useState("queue");
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
@@ -732,8 +733,12 @@ export function QueueSheet({ open, onClose }) {
           <span className="eyebrow">{t("tabQueue")}</span>
           <span style={{ width: 38 }} />
         </div>
+        <div className="aivy-queue-tabs">
+          <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>{t("tabQueue")}</button>
+          <button className={tab === "played" ? "active" : ""} onClick={() => setTab("played")}>{t("playedLabel")}</button>
+        </div>
         <div className="aivy-sheet-body aivy-scroll aivy-queue-sheet-body">
-          <QueueBody />
+          {tab === "queue" ? <QueueBody /> : <QueueHistoryBody />}
         </div>
       </div>
     </>
@@ -1288,7 +1293,7 @@ function QueueSuggestedRow({ track, onAdd }) {
 }
 
 export function QueueBody() {
-  const { currentTrack, upNext, history, selectQueuePosition, clearUpNext, suggestedQueue, promoteSuggestion, room } = usePlayer();
+  const { currentTrack, upNext, clearUpNext, suggestedQueue, promoteSuggestion, room } = usePlayer();
   const { t } = useUI();
 
   if (!currentTrack) {
@@ -1331,18 +1336,27 @@ export function QueueBody() {
           </div>
         </div>
       )}
-
-      {history.length > 0 && (
-        <div className="aivy-queue-section">
-          <div className="aivy-drawer-sub eyebrow">{t("playedLabel")}</div>
-          <div className="aivy-queue-card aivy-queue-history-card">
-            {history.map((tr, i) => (
-              <QueueHistoryRow key={`h-${tr.id}-${i}`} track={tr} onSelect={() => selectQueuePosition(i)} />
-            ))}
-          </div>
-        </div>
-      )}
     </>
+  );
+}
+
+export function QueueHistoryBody() {
+  const { history, selectQueuePosition } = usePlayer();
+  const { t } = useUI();
+  const recent = history.slice().reverse();
+
+  if (recent.length === 0) {
+    return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("playedLabel")}</div><div className="sub">{t("noRecentlyPlayed")}</div></div>;
+  }
+
+  return (
+    <div className="aivy-queue-section">
+      <div className="aivy-queue-card aivy-queue-history-card">
+        {recent.map((tr, i) => (
+          <QueueHistoryRow key={`h-${tr.id}-${i}`} track={tr} onSelect={() => selectQueuePosition(history.length - 1 - i)} />
+        ))}
+      </div>
+    </div>
   );
 }
 
