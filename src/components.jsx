@@ -680,11 +680,12 @@ export function MiniPlayer({ onExpand }) {
 }
 
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
-  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio } = usePlayer();
+  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
-  const { t } = useUI();
+  const { t, toggleLyrics } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
+  const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
@@ -692,7 +693,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         <div className="aivy-sheet-head">
           <button className="aivy-icon-btn" onClick={onClose} aria-label={t("close")}><ChevronDown size={22} /></button>
           {isPreviewClip ? <span className="eyebrow">{t("preview30")}</span> : <span />}
-          <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={19} /></button>
+          <div className="aivy-sheet-head-actions">
+            <button className="aivy-icon-btn" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label={t("lyrics")} title={lyricsDisabled && currentTrack ? t("lyricsUnavailable") : t("lyrics")}><Mic2 size={19} /></button>
+            <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={19} /></button>
+          </div>
         </div>
         {currentTrack && (
           <div className="aivy-sheet-body aivy-scroll">

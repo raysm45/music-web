@@ -530,6 +530,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet{ position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; height: 100dvh; background: var(--bg); display: flex; flex-direction: column; transform: translateY(100%); transition: transform var(--dur-slow) var(--ease); box-shadow: var(--shadow-sheet); }
 .aivy-sheet.open{ transform: translateY(0); }
 .aivy-sheet-head{ display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top,0px)) 18px 6px; flex-shrink: 0; }
+.aivy-sheet-head-actions{ display: flex; align-items: center; gap: 4px; }
 .aivy-sheet-body{ flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 6px 26px calc(28px + var(--safe-b)); }
 .aivy-sheet-art{ width: min(78vw, 320px); aspect-ratio: 1; border-radius: var(--radius-lg); overflow: hidden; margin: 10px 0 26px; flex-shrink: 0; }
 .aivy-sheet-meta{ width: 100%; text-align: left; margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
