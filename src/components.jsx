@@ -1650,6 +1650,61 @@ const LYRICS_FONT_SIZES = {
   lg: "clamp(23px, 4.4vw, 32px)",
 };
 
+const AM_LYRICS_FONT_SIZES = {
+  sm: "clamp(20px, 3.4vw, 24px)",
+  md: "clamp(26px, 4.2vw, 32px)",
+  lg: "clamp(32px, 5vw, 40px)",
+};
+
+// Wraps the <am-lyrics> web component (Apple-Music-style word-synced lyrics,
+// sourced from LyricsPlus/Apple Music instead of our own backend) so React can
+// drive it. Custom-element properties are assigned imperatively via ref rather
+// than as JSX attributes, since React <19 doesn't pass complex props through to
+// custom elements reliably.
+function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize }) {
+  const elRef = useRef(null);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el || !track) return;
+    const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
+    el.songTitle = cleanedTitle;
+    el.songArtist = track.artist?.name || "";
+    el.songDuration = track.duration ? Math.round(track.duration * 1000) : undefined;
+    el.query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
+    el.autoscroll = true;
+    el.interpolate = true;
+  }, [track?.id]);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    el.currentTime = Math.max(0, Math.round((currentTime || 0) * 1000));
+  }, [currentTime]);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el || !highlightColor) return;
+    el.highlightColor = highlightColor;
+  }, [highlightColor]);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const handler = (e) => onSeek?.((e.detail?.timestamp || 0) / 1000);
+    el.addEventListener("line-click", handler);
+    return () => el.removeEventListener("line-click", handler);
+  }, [onSeek]);
+
+  return (
+    <am-lyrics
+      ref={elRef}
+      class="aivy-am-lyrics"
+      style={{ "--lyplus-font-size-base": AM_LYRICS_FONT_SIZES[fontSize] || AM_LYRICS_FONT_SIZES.md }}
+    />
+  );
+}
+
 function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
   const words = String(text || "").split(" ");
   let line = "";
@@ -1749,7 +1804,6 @@ export function LyricsOverlay() {
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [accentColor, setAccentColor] = useState(null);
-  const lineRefs = useRef([]);
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
@@ -1769,7 +1823,7 @@ export function LyricsOverlay() {
     const prevOverflow = scrollEl ? scrollEl.style.overflow : "";
     if (scrollEl) scrollEl.style.overflow = "hidden";
 
-    const ALLOWED_SCROLL_SELECTOR = ".aivy-lyrics-body, .aivy-lyrics-plain, .aivy-lyrics-side";
+    const ALLOWED_SCROLL_SELECTOR = ".aivy-lyrics-plain, .aivy-lyrics-side, .aivy-am-lyrics";
     const onTouchMove = (e) => {
       if (e.target.closest(ALLOWED_SCROLL_SELECTOR)) return;
       e.preventDefault();
@@ -1827,15 +1881,6 @@ export function LyricsOverlay() {
     }
     return idx;
   }, [state.synced, currentTime]);
-
-  useEffect(() => {
-    if (activeIndex < 0) return;
-    const el = lineRefs.current[activeIndex];
-    const container = el?.closest(".aivy-lyrics-body");
-    if (!el || !container) return;
-    const target = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
-    container.scrollTo({ top: target, behavior: "smooth" });
-  }, [activeIndex]);
 
   const activeLineText = useMemo(() => {
     if (state.synced[activeIndex]?.text) return state.synced[activeIndex].text;
@@ -1951,31 +1996,13 @@ export function LyricsOverlay() {
           </div>
 
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
-            {state.loading ? (
-              <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">{t("searchingLyrics")}</div></div>
-            ) : state.synced.length > 0 ? (
-              <div className="aivy-lyrics-body aivy-scroll">
-                <div style={{ height: "38vh" }} />
-                {state.synced.map((line, i) => (
-                  <div
-                    key={i} ref={(el) => (lineRefs.current[i] = el)}
-                    className={`aivy-lyrics-line ${i === activeIndex ? "active" : Math.abs(i - activeIndex) === 1 ? "near" : ""}`}
-                    onClick={() => seekTo(line.time)}
-                  >
-                    {line.text || "\u266a"}
-                  </div>
-                ))}
-                <div style={{ height: "38vh" }} />
-              </div>
-            ) : state.plain ? (
-              <div className="aivy-lyrics-plain aivy-scroll">{state.plain}</div>
-            ) : (
-              <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}>
-                <LeafMark size={34} color="var(--ink-faint)" />
-                <div className="title">{t("lyricsNotFound")}</div>
-                <div className="sub">{t("lyricsNotFoundSub")}</div>
-              </div>
-            )}
+            <AppleLyricsPane
+              track={currentTrack}
+              currentTime={currentTime}
+              onSeek={seekTo}
+              highlightColor={accentColor}
+              fontSize={fontSize}
+            />
           </div>
         </div>
       )}

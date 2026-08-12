@@ -3,7 +3,7 @@ import React, {
 } from "react";
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
-import { clamp, uid, debounce, cleanTrackTitleForLyrics } from "./lib/utils.js";
+import { clamp, uid, debounce } from "./lib/utils.js";
 import { makeT } from "./lib/i18n.js";
 import { useDiscordActivity } from "./lib/discordActivity.js";
 
@@ -368,42 +368,13 @@ export function PlayerProvider({ children }) {
 
   useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []);
 
-  const [currentTrackHasLyrics, setCurrentTrackHasLyrics] = useState(true);
-  const lyricsCheckSeqRef = useRef(0);
-  useEffect(() => {
-    if (!currentTrack) { setCurrentTrackHasLyrics(true); return; }
-    const seq = ++lyricsCheckSeqRef.current;
-    setCurrentTrackHasLyrics(true);
-    const rawTitle = currentTrack.title;
-    const artistName = currentTrack.artist?.name;
-    const cleanedTitle = cleanTrackTitleForLyrics(rawTitle, artistName);
-    const hasLyricsResult = (res) => !!(res?.synced || res?.plain);
-    Api.lyrics({ title: cleanedTitle, artist: artistName, duration: currentTrack.duration })
-      .then((res) => {
-        if (seq !== lyricsCheckSeqRef.current) return;
-        if (hasLyricsResult(res) || cleanedTitle === rawTitle) {
-          setCurrentTrackHasLyrics(hasLyricsResult(res));
-          return;
-        }
-        // Cleaned title turned up nothing — fall back to the original raw title
-        // in case the cleanup stripped something the provider actually needed.
-        Api.lyrics({ title: rawTitle, artist: artistName, duration: currentTrack.duration })
-          .then((res2) => {
-            if (seq !== lyricsCheckSeqRef.current) return;
-            setCurrentTrackHasLyrics(hasLyricsResult(res2));
-          })
-          .catch(() => {
-            if (seq !== lyricsCheckSeqRef.current) return;
-            setCurrentTrackHasLyrics(false);
-          });
-      })
-      .catch(() => {
-        if (seq !== lyricsCheckSeqRef.current) return;
-        // Lyrics endpoint returns 404 (which throws) when no lyrics are found,
-        // so any failure here means the mic button should stay disabled.
-        setCurrentTrackHasLyrics(false);
-      });
-  }, [currentKey]);
+  // Lyrics are now rendered via the <am-lyrics> web component, which resolves
+  // matches itself from LyricsPlus/Apple Music at render time and shows its own
+  // empty state when nothing is found. There's no cheap way to pre-check that
+  // from here, and gating the mic button on our old (unreliable) backend lookup
+  // caused the button to stay disabled even when am-lyrics would've found lyrics
+  // just fine — so the mic button just stays enabled whenever a track is loaded.
+  const currentTrackHasLyrics = true;
 
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
