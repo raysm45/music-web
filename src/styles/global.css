@@ -895,150 +895,138 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-btn-primary.danger{ background: var(--berry); color: #fff; }
 .aivy-btn-primary.danger:hover{ background: var(--berry-strong); }
 
+/* ===== Lyrics overlay — monochrome fullscreen player ===== */
 .aivy-lyrics-overlay{
-  position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh; z-index: 75; background: var(--bg);
+  position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh; z-index: 75;
+  background: #000;
   display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: contain;
   opacity: 0; pointer-events: none; transform: translateY(18px) scale(.99);
   transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+  --lyr-ink: #f5f5f5; --lyr-ink-dim: rgba(245,245,245,.62); --lyr-ink-faint: rgba(245,245,245,.4);
+  --lyr-line: rgba(255,255,255,.12); --lyr-elev: rgba(255,255,255,.06); --lyr-elev-2: rgba(255,255,255,.12);
+  font-family: var(--font-body);
 }
 .aivy-lyrics-overlay.open{ opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
-.aivy-lyrics-bg{
-  position: absolute; inset: 0; z-index: 0; overflow: hidden;
-  opacity: .55;
-  transition: opacity var(--dur-slow) var(--ease);
+.aivy-lyrics-scrim{
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(120% 90% at 18% 8%, rgba(255,255,255,.07) 0%, transparent 55%),
+    radial-gradient(140% 100% at 85% 95%, rgba(255,255,255,.045) 0%, transparent 60%),
+    #000;
 }
-.aivy-lyrics-bg::before, .aivy-lyrics-bg::after{
-  content: ""; position: absolute; width: 90%; aspect-ratio: 1; border-radius: 50%;
-  background: var(--lyrics-accent, var(--moss)); filter: blur(70px); will-change: transform;
-}
-.aivy-lyrics-bg::before{ top: -30%; left: -20%; animation: aivy-lyrics-blob-a 22s ease-in-out infinite; }
-.aivy-lyrics-bg::after{ bottom: -35%; right: -15%; animation: aivy-lyrics-blob-b 26s ease-in-out infinite; opacity: .7; }
-@keyframes aivy-lyrics-blob-a{
-  0%, 100%{ transform: translate(0, 0) scale(1); }
-  50%{ transform: translate(8%, 6%) scale(1.12); }
-}
-@keyframes aivy-lyrics-blob-b{
-  0%, 100%{ transform: translate(0, 0) scale(1); }
-  50%{ transform: translate(-6%, -8%) scale(1.08); }
-}
-@media (prefers-reduced-motion: reduce){
-  .aivy-lyrics-bg::before, .aivy-lyrics-bg::after{ animation: none; }
-}
-.aivy-lyrics-scrim{ position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 45%, transparent) 0%, var(--bg) 85%); }
-.aivy-lyrics-head{ position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: calc(16px + env(safe-area-inset-top,0px)) 20px 8px; flex-shrink: 0; }
-.aivy-lyrics-head .eyebrow{ flex: 1; text-align: center; font-size: 11px; color: var(--ink-faint); letter-spacing: .02em; text-transform: uppercase; }
-.aivy-lyrics-head-actions{ display: flex; gap: 6px; flex-shrink: 0; }
-.aivy-lyrics-head-actions .aivy-icon-btn.active{ color: var(--berry); }
 
-.aivy-lyrics-main{ position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-
-.aivy-lyrics-track{ display: flex; align-items: center; gap: 10px; padding: 6px 22px 10px; flex-shrink: 0; }
-.aivy-lyrics-track .cover{ width: 40px; height: 40px; border-radius: 6px; overflow: hidden; flex-shrink: 0; background: var(--bg-elev-3); }
-.aivy-lyrics-track .meta{ min-width: 0; flex: 1; }
-.aivy-lyrics-track .meta .t{ font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aivy-lyrics-track .meta .a{ font-size: 12px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
-
-.aivy-lyrics-fontctrl{ display: flex; align-items: center; gap: 6px; padding: 0 22px 10px; flex-shrink: 0; }
-.aivy-lyrics-fontctrl span{ font-size: 10px; color: var(--ink-faint); margin-right: 2px; }
-.aivy-lyrics-fontctrl button{
-  background: var(--bg-elev); border: .5px solid var(--line); color: var(--ink-dim); border-radius: var(--radius-pill);
-  padding: 3px 10px; font-family: var(--font-display); cursor: pointer; transition: background .2s var(--ease), color .2s var(--ease);
+/* floating top-left controls (mobile / narrow) */
+.aivy-lyrics-float{ position: absolute; z-index: 3; top: calc(16px + env(safe-area-inset-top,0px)); left: 16px; display: flex; gap: 8px; }
+.aivy-lyrics-fbtn{
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.08); backdrop-filter: blur(14px); color: var(--lyr-ink);
+  transition: background .2s var(--ease), color .2s var(--ease), transform .15s var(--ease);
 }
-.aivy-lyrics-fontctrl button:nth-child(2){ font-size: 11px; }
-.aivy-lyrics-fontctrl button:nth-child(3){ font-size: 12px; }
-.aivy-lyrics-fontctrl button:nth-child(4){ font-size: 13px; }
-.aivy-lyrics-fontctrl button.active{ background: var(--bg-elev-2); color: var(--ink); }
+.aivy-lyrics-fbtn:hover{ background: rgba(255,255,255,.16); }
+.aivy-lyrics-fbtn:active{ transform: scale(.92); }
+.aivy-lyrics-fbtn.active{ color: #fff; background: rgba(255,255,255,.22); }
+.aivy-lyrics-fbtn:disabled{ opacity: .3; }
+.aivy-lyrics-fbtn.primary{ background: rgba(255,255,255,.12); }
 
-.aivy-lyrics-share{ margin: 0 22px 10px; background: var(--bg-elev); border: .5px solid var(--line); border-radius: var(--radius-md); padding: 14px; text-align: center; flex-shrink: 0; }
-.aivy-lyrics-share .cover-mini{ width: 100%; max-width: 140px; margin: 0 auto 8px; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--bg-elev-3); }
-.aivy-lyrics-share .line{ font-family: var(--font-display); color: var(--moss-strong); font-size: 13px; margin-bottom: 4px; }
-.aivy-lyrics-share .sub{ color: var(--ink-faint); font-size: 10px; margin-bottom: 10px; }
-.aivy-lyrics-share button{ width: 100%; background: var(--bg-elev-2); border: .5px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px; font-size: 12px; cursor: pointer; }
-.aivy-lyrics-share button:hover{ filter: brightness(1.12); }
+.aivy-lyrics-main{ position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-top: 64px; }
 
-.aivy-lyrics-next{ margin: 0 22px 12px; background: var(--bg-elev); border-radius: 10px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--ink-faint); }
-.aivy-lyrics-next .label{ font-size: 10px; flex-shrink: 0; }
-.aivy-lyrics-next .name{ font-size: 11px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.aivy-lyrics-track{ display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 0 22px 14px; flex-shrink: 0; }
+.aivy-lyrics-track .cover{
+  width: 100%; max-width: 320px; aspect-ratio: 1; border-radius: 10px; overflow: hidden; flex-shrink: 0;
+  background: #0a0a0a; box-shadow: 0 20px 50px rgba(0,0,0,.55); margin: 0 auto 18px;
+}
+.aivy-lyrics-track .meta{ min-width: 0; width: 100%; }
+.aivy-lyrics-track .meta .t{
+  font-family: var(--font-body); font-size: 21px; font-weight: 700; letter-spacing: -.01em; color: var(--lyr-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 8px;
+}
+.aivy-lyrics-track .meta .t .badge{
+  font-size: 10px; font-weight: 700; letter-spacing: .03em; color: var(--lyr-ink-dim);
+  border: 1px solid var(--lyr-line); border-radius: 5px; padding: 2px 6px; flex-shrink: 0;
+}
+.aivy-lyrics-track .meta .a{ font-size: 14px; color: var(--lyr-ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; }
+
+.aivy-lyrics-actions{ display: none; align-items: center; gap: 4px; padding: 0 22px 14px; flex-shrink: 0; }
+.aivy-lyrics-actions .aivy-icon-btn{ color: var(--lyr-ink-dim); }
+.aivy-lyrics-actions .aivy-icon-btn:hover{ color: var(--lyr-ink); background: var(--lyr-elev); }
+.aivy-lyrics-actions .aivy-icon-btn.active{ color: #fff; }
+
+.aivy-lyrics-share{ margin: 0 22px 14px; background: var(--lyr-elev); border: .5px solid var(--lyr-line); border-radius: var(--radius-md); padding: 14px; text-align: center; flex-shrink: 0; }
+.aivy-lyrics-share .cover-mini{ width: 100%; max-width: 140px; margin: 0 auto 8px; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #0a0a0a; }
+.aivy-lyrics-share .line{ font-weight: 700; color: var(--lyr-ink); font-size: 13px; margin-bottom: 4px; }
+.aivy-lyrics-share .sub{ color: var(--lyr-ink-faint); font-size: 10px; margin-bottom: 10px; }
+.aivy-lyrics-share button{ width: 100%; background: var(--lyr-elev-2); border: .5px solid var(--lyr-line); color: var(--lyr-ink); border-radius: 8px; padding: 8px; font-size: 12px; cursor: pointer; }
+.aivy-lyrics-share button:hover{ filter: brightness(1.25); }
+
+.aivy-lyrics-next{ margin: 0 22px 16px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.aivy-lyrics-next .label{ font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--lyr-ink-faint); font-weight: 600; }
+.aivy-lyrics-next .name{ font-size: 12.5px; color: var(--lyr-ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.aivy-lyrics-scrubber-row{ display: none; align-items: center; gap: 8px; padding: 0 22px; flex-shrink: 0; }
+.aivy-lyrics-scrubber-row .aivy-time{ font-size: 11px; color: var(--lyr-ink-faint); flex-shrink: 0; width: 30px; }
+.aivy-lyrics-scrubber-row .aivy-time.right{ text-align: right; }
+.aivy-lyrics-scrubber-row .aivy-scrubber .track{ background: var(--lyr-line); }
+.aivy-lyrics-scrubber-row .aivy-scrubber .fill{ background: var(--lyr-ink); }
+.aivy-lyrics-scrubber-row .aivy-scrubber .thumb{ background: var(--lyr-ink); }
+
+.aivy-lyrics-side .aivy-transport-btns{ display: none; padding: 10px 22px 4px; }
+.aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn{ color: var(--lyr-ink-dim); }
+.aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn:hover{ color: var(--lyr-ink); background: var(--lyr-elev); }
+.aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn.active{ color: #fff; }
+.aivy-lyrics-side .aivy-play-btn{ background: #fff; color: #000; }
+.aivy-lyrics-side .aivy-play-btn:hover{ background: #e6e6e6; }
+
+.aivy-lyrics-side .aivy-vol{ display: none; padding: 6px 22px 4px; }
+.aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); }
+.aivy-lyrics-side .aivy-vol .fill{ background: var(--lyr-ink); }
+.aivy-lyrics-side .aivy-vol .aivy-icon-btn{ color: var(--lyr-ink-dim); }
 
 .aivy-lyrics-body-wrap{ position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.aivy-am-lyrics{ position: relative; z-index: 1; flex: 1; min-height: 0; display: block; width: 100%; height: 100%; --hover-background-color: var(--bg-elev-2); --lyrics-scroll-padding-top: 34%; }
-.aivy-lyrics-body{
-  position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth;
-  overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-  /* Soft fade at the top/bottom edges of the lyric viewport, like Apple Music. A
-     static mask costs nothing extra to paint (no animation on it). */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 86%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 86%, transparent 100%);
+.aivy-am-lyrics{
+  position: relative; z-index: 1; flex: 1; min-height: 0; display: block; width: 100%; height: 100%;
+  --hover-background-color: var(--lyr-elev-2); --lyrics-scroll-padding-top: 34%;
+  color: var(--lyr-ink-faint);
 }
-
-/* Each line is a discrete "distance from active" bucket (d0..d4) rather than
-   a continuously-computed inline style. Bucketing means React only ever
-   toggles a className, so the browser can reuse cached style resolution
-   instead of diffing a fresh style object per line on every render — cheap
-   even with a long lyric sheet on old hardware. `content-visibility: auto`
-   additionally lets supporting browsers skip layout/paint for lines that are
-   scrolled out of view entirely, which is effectively free virtualization. */
+.aivy-lyrics-body{ position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .aivy-lyrics-line{
-  padding: 10px 28px; font-family: var(--font-display); font-size: var(--lyrics-fs, clamp(19px, 3.6vw, 26px)); font-weight: 700; line-height: 1.38;
-  color: var(--ink-faint); transform-origin: center center; cursor: pointer; max-width: 720px; text-align: center; margin: 0 auto;
-  transition: opacity .5s cubic-bezier(.22,.9,.32,1), color .35s ease, transform .55s cubic-bezier(.34,1.56,.64,1), filter .5s cubic-bezier(.22,.9,.32,1);
-  content-visibility: auto; contain-intrinsic-size: 0 64px;
+  padding: 11px 24px; font-family: var(--font-body); font-size: var(--lyrics-fs, clamp(19px, 3.6vw, 26px)); font-weight: 800; letter-spacing: -.01em; line-height: 1.28;
+  color: var(--lyr-ink-faint); opacity: .5; filter: blur(3px); transform: scale(1); transform-origin: center center;
+  transition: opacity .5s cubic-bezier(.22,.9,.32,1), color .5s cubic-bezier(.22,.9,.32,1), transform .5s cubic-bezier(.22,.9,.32,1), filter .5s cubic-bezier(.22,.9,.32,1);
+  cursor: pointer; max-width: 780px; text-align: center; margin: 0 auto;
 }
-.aivy-lyrics-line.d0{ color: var(--ink); opacity: 1; filter: blur(0); transform: scale(1.045); will-change: transform, filter; }
-.aivy-lyrics-line.d1{ opacity: .52; filter: blur(1px); transform: scale(.982); }
-.aivy-lyrics-line.d2{ opacity: .3; filter: blur(1.6px); transform: scale(.968); }
-.aivy-lyrics-line.d3{ opacity: .16; filter: blur(2.2px); transform: scale(.958); }
-.aivy-lyrics-line.d4{ opacity: .07; filter: none; transform: scale(.95); }
 .aivy-lyrics-line:hover{ opacity: .8; filter: blur(0); }
+.aivy-lyrics-line.active{ color: var(--lyr-ink); opacity: 1; filter: blur(0); transform: scale(1.03); }
 
-/* Word-by-word karaoke sweep, active line only. `.base` sits underneath in
-   the dim ink colour and defines layout/wrapping; `.fill` is an absolutely
-   positioned copy in the accent colour, revealed left-to-right by animating
-   clip-path from fully-clipped to fully-visible. The animation-delay for
-   each word is computed ONCE (see LyricLine) from the audio position at the
-   moment the line became active, so the sweep runs on the browser's own
-   compositor timeline rather than being redrawn from JS on every
-   `timeupdate` tick — this is what keeps it silky on slower phones. */
-.aivy-lyric-words{ display: inline; }
+/* Word-by-word karaoke sweep (active line only). .base sits underneath at
+   dim color and defines layout; .fill is an absolutely-positioned copy in
+   the highlight color, revealed left-to-right via clip-path as the estimated
+   word progress advances. The clip-path transition smooths out the jump
+   between currentTime ticks (~4/sec from the audio timeupdate event). */
 .aivy-lyric-word{ position: relative; display: inline-block; white-space: pre; }
-.aivy-lyric-word .base{ color: var(--ink-faint); }
+.aivy-lyric-word .base{ color: rgba(245,245,245,.38); }
 .aivy-lyric-word .fill{
-  position: absolute; inset: 0; white-space: pre; color: var(--lyrics-accent, var(--moss-strong));
-  clip-path: inset(0 100% 0 0);
-  text-shadow: 0 0 16px color-mix(in srgb, var(--lyrics-accent, var(--moss-strong)) 45%, transparent);
-  animation-name: aivy-word-fill;
-  animation-duration: var(--wdur, .3s);
-  animation-delay: var(--wdelay, 0s);
-  animation-timing-function: linear;
-  animation-fill-mode: both;
+  position: absolute; inset: 0; color: #fff; text-shadow: 0 0 18px rgba(255,255,255,.5);
+  clip-path: inset(0 100% 0 0); transition: clip-path .15s linear; white-space: pre;
 }
-.aivy-lyric-words.paused .fill{ animation-play-state: paused; }
-@keyframes aivy-word-fill{
-  from{ clip-path: inset(0 100% 0 0); }
-  to{ clip-path: inset(0 0% 0 0); }
-}
-@media (prefers-reduced-motion: reduce){
-  .aivy-lyrics-line{ transition: opacity .3s ease, color .3s ease; }
-  .aivy-lyric-word .fill{ animation: none; clip-path: inset(0 0 0 0); }
-}
-
-.aivy-lyrics-plain{ position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 28px 30vh; font-size: var(--lyrics-fs, 16px); line-height: 2; color: var(--ink-dim); white-space: pre-line; max-width: 680px; margin: 0 auto; text-align: center; }
-.aivy-lyrics-footer{ position: relative; z-index: 1; flex-shrink: 0; display: flex; justify-content: center; padding: 10px 24px calc(20px + var(--safe-b)); }
-@media (max-width: 640px){ .aivy-lyrics-line{ padding: 8px 22px; } .aivy-lyrics-plain{ padding: 12px 22px 30vh; } }
+.aivy-lyrics-plain{ position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 24px 30vh; font-size: var(--lyrics-fs, 16px); font-weight: 700; line-height: 1.9; color: var(--lyr-ink-dim); white-space: pre-line; max-width: 780px; margin: 0 auto; text-align: center; }
+@media (max-width: 640px){ .aivy-lyrics-line{ padding: 9px 20px; } .aivy-lyrics-plain{ padding: 12px 20px 30vh; } }
 
 @media (min-width: 860px){
-  .aivy-lyrics-main{ flex-direction: row; }
+  .aivy-lyrics-main{ flex-direction: row; padding-top: 0; }
   .aivy-lyrics-side{
-    width: 260px; flex-shrink: 0; padding: 20px 26px 0; border-right: .5px solid var(--line-soft);
-    overflow-y: auto; display: flex; flex-direction: column;
+    width: 340px; flex-shrink: 0; padding: 88px 30px 24px; overflow-y: auto; display: flex; flex-direction: column;
   }
-  .aivy-lyrics-track{ flex-direction: column; align-items: flex-start; padding: 0 0 16px; }
-  .aivy-lyrics-track .cover{ width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; margin-bottom: 14px; }
-  .aivy-lyrics-track .meta .t{ font-size: 16px; white-space: normal; }
-  .aivy-lyrics-fontctrl{ padding: 0 0 16px; }
-  .aivy-lyrics-share, .aivy-lyrics-next{ margin: 0 0 16px; }
-  .aivy-lyrics-body-wrap{ padding: 26px 40px; }
-  .aivy-lyrics-line, .aivy-lyrics-plain{ text-align: left; margin: 0; max-width: 680px; }
+  .aivy-lyrics-track{ padding: 0 0 14px; }
+  .aivy-lyrics-track .cover{ margin: 0 0 22px; max-width: none; }
+  .aivy-lyrics-track .meta .t{ font-size: 22px; white-space: normal; }
+  .aivy-lyrics-actions{ display: flex; padding: 0 0 16px; margin-left: -8px; }
+  .aivy-lyrics-share{ margin: 0 0 16px; }
+  .aivy-lyrics-next{ margin: 0 0 18px; }
+  .aivy-lyrics-scrubber-row{ display: flex; padding: 0 0 6px; }
+  .aivy-lyrics-side .aivy-transport-btns{ display: flex; padding: 6px 0 12px; justify-content: center; gap: 22px; }
+  .aivy-lyrics-side .aivy-vol{ display: flex; padding: 4px 0 0; }
+  .aivy-lyrics-body-wrap{ padding: 88px 56px 40px; }
+  .aivy-lyrics-line, .aivy-lyrics-plain{ text-align: left; margin: 0; max-width: 760px; }
   .aivy-lyrics-line{ transform-origin: left center; }
 }
 

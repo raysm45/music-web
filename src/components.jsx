@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo, Component } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from "react";
 import { createPortal } from "react-dom";
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume2, Volume1,
@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
-  PanelLeft, PanelRight,
+  PanelLeft, PanelRight, Type,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -14,7 +14,7 @@ import {
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics, estimateWordTimeline } from "./lib/utils.js";
+import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics, estimateWordTimeline, wordProgress } from "./lib/utils.js";
 function usePanelResize({ width, setWidth, min, max, side }) {
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, width: 0 });
@@ -1746,86 +1746,52 @@ function extractDominantColor(url) {
     img.src = url;
   });
 }
-// Apple-Music-style lyrics: the "sung" fill of each word is a pure CSS
-// animation (clip-path 100%->0%) with a duration/delay computed ONCE when a
-// line becomes active (or when playback is scrubbed), instead of being
-// recalculated from `currentTime` on every `timeupdate` tick. The browser's
-// compositor then drives the sweep at a native 60fps regardless of how
-// often React re-renders, which is what keeps this smooth on older/slower
-// hardware — there is no per-frame JS or style recalculation involved.
-// A negative `animation-delay` naturally "fast-forwards" words that were
-// already sung before the line became active (they land past their end and
-// hold at the fully-filled state via `animation-fill-mode: both`), and
-// words not yet reached simply haven't started.
-function distanceBucket(dist) {
-  const d = Math.abs(dist);
-  if (d <= 0) return 0;
-  if (d === 1) return 1;
-  if (d === 2) return 2;
-  if (d === 3) return 3;
-  return 4;
-}
+function LyricLine({ line, index, activeIndex, currentTime, onSeek, registerRef }) {
+  const distance = activeIndex < 0 ? 1 : index - activeIndex;
+  const absDist = Math.abs(distance);
+  const isActive = distance === 0;
 
-const LyricLine = memo(function LyricLine({ line, index, activeIndex, activationTime, isPlaying, onSeek, registerRef }) {
-  const isActive = index === activeIndex;
-  const bucket = activeIndex < 0 ? 4 : distanceBucket(index - activeIndex);
-
-  const words = useMemo(() => {
-    if (!isActive || !line.words?.length) return null;
-    const t0 = Number.isFinite(activationTime) ? activationTime : line.time;
-    return line.words.map((w, wi) => ({
-      key: wi,
-      text: w.text,
-      dur: Math.max(0.06, w.end - w.start),
-      delay: w.start - t0,
-    }));
-  }, [isActive, line, activationTime]);
+  const style = isActive
+    ? undefined
+    : {
+        filter: `blur(${Math.min(absDist * 0.55, 3)}px)`,
+        opacity: Math.max(0.14, 1 - absDist * 0.2),
+        transform: `scale(${Math.max(0.94, 1 - absDist * 0.015)})`,
+      };
 
   return (
     <div
       ref={registerRef}
-      className={`aivy-lyrics-line d${bucket}${isActive ? " active" : ""}`}
+      className={`aivy-lyrics-line ${isActive ? "active" : ""}`}
+      style={style}
       onClick={() => onSeek(line.time)}
     >
-      {words ? (
-        <span className={`aivy-lyric-words${isPlaying ? "" : " paused"}`}>
-          {words.map((w, wi) => (
-            <span className="aivy-lyric-word" key={w.key} style={{ "--wdur": `${w.dur}s`, "--wdelay": `${w.delay}s` }}>
-              <span className="base">{w.text}</span>
-              <span className="fill">{w.text}</span>
-              {wi < words.length - 1 ? "\u00a0" : ""}
+      {isActive && line.words?.length ? (
+        line.words.map((w, wi) => (
+          <span className="aivy-lyric-word" key={wi}>
+            <span className="base">{w.text}</span>
+            <span className="fill" style={{ clipPath: `inset(0 ${(1 - wordProgress(w, currentTime)) * 100}% 0 0)` }}>
+              {w.text}
             </span>
-          ))}
-        </span>
+            {wi < line.words.length - 1 ? "\u00a0" : ""}
+          </span>
+        ))
       ) : (
         line.text || "\u266a"
       )}
     </div>
   );
-}, (prev, next) => {
-  if (prev.line !== next.line || prev.onSeek !== next.onSeek || prev.isPlaying !== next.isPlaying) return false;
-  const prevActive = prev.index === prev.activeIndex;
-  const nextActive = next.index === next.activeIndex;
-  if (prevActive !== nextActive) return false;
-  if (nextActive && prev.activationTime !== next.activationTime) return false;
-  const prevBucket = prev.activeIndex < 0 ? 4 : distanceBucket(prev.index - prev.activeIndex);
-  const nextBucket = next.activeIndex < 0 ? 4 : distanceBucket(next.index - next.activeIndex);
-  return prevBucket === nextBucket;
-});
+}
 
 export function LyricsOverlay() {
   const { lyricsOpen, closeLyrics, pushToast, t } = useUI();
-  const { currentTrack, currentTime, isPlaying, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
+  const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
   const [state, setState] = useState({ loading: false, synced: [], plain: "", wordSynced: null, checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [accentColor, setAccentColor] = useState(null);
   const lineRefs = useRef([]);
   const trackKey = currentTrack?.id;
-  // Latest currentTime kept in a ref (no re-render) so the activation
-  // snapshot below can read "now" without depending on every tick.
-  const currentTimeRef = useRef(currentTime);
-  currentTimeRef.current = currentTime;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
 
@@ -1905,23 +1871,6 @@ export function LyricsOverlay() {
     return idx;
   }, [wordLines, currentTime]);
 
-  // The word-by-word sweep is a pure CSS animation (see LyricLine) that only
-  // needs to be re-synced to the audio when the active line changes, or when
-  // playback jumps (seek / scrub) rather than advancing naturally. Watching
-  // every `currentTime` tick here — instead of inside each line — keeps the
-  // per-frame cost at effectively zero: this effect does no rendering work
-  // itself, it just detects "did we jump" and snapshots a fresh sync point.
-  const [activation, setActivation] = useState({ index: -1, time: 0 });
-  const prevTickRef = useRef(currentTime);
-  useEffect(() => {
-    const jumped = Math.abs(currentTime - prevTickRef.current) > 0.45;
-    prevTickRef.current = currentTime;
-    if (activeIndex !== activation.index || jumped) {
-      setActivation({ index: activeIndex, time: currentTime });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex, currentTime]);
-
   useEffect(() => {
     if (activeIndex < 0) return;
     const el = lineRefs.current[activeIndex];
@@ -1967,36 +1916,31 @@ export function LyricsOverlay() {
     });
   }, [currentTrack, activeLineText, pushToast, t]);
 
+  const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime: scrubTime, duration: scrubDuration } = useScrubberBinding();
+  const cycleFontSize = () => setFontSize((s) => (s === "sm" ? "md" : s === "md" ? "lg" : "sm"));
+
   if (!lyricsOpen) return null;
 
   return (
     <div className={`aivy-lyrics-overlay ${lyricsOpen ? "open" : ""}`}>
-      {currentTrack?.cover && (
-        <div className="aivy-lyrics-bg" style={accentColor ? { "--lyrics-accent": accentColor } : undefined} />
-      )}
       <div className="aivy-lyrics-scrim" />
 
-      <div className="aivy-lyrics-head">
-        <button className="aivy-icon-btn" onClick={closeLyrics} aria-label={t("close")}><ChevronDown size={22} /></button>
-        <span className="eyebrow">{isPreviewClip ? t("preview30") : t("nowPlaying")}</span>
-        <div className="aivy-lyrics-head-actions">
-          <button
-            className={`aivy-icon-btn sm ${isLiked ? "active" : ""}`}
-            onClick={() => currentTrack && toggleLike(currentTrack)}
-            disabled={!currentTrack}
-            aria-label={t("like")}
-          >
-            <Heart size={17} fill={isLiked ? "currentColor" : "none"} />
-          </button>
-          <button
-            className="aivy-icon-btn sm"
-            onClick={() => setShareOpen((v) => !v)}
-            disabled={!currentTrack}
-            aria-label={t("share")}
-          >
-            <Share2 size={17} />
-          </button>
-        </div>
+      <div className="aivy-lyrics-float">
+        <button className="aivy-lyrics-fbtn primary" onClick={closeLyrics} aria-label={t("close")}><X size={19} /></button>
+        <button
+          className={`aivy-lyrics-fbtn ${isLiked ? "active" : ""}`}
+          onClick={() => currentTrack && toggleLike(currentTrack)}
+          disabled={!currentTrack}
+          aria-label={t("like")}
+        >
+          <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
+        </button>
+        <button className="aivy-lyrics-fbtn" onClick={() => setShareOpen((v) => !v)} disabled={!currentTrack} aria-label={t("share")}>
+          <Share2 size={16} />
+        </button>
+        <button className="aivy-lyrics-fbtn" onClick={cycleFontSize} disabled={!currentTrack} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}>
+          <Type size={16} />
+        </button>
       </div>
 
       {currentTrack && (
@@ -2004,24 +1948,20 @@ export function LyricsOverlay() {
           <div className="aivy-lyrics-side">
             <div className="aivy-lyrics-track">
               <div className="cover">
-                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={120} radius={8} style={{ width: "100%", height: "100%" }} />
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }} />
               </div>
               <div className="meta">
-                <div className="t">{currentTrack.title}</div>
+                <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
                 <div className="a">{currentTrack.artist?.name}</div>
               </div>
             </div>
 
-            <div className="aivy-lyrics-fontctrl">
-              <span>{t("fontSize")}</span>
-              {["sm", "md", "lg"].map((sz) => (
-                <button
-                  key={sz}
-                  className={fontSize === sz ? "active" : ""}
-                  onClick={() => setFontSize(sz)}
-                  aria-label={`${t("fontSize")} ${sz}`}
-                >A</button>
-              ))}
+            <div className="aivy-lyrics-actions">
+              <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => currentTrack && toggleLike(currentTrack)} aria-label={t("like")}>
+                <Heart size={17} fill={isLiked ? "currentColor" : "none"} />
+              </button>
+              <button className="aivy-icon-btn" onClick={() => setShareOpen((v) => !v)} aria-label={t("share")}><Share2 size={17} /></button>
+              <button className="aivy-icon-btn" onClick={cycleFontSize} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}><Type size={17} /></button>
             </div>
 
             {shareOpen && (
@@ -2037,11 +1977,20 @@ export function LyricsOverlay() {
 
             {nextTrack && (
               <div className="aivy-lyrics-next">
-                <ListMusic size={14} />
                 <span className="label">{t("upNextLabel")}</span>
-                <span className="name">{nextTrack.title} &mdash; {nextTrack.artist?.name}</span>
+                <span className="name">{nextTrack.title} &middot; {nextTrack.artist?.name}</span>
               </div>
             )}
+
+            <div className="aivy-lyrics-scrubber-row">
+              <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
+              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
+              <span className="aivy-time right font-mono">{formatTime(scrubDuration)}</span>
+            </div>
+
+            <TransportButtons big />
+
+            <VolumeControl />
           </div>
 
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
@@ -2056,8 +2005,7 @@ export function LyricsOverlay() {
                     line={line}
                     index={i}
                     activeIndex={activeIndex}
-                    activationTime={activation.time}
-                    isPlaying={isPlaying}
+                    currentTime={currentTime}
                     onSeek={seekTo}
                     registerRef={(el) => (lineRefs.current[i] = el)}
                   />
@@ -2081,12 +2029,6 @@ export function LyricsOverlay() {
 
       {!currentTrack && (
         <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>
-      )}
-
-      {currentTrack && (
-        <div className="aivy-lyrics-footer">
-          <TransportButtons />
-        </div>
       )}
     </div>
   );
