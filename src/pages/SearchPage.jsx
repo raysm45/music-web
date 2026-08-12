@@ -5,7 +5,7 @@ import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
 import { TrackRow, SkeletonList } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
-import { debounce, isRelevantArtistMatch } from "../lib/utils.js";
+import { debounce, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "../lib/utils.js";
 
 const GENRE_SHORTCUTS = ["Pop", "Hip-Hop", "R&B", "Indie", "Rock", "Electronic", "Jazz", "Dangdut", "K-Pop", "Reggae", "Klasik", "Akustik"];
 
@@ -126,7 +126,8 @@ export function SearchPage() {
       while (cursor < items.length) {
         const item = items[cursor++];
         try {
-          const res = await Api.lyrics({ title: item.title, artist: item.artist?.name, duration: item.duration });
+          const cleanedTitle = cleanTrackTitleForLyrics(item.title, item.artist?.name);
+          const res = await Api.lyrics({ title: cleanedTitle, artist: item.artist?.name, duration: item.duration });
           found[item.id] = !!(res?.synced || res?.plain);
         } catch {
           found[item.id] = false;

@@ -3,7 +3,7 @@ import React, {
 } from "react";
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
-import { clamp, uid, debounce } from "./lib/utils.js";
+import { clamp, uid, debounce, cleanTrackTitleForLyrics } from "./lib/utils.js";
 import { makeT } from "./lib/i18n.js";
 import { useDiscordActivity } from "./lib/discordActivity.js";
 
@@ -374,10 +374,28 @@ export function PlayerProvider({ children }) {
     if (!currentTrack) { setCurrentTrackHasLyrics(true); return; }
     const seq = ++lyricsCheckSeqRef.current;
     setCurrentTrackHasLyrics(true);
-    Api.lyrics({ title: currentTrack.title, artist: currentTrack.artist?.name, duration: currentTrack.duration })
+    const rawTitle = currentTrack.title;
+    const artistName = currentTrack.artist?.name;
+    const cleanedTitle = cleanTrackTitleForLyrics(rawTitle, artistName);
+    const hasLyricsResult = (res) => !!(res?.synced || res?.plain);
+    Api.lyrics({ title: cleanedTitle, artist: artistName, duration: currentTrack.duration })
       .then((res) => {
         if (seq !== lyricsCheckSeqRef.current) return;
-        setCurrentTrackHasLyrics(!!(res?.synced || res?.plain));
+        if (hasLyricsResult(res) || cleanedTitle === rawTitle) {
+          setCurrentTrackHasLyrics(hasLyricsResult(res));
+          return;
+        }
+        // Cleaned title turned up nothing — fall back to the original raw title
+        // in case the cleanup stripped something the provider actually needed.
+        Api.lyrics({ title: rawTitle, artist: artistName, duration: currentTrack.duration })
+          .then((res2) => {
+            if (seq !== lyricsCheckSeqRef.current) return;
+            setCurrentTrackHasLyrics(hasLyricsResult(res2));
+          })
+          .catch(() => {
+            if (seq !== lyricsCheckSeqRef.current) return;
+            setCurrentTrackHasLyrics(false);
+          });
       })
       .catch(() => {
         if (seq !== lyricsCheckSeqRef.current) return;
