@@ -81,6 +81,36 @@ export function seededShuffle(arr, seedNum) {
   return out;
 }
 
+// Cleans a raw video-style title (e.g. from YouTube: "Artist - Song (Official Lyric Video)")
+// down to just the song name, so lyrics lookups match the way a plain track title would
+// (this is what actually gets found on lyrics providers like lrclib.net).
+export function cleanTrackTitleForLyrics(rawTitle, artistName) {
+  if (!rawTitle) return rawTitle;
+  let t = rawTitle;
+
+  // Strip a leading "Artist - " prefix when it matches the known artist
+  if (artistName) {
+    const esc = artistName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    t = t.replace(new RegExp(`^\\s*${esc}\\s*[-\u2013\u2014:]\\s*`, "i"), "");
+  }
+
+  // Strip parenthetical/bracketed clutter: (Official Video), [Lyrics], (Audio), (4K), etc.
+  const clutterPattern = /\s*[([][^)\]]*\b(official|lyric|lyrics|video|audio|visualizer|mv|hd|hq|4k|full\s*song|full\s*audio|album|single|explicit|remaster(?:ed)?|clip|version)\b[^)\]]*[)\]]\s*/gi;
+  let prev;
+  do {
+    prev = t;
+    t = t.replace(clutterPattern, " ");
+  } while (t !== prev);
+
+  // Strip a trailing "- Official Video"-style suffix without brackets
+  t = t.replace(/\s*[-\u2013\u2014]\s*(official\s*)?(lyric[s]?|music)?\s*(video|audio)\s*$/i, "");
+
+  // Collapse leftover whitespace and stray punctuation
+  t = t.replace(/\s{2,}/g, " ").replace(/^[\s\-\u2013\u2014:|]+|[\s\-\u2013\u2014:|]+$/g, "").trim();
+
+  return t || rawTitle;
+}
+
 export function debounce(fn, ms) {
   let t;
   return (...args) => {
@@ -88,6 +118,10 @@ export function debounce(fn, ms) {
     t = setTimeout(() => fn(...args), ms);
   };
 }
+
+// Checks whether a resolved artist's name genuinely matches what was searched/known,
+// so a lookup that only had a name to go on (no reliable id) doesn't surface an
+// unrelated artist that merely sounds similar.
 export function isRelevantArtistMatch(name, q) {
   const norm = (s) => (s || "")
     .toLowerCase()

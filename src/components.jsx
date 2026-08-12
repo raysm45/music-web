@@ -14,7 +14,7 @@ import {
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch } from "./lib/utils.js";
+import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "./lib/utils.js";
 
 // Drag-to-resize for the left sidebar / right panel. `side` tells the hook which
 // screen edge the panel is anchored to, so dragging right/left maps to grow/shrink correctly.
@@ -1787,11 +1787,29 @@ export function LyricsOverlay() {
     if (state.checkedFor === trackKey) return;
     let cancelled = false;
     setState((s) => ({ ...s, loading: true }));
+    const rawTitle = currentTrack.title;
+    const artistName = currentTrack.artist?.name;
+    const cleanedTitle = cleanTrackTitleForLyrics(rawTitle, artistName);
+    const hasLyricsResult = (res) => (res?.synced && res.synced.length) || res?.plain;
     import("./lib/api.js").then(({ Api }) => {
-      Api.lyrics({ title: currentTrack.title, artist: currentTrack.artist?.name, duration: currentTrack.duration })
+      Api.lyrics({ title: cleanedTitle, artist: artistName, duration: currentTrack.duration })
         .then((res) => {
           if (cancelled) return;
-          setState({ loading: false, synced: parseLRC(res.synced), plain: res.plain || "", checkedFor: trackKey });
+          if (hasLyricsResult(res) || cleanedTitle === rawTitle) {
+            setState({ loading: false, synced: parseLRC(res.synced), plain: res.plain || "", checkedFor: trackKey });
+            return;
+          }
+          // Cleaned title turned up nothing — fall back to the original raw title
+          // in case the cleanup stripped something the provider actually needed.
+          Api.lyrics({ title: rawTitle, artist: artistName, duration: currentTrack.duration })
+            .then((res2) => {
+              if (cancelled) return;
+              setState({ loading: false, synced: parseLRC(res2.synced), plain: res2.plain || "", checkedFor: trackKey });
+            })
+            .catch(() => {
+              if (cancelled) return;
+              setState({ loading: false, synced: [], plain: "", checkedFor: trackKey });
+            });
         })
         .catch(() => {
           if (cancelled) return;
