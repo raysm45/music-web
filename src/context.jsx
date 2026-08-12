@@ -26,8 +26,6 @@ export const SIDEBAR_COLLAPSED_W = 72;
 export const RIGHTPANEL_MIN_W = 260;
 export const RIGHTPANEL_MAX_W = 440;
 export const RIGHTPANEL_COLLAPSED_W = 56;
-// How much extra room the main content grid column gives up, on hover, so a
-// small peek of the collapsed right panel can show without floating on top.
 export const RIGHTPANEL_PEEK_W = 52;
 const PANEL_PREFS_KEY = "aivy_panel_prefs";
 const DEFAULT_PANEL_PREFS = {
@@ -199,9 +197,6 @@ export function UIProvider({ children }) {
   const toggleRightPanelCollapsed = useCallback(() => {
     setPanelPrefs((p) => ({ ...p, rightPanelCollapsed: !p.rightPanelCollapsed }));
   }, []);
-  // Not persisted — just whether the mouse is hovering the collapsed right-panel
-  // rail right now, so the main content grid column can nudge over to make room
-  // for a small peek of the panel underneath.
   const [rightPanelPeek, setRightPanelPeek] = useState(false);
 
   const value = {
@@ -232,11 +227,6 @@ export function usePlayer() { return useContext(PlayerCtx); }
 
 function normalizeTrack(raw) {
   if (!raw) return null;
-  // Penanda track asli Deezer adalah artist.id (selalu ada dari mapTrack backend).
-  // Jangan pakai "!raw.id" sebagai penanda, karena banyak tempat di frontend
-  // (search, liked songs, room queue) sengaja set id = videoId untuk track dari
-  // YouTube -- kalau dites pakai !raw.id, track itu malah kebaca sebagai track
-  // Deezer dan videoId-nya dikirim sebagai trackId Deezer ke /api/similar (error).
   if (raw.videoId && !raw.artist?.id) {
     return {
       id: raw.videoId, videoId: raw.videoId, title: raw.title,
@@ -271,7 +261,7 @@ export function PlayerProvider({ children }) {
   const [liked, setLiked] = useState(() => new Set());
   const [playlists, setPlaylists] = useState([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
-  const [playSource, setPlaySource] = useState(null); // { type: "library"|"search", label? } | null — dari mana track ini pertama kali diputar
+  const [playSource, setPlaySource] = useState(null);
 
   const audioGraphRef = useRef(null);
   const fadeTimerRef = useRef(null);
@@ -367,13 +357,6 @@ export function PlayerProvider({ children }) {
   }, [currentKey, isPlaying, updateActivity]);
 
   useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []);
-
-  // Lyrics are now rendered via the <am-lyrics> web component, which resolves
-  // matches itself from LyricsPlus/Apple Music at render time and shows its own
-  // empty state when nothing is found. There's no cheap way to pre-check that
-  // from here, and gating the mic button on our old (unreliable) backend lookup
-  // caused the button to stay disabled even when am-lyrics would've found lyrics
-  // just fine — so the mic button just stays enabled whenever a track is loaded.
   const currentTrackHasLyrics = true;
 
   useEffect(() => {

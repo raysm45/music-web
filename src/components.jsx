@@ -14,10 +14,7 @@ import {
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "./lib/utils.js";
-
-// Drag-to-resize for the left sidebar / right panel. `side` tells the hook which
-// screen edge the panel is anchored to, so dragging right/left maps to grow/shrink correctly.
+import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics, estimateWordTimeline, wordProgress } from "./lib/utils.js";
 function usePanelResize({ width, setWidth, min, max, side }) {
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, width: 0 });
@@ -772,9 +769,6 @@ export function RightPanel() {
       <span className="aivy-resize-grip"><GripVertical size={12} /></span>
     </div>
   );
-
-  // Shared tabs+body markup — used both by the normal expanded panel and by
-  // the floating hover-preview that peeks out from the collapsed rail.
   const bodyContent = sidebarQueueOpen ? (
     <>
       <div className="aivy-rightpanel-tabs">
@@ -833,15 +827,7 @@ export function RightPanel() {
           aria-label={t("expandPanel", "Buka panel")}
           title={t("expandPanel", "Buka panel")}
         >
-          {/* Real sidebar UI at its natural width. Hovering doesn't grow this rail
-              itself or spawn a layer — it pushes the MAIN content column over a
-              little (via the grid track width in App.jsx), and that extra room is
-              what lets this sliver of UI show, semi-transparent. The peek content
-              fills the whole rail (no separate side-by-side slot for the arrow).
-              The arrow itself is an overlay sitting ON TOP of that content, pinned
-              to the rail's own left edge — the same spot the content starts from —
-              so it rides along as the column widens instead of living in its own
-              box beside the content. */}
+          {}
           <span className="aivy-rightpanel-rail-peek-wrap">
             <span className="aivy-rightpanel-rail-peek" style={{ width: rightPanelWidth }}>{bodyContent}</span>
           </span>
@@ -875,10 +861,6 @@ function PlayingFromLabel() {
     </div>
   );
 }
-
-// Shown inline in the right-panel tabs row, right next to the collapse icon, instead of
-// the old "Playing from" line above the cover art. Sits at the icon's left edge so that
-// when the icon reveals itself on hover, this label glides right with it (see .aivy-rightpanel-source).
 function RightPanelSourceLabel() {
   const { playSource } = usePlayer();
   if (playSource?.type !== "library" || !playSource.label) return null;
@@ -903,9 +885,6 @@ function useArtistAbout(track) {
     import("./lib/api.js").then(({ Api }) => {
       Api.artist(artistKey).then((res) => {
         if (!alive) return;
-        // When we only had a name to go on (no reliable id, e.g. Liked Songs or
-        // imported tracks), make sure the resolved artist actually matches what
-        // we looked up, instead of trusting a fuzzy same-ish-sounding result.
         if (!hasId && res?.name && !isRelevantArtistMatch(res.name, artistName)) {
           setArtist(null);
           return;
@@ -964,20 +943,7 @@ function AboutArtistSection({ track, onNavigate }) {
     </div>
   );
 }
-
-// Module-level cache so CreditsCard and CreditsModal (and re-mounts while
-// scrubbing the queue) don't both re-fetch the same track's credits.
-// Value is either a pending Promise, the resolved credits object, or null
-// (fetched but MusicBrainz had nothing for this track).
 const creditsFetchCache = new Map();
-
-// Search/queue/room track objects only carry `track.artist` (one main
-// artist) — the fuller breakdown (writers, producer, source, per-person role
-// tags) lives behind `GET /api/track/:id` as `credits`, so it's fetched
-// lazily here the first time a track becomes visible in the credits UI.
-// Only real Deezer-backed tracks (numeric id) have that endpoint; tracks
-// that only exist as a raw YouTube result use their videoId as `id` and are
-// skipped, same as before — they just show whatever `track.artist` gives.
 function useCreditsData(track) {
   const trackId = track?.id;
   const hasOwnCredits = !!track?.credits;
@@ -1033,11 +999,6 @@ function useCreditsData(track) {
     };
   }, [track, fetchedCredits]);
 }
-
-// Compact "Credits" card — mirrors the Main Artist / Composer / Arranger rows
-// you'd see on Spotify, using only what we actually know about the track.
-// Tapping "Show all" opens the full breakdown (CreditsModal) with roles
-// grouped by Performed by / Written by / Produced by / Source.
 function CreditsCard({ track }) {
   const { t, openCredits } = useUI();
   const data = useCreditsData(track);
@@ -1073,11 +1034,6 @@ function CreditsCard({ track }) {
     </div>
   );
 }
-
-// Full-screen breakdown, opened from CreditsCard's "Show all". Any group with
-// no data collapses away instead of printing an awkward empty line, except
-// "Produced by" which follows the reference pattern of showing an em dash
-// when the producer isn't known yet.
 export function CreditsModal() {
   const { creditsTrack, closeCredits, t } = useUI();
   if (!creditsTrack) return null;
@@ -1655,12 +1611,6 @@ const AM_LYRICS_FONT_SIZES = {
   md: "clamp(26px, 4.2vw, 32px)",
   lg: "clamp(32px, 5vw, 40px)",
 };
-
-// Wraps the <am-lyrics> web component (Apple-Music-style word-synced lyrics,
-// sourced from LyricsPlus/Apple Music instead of our own backend) so React can
-// drive it. Custom-element properties are assigned imperatively via ref rather
-// than as JSX attributes, since React <19 doesn't pass complex props through to
-// custom elements reliably.
 function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize }) {
   const elRef = useRef(null);
 
@@ -1781,7 +1731,7 @@ function extractDominantColor(url) {
           const rr = data[i], gg = data[i + 1], bb = data[i + 2];
           const max = Math.max(rr, gg, bb), min = Math.min(rr, gg, bb);
           const lightness = (max + min) / 2;
-          if (lightness > 245 || lightness < 12) continue; // skip near-white/near-black
+          if (lightness > 245 || lightness < 12) continue;
           r += rr; g += gg; b += bb; count++;
         }
         if (!count) { r = 140; g = 150; b = 120; count = 1; }
@@ -1789,18 +1739,54 @@ function extractDominantColor(url) {
         dominantColorCache.set(url, color);
         resolve(color);
       } catch (e) {
-        resolve(null); // e.g. tainted canvas from a non-CORS image host
+        resolve(null);
       }
     };
     img.onerror = () => resolve(null);
     img.src = url;
   });
 }
+function LyricLine({ line, index, activeIndex, currentTime, onSeek, registerRef }) {
+  const distance = activeIndex < 0 ? 1 : index - activeIndex;
+  const absDist = Math.abs(distance);
+  const isActive = distance === 0;
+
+  const style = isActive
+    ? undefined
+    : {
+        filter: `blur(${Math.min(absDist * 0.55, 3)}px)`,
+        opacity: Math.max(0.14, 1 - absDist * 0.2),
+        transform: `scale(${Math.max(0.94, 1 - absDist * 0.015)})`,
+      };
+
+  return (
+    <div
+      ref={registerRef}
+      className={`aivy-lyrics-line ${isActive ? "active" : ""}`}
+      style={style}
+      onClick={() => onSeek(line.time)}
+    >
+      {isActive && line.words?.length ? (
+        line.words.map((w, wi) => (
+          <span className="aivy-lyric-word" key={wi}>
+            <span className="base">{w.text}</span>
+            <span className="fill" style={{ clipPath: `inset(0 ${(1 - wordProgress(w, currentTime)) * 100}% 0 0)` }}>
+              {w.text}
+            </span>
+            {wi < line.words.length - 1 ? "\u00a0" : ""}
+          </span>
+        ))
+      ) : (
+        line.text || "\u266a"
+      )}
+    </div>
+  );
+}
 
 export function LyricsOverlay() {
   const { lyricsOpen, closeLyrics, pushToast, t } = useUI();
-  const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext } = usePlayer();
-  const [state, setState] = useState({ loading: false, synced: [], plain: "", checkedFor: null });
+  const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
+  const [state, setState] = useState({ loading: false, synced: [], plain: "", wordSynced: null, checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [accentColor, setAccentColor] = useState(null);
@@ -1845,43 +1831,45 @@ export function LyricsOverlay() {
     const rawTitle = currentTrack.title;
     const artistName = currentTrack.artist?.name;
     const cleanedTitle = cleanTrackTitleForLyrics(rawTitle, artistName);
-    const hasLyricsResult = (res) => (res?.synced && res.synced.length) || res?.plain;
+    const hasLyricsResult = (res) => (res?.synced && res.synced.length) || res?.plain || res?.wordSynced?.length;
     import("./lib/api.js").then(({ Api }) => {
       Api.lyrics({ title: cleanedTitle, artist: artistName, duration: currentTrack.duration })
         .then((res) => {
           if (cancelled) return;
           if (hasLyricsResult(res) || cleanedTitle === rawTitle) {
-            setState({ loading: false, synced: parseLRC(res.synced), plain: res.plain || "", checkedFor: trackKey });
+            setState({ loading: false, synced: parseLRC(res.synced), plain: res.plain || "", wordSynced: res.wordSynced || null, checkedFor: trackKey });
             return;
           }
-          // Cleaned title turned up nothing — fall back to the original raw title
-          // in case the cleanup stripped something the provider actually needed.
           Api.lyrics({ title: rawTitle, artist: artistName, duration: currentTrack.duration })
             .then((res2) => {
               if (cancelled) return;
-              setState({ loading: false, synced: parseLRC(res2.synced), plain: res2.plain || "", checkedFor: trackKey });
+              setState({ loading: false, synced: parseLRC(res2.synced), plain: res2.plain || "", wordSynced: res2.wordSynced || null, checkedFor: trackKey });
             })
             .catch(() => {
               if (cancelled) return;
-              setState({ loading: false, synced: [], plain: "", checkedFor: trackKey });
+              setState({ loading: false, synced: [], plain: "", wordSynced: null, checkedFor: trackKey });
             });
         })
         .catch(() => {
           if (cancelled) return;
-          setState({ loading: false, synced: [], plain: "", checkedFor: trackKey });
+          setState({ loading: false, synced: [], plain: "", wordSynced: null, checkedFor: trackKey });
         });
     });
     return () => { cancelled = true; };
   }, [lyricsOpen, trackKey]);
+  const wordLines = useMemo(() => {
+    if (state.wordSynced?.length) return state.wordSynced;
+    return estimateWordTimeline(state.synced, currentTrack?.duration || duration);
+  }, [state.wordSynced, state.synced, currentTrack?.duration, duration]);
 
   const activeIndex = useMemo(() => {
-    if (!state.synced.length) return -1;
+    if (!wordLines.length) return -1;
     let idx = -1;
-    for (let i = 0; i < state.synced.length; i++) {
-      if (state.synced[i].time <= currentTime + 0.15) idx = i; else break;
+    for (let i = 0; i < wordLines.length; i++) {
+      if (wordLines[i].time <= currentTime + 0.15) idx = i; else break;
     }
     return idx;
-  }, [state.synced, currentTime]);
+  }, [wordLines, currentTime]);
 
   useEffect(() => {
     if (activeIndex < 0) return;
@@ -2008,28 +1996,25 @@ export function LyricsOverlay() {
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
             {state.loading ? (
               <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">{t("searchingLyrics")}</div></div>
-            ) : state.synced.length > 0 ? (
+            ) : wordLines.length > 0 ? (
               <div className="aivy-lyrics-body aivy-scroll">
                 <div style={{ height: "38vh" }} />
-                {state.synced.map((line, i) => (
-                  <div
-                    key={i} ref={(el) => (lineRefs.current[i] = el)}
-                    className={`aivy-lyrics-line ${i === activeIndex ? "active" : Math.abs(i - activeIndex) === 1 ? "near" : ""}`}
-                    onClick={() => seekTo(line.time)}
-                  >
-                    {line.text || "\u266a"}
-                  </div>
+                {wordLines.map((line, i) => (
+                  <LyricLine
+                    key={i}
+                    line={line}
+                    index={i}
+                    activeIndex={activeIndex}
+                    currentTime={currentTime}
+                    onSeek={seekTo}
+                    registerRef={(el) => (lineRefs.current[i] = el)}
+                  />
                 ))}
                 <div style={{ height: "38vh" }} />
               </div>
             ) : state.plain ? (
               <div className="aivy-lyrics-plain aivy-scroll">{state.plain}</div>
             ) : (
-              // Our own lyrics lookup (which reaches lrclib and generally has
-              // the best coverage, including local/regional songs) found
-              // nothing — try am-lyrics as a last resort, since its providers
-              // (LyricsPlus/Apple Music) sometimes have tracks lrclib doesn't,
-              // and it can render a nicer word-synced view when it does.
               <AppleLyricsPane
                 track={currentTrack}
                 currentTime={currentTime}

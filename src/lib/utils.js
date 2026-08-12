@@ -39,6 +39,40 @@ export function parseLRC(lrc) {
   }
   return out.sort((a, b) => a.time - b.time);
 }
+export function estimateWordTimeline(lines, trackDuration) {
+  if (!Array.isArray(lines) || !lines.length) return [];
+  return lines.map((line, i) => {
+    const start = line.time;
+    const next = lines[i + 1]?.time;
+    const words = String(line.text || "").split(/\s+/).filter(Boolean);
+    const fallbackDur = Math.max(1.2, Math.min(8, words.length * 0.42));
+    const end = Number.isFinite(next)
+      ? next
+      : Number.isFinite(trackDuration) && trackDuration > start
+        ? trackDuration
+        : start + fallbackDur;
+    const duration = Math.max(0.4, end - start);
+
+    if (!words.length) return { ...line, end, words: [] };
+    const weights = words.map((w) => w.length + 2);
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    let cursor = start;
+    const timedWords = words.map((text, wi) => {
+      const wDur = (weights[wi] / totalWeight) * duration;
+      const wStart = cursor;
+      const wEnd = Math.min(end, cursor + wDur);
+      cursor = wEnd;
+      return { text, start: wStart, end: wEnd };
+    });
+    return { ...line, end, words: timedWords };
+  });
+}
+export function wordProgress(word, currentTime) {
+  if (!word) return 0;
+  if (currentTime <= word.start) return 0;
+  if (currentTime >= word.end) return 1;
+  return (currentTime - word.start) / Math.max(0.001, word.end - word.start);
+}
 
 export function relativeTime(ms) {
   const diff = Date.now() - ms;
@@ -80,21 +114,13 @@ export function seededShuffle(arr, seedNum) {
   }
   return out;
 }
-
-// Cleans a raw video-style title (e.g. from YouTube: "Artist - Song (Official Lyric Video)")
-// down to just the song name, so lyrics lookups match the way a plain track title would
-// (this is what actually gets found on lyrics providers like lrclib.net).
 export function cleanTrackTitleForLyrics(rawTitle, artistName) {
   if (!rawTitle) return rawTitle;
   let t = rawTitle;
-
-  // Strip a leading "Artist - " prefix when it matches the known artist
   if (artistName) {
     const esc = artistName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     t = t.replace(new RegExp(`^\\s*${esc}\\s*[-\u2013\u2014:]\\s*`, "i"), "");
   }
-
-  // Strip parenthetical/bracketed clutter: (Official Video), [Lyrics], (Audio), (4K), etc.
   const clutterPattern = /\s*[([][^)\]]*\b(official|lyric|lyrics|video|audio|visualizer|mv|hd|hq|4k|full\s*song|full\s*audio|album|single|explicit|remaster(?:ed)?|clip|version)\b[^)\]]*[)\]]\s*/gi;
   let prev;
   do {
@@ -104,8 +130,6 @@ export function cleanTrackTitleForLyrics(rawTitle, artistName) {
 
   // Strip a trailing "- Official Video"-style suffix without brackets
   t = t.replace(/\s*[-\u2013\u2014]\s*(official\s*)?(lyric[s]?|music)?\s*(video|audio)\s*$/i, "");
-
-  // Collapse leftover whitespace and stray punctuation
   t = t.replace(/\s{2,}/g, " ").replace(/^[\s\-\u2013\u2014:|]+|[\s\-\u2013\u2014:|]+$/g, "").trim();
 
   return t || rawTitle;
@@ -118,10 +142,6 @@ export function debounce(fn, ms) {
     t = setTimeout(() => fn(...args), ms);
   };
 }
-
-// Checks whether a resolved artist's name genuinely matches what was searched/known,
-// so a lookup that only had a name to go on (no reliable id) doesn't surface an
-// unrelated artist that merely sounds similar.
 export function isRelevantArtistMatch(name, q) {
   const norm = (s) => (s || "")
     .toLowerCase()

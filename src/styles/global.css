@@ -903,10 +903,26 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 .aivy-lyrics-overlay.open{ opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
 .aivy-lyrics-bg{
-  position: absolute; inset: 0; z-index: 0;
-  background: radial-gradient(130% 70% at 50% -10%, var(--lyrics-accent, var(--moss)) 0%, transparent 62%);
-  opacity: .5;
+  position: absolute; inset: 0; z-index: 0; overflow: hidden;
+  opacity: .55;
   transition: opacity var(--dur-slow) var(--ease);
+}
+.aivy-lyrics-bg::before, .aivy-lyrics-bg::after{
+  content: ""; position: absolute; width: 90%; aspect-ratio: 1; border-radius: 50%;
+  background: var(--lyrics-accent, var(--moss)); filter: blur(70px); will-change: transform;
+}
+.aivy-lyrics-bg::before{ top: -30%; left: -20%; animation: aivy-lyrics-blob-a 22s ease-in-out infinite; }
+.aivy-lyrics-bg::after{ bottom: -35%; right: -15%; animation: aivy-lyrics-blob-b 26s ease-in-out infinite; opacity: .7; }
+@keyframes aivy-lyrics-blob-a{
+  0%, 100%{ transform: translate(0, 0) scale(1); }
+  50%{ transform: translate(8%, 6%) scale(1.12); }
+}
+@keyframes aivy-lyrics-blob-b{
+  0%, 100%{ transform: translate(0, 0) scale(1); }
+  50%{ transform: translate(-6%, -8%) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce){
+  .aivy-lyrics-bg::before, .aivy-lyrics-bg::after{ animation: none; }
 }
 .aivy-lyrics-scrim{ position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 45%, transparent) 0%, var(--bg) 85%); }
 .aivy-lyrics-head{ position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: calc(16px + env(safe-area-inset-top,0px)) 20px 8px; flex-shrink: 0; }
@@ -950,12 +966,23 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-line{
   padding: 9px 28px; font-family: var(--font-display); font-size: var(--lyrics-fs, clamp(19px, 3.6vw, 26px)); font-weight: 560; line-height: 1.4;
   color: var(--ink-faint); opacity: .35; filter: blur(1.5px); transform: scale(1); transform-origin: center center;
-  transition: opacity .5s var(--ease), color .5s var(--ease), transform .5s var(--ease), filter .5s var(--ease);
+  transition: opacity .45s cubic-bezier(.22,.9,.32,1), color .45s cubic-bezier(.22,.9,.32,1), transform .45s cubic-bezier(.22,.9,.32,1), filter .45s cubic-bezier(.22,.9,.32,1);
   cursor: pointer; max-width: 680px; text-align: center; margin: 0 auto;
 }
 .aivy-lyrics-line:hover{ opacity: .75; filter: blur(0); }
-.aivy-lyrics-line.near{ opacity: .58; filter: blur(.5px); }
-.aivy-lyrics-line.active{ color: var(--moss-strong); opacity: 1; filter: blur(0); transform: scale(1.045); }
+.aivy-lyrics-line.active{ color: var(--ink-dim); opacity: 1; filter: blur(0); transform: scale(1.045); }
+
+/* Word-by-word karaoke sweep (active line only). .base sits underneath at
+   dim color and defines layout; .fill is an absolutely-positioned copy in
+   the highlight color, revealed left-to-right via clip-path as the estimated
+   word progress advances. The clip-path transition smooths out the jump
+   between currentTime ticks (~4/sec from the audio timeupdate event). */
+.aivy-lyric-word{ position: relative; display: inline-block; white-space: pre; }
+.aivy-lyric-word .base{ color: var(--ink-faint); }
+.aivy-lyric-word .fill{
+  position: absolute; inset: 0; color: var(--lyrics-accent, var(--moss-strong));
+  clip-path: inset(0 100% 0 0); transition: clip-path .15s linear; white-space: pre;
+}
 .aivy-lyrics-plain{ position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 28px 30vh; font-size: var(--lyrics-fs, 16px); line-height: 2; color: var(--ink-dim); white-space: pre-line; max-width: 680px; margin: 0 auto; text-align: center; }
 .aivy-lyrics-footer{ position: relative; z-index: 1; flex-shrink: 0; display: flex; justify-content: center; padding: 10px 24px calc(20px + var(--safe-b)); }
 @media (max-width: 640px){ .aivy-lyrics-line{ padding: 8px 22px; } .aivy-lyrics-plain{ padding: 12px 22px 30vh; } }
