@@ -14,7 +14,7 @@ import {
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics, estimateWordTimeline, wordProgress } from "./lib/utils.js";
+import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics, linesToTTML } from "./lib/utils.js";
 function usePanelResize({ width, setWidth, min, max, side }) {
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, width: 0 });
@@ -1611,20 +1611,30 @@ const AM_LYRICS_FONT_SIZES = {
   md: "clamp(26px, 4.2vw, 32px)",
   lg: "clamp(32px, 5vw, 40px)",
 };
-function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize }) {
+function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize, ttml }) {
   const elRef = useRef(null);
 
   useEffect(() => {
     const el = elRef.current;
     if (!el || !track) return;
-    const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
-    el.songTitle = cleanedTitle;
-    el.songArtist = track.artist?.name || "";
-    el.songDuration = track.duration ? Math.round(track.duration * 1000) : undefined;
-    el.query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
+    if (ttml) {
+      // Pre-resolved lyrics (e.g. from lrclib) — render directly, no
+      // network request from am-lyrics itself.
+      el.ttml = ttml;
+      el.songTitle = undefined;
+      el.songArtist = undefined;
+      el.query = undefined;
+    } else {
+      const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
+      el.ttml = undefined;
+      el.songTitle = cleanedTitle;
+      el.songArtist = track.artist?.name || "";
+      el.songDuration = track.duration ? Math.round(track.duration * 1000) : undefined;
+      el.query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
+    }
     el.autoscroll = true;
     el.interpolate = true;
-  }, [track?.id]);
+  }, [track?.id, ttml]);
 
   useEffect(() => {
     const el = elRef.current;
@@ -1746,51 +1756,17 @@ function extractDominantColor(url) {
     img.src = url;
   });
 }
-function LyricLine({ line, index, activeIndex, currentTime, onSeek, registerRef }) {
-  const distance = activeIndex < 0 ? 1 : index - activeIndex;
-  const absDist = Math.abs(distance);
-  const isActive = distance === 0;
-
-  const style = isActive
-    ? undefined
-    : {
-        filter: `blur(${Math.min(absDist * 0.55, 3)}px)`,
-        opacity: Math.max(0.14, 1 - absDist * 0.2),
-        transform: `scale(${Math.max(0.94, 1 - absDist * 0.015)})`,
-      };
-
-  return (
-    <div
-      ref={registerRef}
-      className={`aivy-lyrics-line ${isActive ? "active" : ""}`}
-      style={style}
-      onClick={() => onSeek(line.time)}
-    >
-      {isActive && line.words?.length ? (
-        line.words.map((w, wi) => (
-          <span className="aivy-lyric-word" key={wi}>
-            <span className="base">{w.text}</span>
-            <span className="fill" style={{ clipPath: `inset(0 ${(1 - wordProgress(w, currentTime)) * 100}% 0 0)` }}>
-              {w.text}
-            </span>
-            {wi < line.words.length - 1 ? "\u00a0" : ""}
-          </span>
-        ))
-      ) : (
-        line.text || "\u266a"
-      )}
-    </div>
-  );
-}
-
 export function LyricsOverlay() {
   const { lyricsOpen, closeLyrics, pushToast, t } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
-  const [state, setState] = useState({ loading: false, synced: [], plain: "", wordSynced: null, checkedFor: null });
+  // `ttml` set  -> lrclib had a line-synced match; feed it straight into
+  //                <am-lyrics> via its `ttml` property (no am-lyrics fetch).
+  // `ttml` null -> let <am-lyrics> resolve it itself against LyricsPlus
+  //                (binilyrics/KPoe, word-synced) then Apple Music.
+  const [state, setState] = useState({ loading: false, ttml: null, lrcLines: [], checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [accentColor, setAccentColor] = useState(null);
-  const lineRefs = useRef([]);
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
@@ -1823,6 +1799,11 @@ export function LyricsOverlay() {
     };
   }, [lyricsOpen]);
 
+  // Resolve the lyrics source: try lrclib first (line-synced, keyless,
+  // client-side); if it has nothing usable, probe binilyrics (LyricsPlus/
+  // KPoe — the same backend <am-lyrics> uses natively) just to confirm a
+  // word-synced match exists before handing the track off to <am-lyrics>
+  // for its own fetch + rendering + sync.
   useEffect(() => {
     if (!lyricsOpen || !currentTrack) return;
     if (state.checkedFor === trackKey) return;
@@ -1830,61 +1811,43 @@ export function LyricsOverlay() {
     setState((s) => ({ ...s, loading: true }));
     const rawTitle = currentTrack.title;
     const artistName = currentTrack.artist?.name;
+    const album = currentTrack.album?.title;
     const cleanedTitle = cleanTrackTitleForLyrics(rawTitle, artistName);
-    const hasLyricsResult = (res) => (res?.synced && res.synced.length) || res?.plain || res?.wordSynced?.length;
-    import("./lib/api.js").then(({ Api }) => {
-      Api.lyrics({ title: cleanedTitle, artist: artistName, duration: currentTrack.duration })
+    const trackDuration = currentTrack.duration;
+
+    import("./lib/api.js").then(({ LyricsSource }) => {
+      const tryLrclib = (title) => LyricsSource.lrclib({ title, artist: artistName, album, duration: trackDuration });
+
+      tryLrclib(cleanedTitle)
+        .then((res) => (res ? res : cleanedTitle !== rawTitle ? tryLrclib(rawTitle) : null))
         .then((res) => {
           if (cancelled) return;
-          if (hasLyricsResult(res) || cleanedTitle === rawTitle) {
-            setState({ loading: false, synced: parseLRC(res.synced), plain: res.plain || "", wordSynced: res.wordSynced || null, checkedFor: trackKey });
+          if (res?.syncedLyrics) {
+            const lrcLines = parseLRC(res.syncedLyrics);
+            setState({ loading: false, ttml: linesToTTML(lrcLines, trackDuration), lrcLines, checkedFor: trackKey });
             return;
           }
-          Api.lyrics({ title: rawTitle, artist: artistName, duration: currentTrack.duration })
-            .then((res2) => {
-              if (cancelled) return;
-              setState({ loading: false, synced: parseLRC(res2.synced), plain: res2.plain || "", wordSynced: res2.wordSynced || null, checkedFor: trackKey });
-            })
-            .catch(() => {
-              if (cancelled) return;
-              setState({ loading: false, synced: [], plain: "", wordSynced: null, checkedFor: trackKey });
-            });
+          // lrclib had nothing synced — let am-lyrics try binilyrics
+          // (LyricsPlus/KPoe) + Apple Music on its own; we don't need to
+          // block on a pre-check since am-lyrics degrades gracefully.
+          setState({ loading: false, ttml: null, lrcLines: [], checkedFor: trackKey });
         })
         .catch(() => {
           if (cancelled) return;
-          setState({ loading: false, synced: [], plain: "", wordSynced: null, checkedFor: trackKey });
+          setState({ loading: false, ttml: null, lrcLines: [], checkedFor: trackKey });
         });
     });
     return () => { cancelled = true; };
   }, [lyricsOpen, trackKey]);
-  const wordLines = useMemo(() => {
-    if (state.wordSynced?.length) return state.wordSynced;
-    return estimateWordTimeline(state.synced, currentTrack?.duration || duration);
-  }, [state.wordSynced, state.synced, currentTrack?.duration, duration]);
-
-  const activeIndex = useMemo(() => {
-    if (!wordLines.length) return -1;
-    let idx = -1;
-    for (let i = 0; i < wordLines.length; i++) {
-      if (wordLines[i].time <= currentTime + 0.15) idx = i; else break;
-    }
-    return idx;
-  }, [wordLines, currentTime]);
-
-  useEffect(() => {
-    if (activeIndex < 0) return;
-    const el = lineRefs.current[activeIndex];
-    const container = el?.closest(".aivy-lyrics-body");
-    if (!el || !container) return;
-    const target = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
-    container.scrollTo({ top: target, behavior: "smooth" });
-  }, [activeIndex]);
 
   const activeLineText = useMemo(() => {
-    if (state.synced[activeIndex]?.text) return state.synced[activeIndex].text;
-    if (state.plain) return state.plain.split("\n").find((l) => l.trim()) || "";
-    return "";
-  }, [state, activeIndex]);
+    if (!state.lrcLines?.length) return "";
+    let text = "";
+    for (const line of state.lrcLines) {
+      if (line.time <= currentTime + 0.15) text = line.text; else break;
+    }
+    return text;
+  }, [state.lrcLines, currentTime]);
 
   const handleSaveImage = useCallback(() => {
     if (!currentTrack) return;
@@ -1996,24 +1959,6 @@ export function LyricsOverlay() {
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
             {state.loading ? (
               <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">{t("searchingLyrics")}</div></div>
-            ) : wordLines.length > 0 ? (
-              <div className="aivy-lyrics-body aivy-scroll">
-                <div style={{ height: "38vh" }} />
-                {wordLines.map((line, i) => (
-                  <LyricLine
-                    key={i}
-                    line={line}
-                    index={i}
-                    activeIndex={activeIndex}
-                    currentTime={currentTime}
-                    onSeek={seekTo}
-                    registerRef={(el) => (lineRefs.current[i] = el)}
-                  />
-                ))}
-                <div style={{ height: "38vh" }} />
-              </div>
-            ) : state.plain ? (
-              <div className="aivy-lyrics-plain aivy-scroll">{state.plain}</div>
             ) : (
               <AppleLyricsPane
                 track={currentTrack}
@@ -2021,6 +1966,7 @@ export function LyricsOverlay() {
                 onSeek={seekTo}
                 highlightColor={accentColor}
                 fontSize={fontSize}
+                ttml={state.ttml}
               />
             )}
           </div>
