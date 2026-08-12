@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo, Component } from "react";
 import { createPortal } from "react-dom";
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume2, Volume1,
@@ -14,7 +14,7 @@ import {
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics, estimateWordTimeline, wordProgress } from "./lib/utils.js";
+import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics, estimateWordTimeline } from "./lib/utils.js";
 function usePanelResize({ width, setWidth, min, max, side }) {
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, width: 0 });
@@ -1746,52 +1746,86 @@ function extractDominantColor(url) {
     img.src = url;
   });
 }
-function LyricLine({ line, index, activeIndex, currentTime, onSeek, registerRef }) {
-  const distance = activeIndex < 0 ? 1 : index - activeIndex;
-  const absDist = Math.abs(distance);
-  const isActive = distance === 0;
+// Apple-Music-style lyrics: the "sung" fill of each word is a pure CSS
+// animation (clip-path 100%->0%) with a duration/delay computed ONCE when a
+// line becomes active (or when playback is scrubbed), instead of being
+// recalculated from `currentTime` on every `timeupdate` tick. The browser's
+// compositor then drives the sweep at a native 60fps regardless of how
+// often React re-renders, which is what keeps this smooth on older/slower
+// hardware — there is no per-frame JS or style recalculation involved.
+// A negative `animation-delay` naturally "fast-forwards" words that were
+// already sung before the line became active (they land past their end and
+// hold at the fully-filled state via `animation-fill-mode: both`), and
+// words not yet reached simply haven't started.
+function distanceBucket(dist) {
+  const d = Math.abs(dist);
+  if (d <= 0) return 0;
+  if (d === 1) return 1;
+  if (d === 2) return 2;
+  if (d === 3) return 3;
+  return 4;
+}
 
-  const style = isActive
-    ? undefined
-    : {
-        filter: `blur(${Math.min(absDist * 0.55, 3)}px)`,
-        opacity: Math.max(0.14, 1 - absDist * 0.2),
-        transform: `scale(${Math.max(0.94, 1 - absDist * 0.015)})`,
-      };
+const LyricLine = memo(function LyricLine({ line, index, activeIndex, activationTime, isPlaying, onSeek, registerRef }) {
+  const isActive = index === activeIndex;
+  const bucket = activeIndex < 0 ? 4 : distanceBucket(index - activeIndex);
+
+  const words = useMemo(() => {
+    if (!isActive || !line.words?.length) return null;
+    const t0 = Number.isFinite(activationTime) ? activationTime : line.time;
+    return line.words.map((w, wi) => ({
+      key: wi,
+      text: w.text,
+      dur: Math.max(0.06, w.end - w.start),
+      delay: w.start - t0,
+    }));
+  }, [isActive, line, activationTime]);
 
   return (
     <div
       ref={registerRef}
-      className={`aivy-lyrics-line ${isActive ? "active" : ""}`}
-      style={style}
+      className={`aivy-lyrics-line d${bucket}${isActive ? " active" : ""}`}
       onClick={() => onSeek(line.time)}
     >
-      {isActive && line.words?.length ? (
-        line.words.map((w, wi) => (
-          <span className="aivy-lyric-word" key={wi}>
-            <span className="base">{w.text}</span>
-            <span className="fill" style={{ clipPath: `inset(0 ${(1 - wordProgress(w, currentTime)) * 100}% 0 0)` }}>
-              {w.text}
+      {words ? (
+        <span className={`aivy-lyric-words${isPlaying ? "" : " paused"}`}>
+          {words.map((w, wi) => (
+            <span className="aivy-lyric-word" key={w.key} style={{ "--wdur": `${w.dur}s`, "--wdelay": `${w.delay}s` }}>
+              <span className="base">{w.text}</span>
+              <span className="fill">{w.text}</span>
+              {wi < words.length - 1 ? "\u00a0" : ""}
             </span>
-            {wi < line.words.length - 1 ? "\u00a0" : ""}
-          </span>
-        ))
+          ))}
+        </span>
       ) : (
         line.text || "\u266a"
       )}
     </div>
   );
-}
+}, (prev, next) => {
+  if (prev.line !== next.line || prev.onSeek !== next.onSeek || prev.isPlaying !== next.isPlaying) return false;
+  const prevActive = prev.index === prev.activeIndex;
+  const nextActive = next.index === next.activeIndex;
+  if (prevActive !== nextActive) return false;
+  if (nextActive && prev.activationTime !== next.activationTime) return false;
+  const prevBucket = prev.activeIndex < 0 ? 4 : distanceBucket(prev.index - prev.activeIndex);
+  const nextBucket = next.activeIndex < 0 ? 4 : distanceBucket(next.index - next.activeIndex);
+  return prevBucket === nextBucket;
+});
 
 export function LyricsOverlay() {
   const { lyricsOpen, closeLyrics, pushToast, t } = useUI();
-  const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
+  const { currentTrack, currentTime, isPlaying, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
   const [state, setState] = useState({ loading: false, synced: [], plain: "", wordSynced: null, checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [accentColor, setAccentColor] = useState(null);
   const lineRefs = useRef([]);
   const trackKey = currentTrack?.id;
+  // Latest currentTime kept in a ref (no re-render) so the activation
+  // snapshot below can read "now" without depending on every tick.
+  const currentTimeRef = useRef(currentTime);
+  currentTimeRef.current = currentTime;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
 
@@ -1870,6 +1904,23 @@ export function LyricsOverlay() {
     }
     return idx;
   }, [wordLines, currentTime]);
+
+  // The word-by-word sweep is a pure CSS animation (see LyricLine) that only
+  // needs to be re-synced to the audio when the active line changes, or when
+  // playback jumps (seek / scrub) rather than advancing naturally. Watching
+  // every `currentTime` tick here — instead of inside each line — keeps the
+  // per-frame cost at effectively zero: this effect does no rendering work
+  // itself, it just detects "did we jump" and snapshots a fresh sync point.
+  const [activation, setActivation] = useState({ index: -1, time: 0 });
+  const prevTickRef = useRef(currentTime);
+  useEffect(() => {
+    const jumped = Math.abs(currentTime - prevTickRef.current) > 0.45;
+    prevTickRef.current = currentTime;
+    if (activeIndex !== activation.index || jumped) {
+      setActivation({ index: activeIndex, time: currentTime });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, currentTime]);
 
   useEffect(() => {
     if (activeIndex < 0) return;
@@ -2005,7 +2056,8 @@ export function LyricsOverlay() {
                     line={line}
                     index={i}
                     activeIndex={activeIndex}
-                    currentTime={currentTime}
+                    activationTime={activation.time}
+                    isPlaying={isPlaying}
                     onSeek={seekTo}
                     registerRef={(el) => (lineRefs.current[i] = el)}
                   />

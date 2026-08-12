@@ -962,27 +962,66 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-lyrics-body-wrap{ position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .aivy-am-lyrics{ position: relative; z-index: 1; flex: 1; min-height: 0; display: block; width: 100%; height: 100%; --hover-background-color: var(--bg-elev-2); --lyrics-scroll-padding-top: 34%; }
-.aivy-lyrics-body{ position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-.aivy-lyrics-line{
-  padding: 9px 28px; font-family: var(--font-display); font-size: var(--lyrics-fs, clamp(19px, 3.6vw, 26px)); font-weight: 560; line-height: 1.4;
-  color: var(--ink-faint); opacity: .35; filter: blur(1.5px); transform: scale(1); transform-origin: center center;
-  transition: opacity .45s cubic-bezier(.22,.9,.32,1), color .45s cubic-bezier(.22,.9,.32,1), transform .45s cubic-bezier(.22,.9,.32,1), filter .45s cubic-bezier(.22,.9,.32,1);
-  cursor: pointer; max-width: 680px; text-align: center; margin: 0 auto;
+.aivy-lyrics-body{
+  position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth;
+  overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  /* Soft fade at the top/bottom edges of the lyric viewport, like Apple Music. A
+     static mask costs nothing extra to paint (no animation on it). */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 86%, transparent 100%);
 }
-.aivy-lyrics-line:hover{ opacity: .75; filter: blur(0); }
-.aivy-lyrics-line.active{ color: var(--ink-dim); opacity: 1; filter: blur(0); transform: scale(1.045); }
 
-/* Word-by-word karaoke sweep (active line only). .base sits underneath at
-   dim color and defines layout; .fill is an absolutely-positioned copy in
-   the highlight color, revealed left-to-right via clip-path as the estimated
-   word progress advances. The clip-path transition smooths out the jump
-   between currentTime ticks (~4/sec from the audio timeupdate event). */
+/* Each line is a discrete "distance from active" bucket (d0..d4) rather than
+   a continuously-computed inline style. Bucketing means React only ever
+   toggles a className, so the browser can reuse cached style resolution
+   instead of diffing a fresh style object per line on every render — cheap
+   even with a long lyric sheet on old hardware. `content-visibility: auto`
+   additionally lets supporting browsers skip layout/paint for lines that are
+   scrolled out of view entirely, which is effectively free virtualization. */
+.aivy-lyrics-line{
+  padding: 10px 28px; font-family: var(--font-display); font-size: var(--lyrics-fs, clamp(19px, 3.6vw, 26px)); font-weight: 700; line-height: 1.38;
+  color: var(--ink-faint); transform-origin: center center; cursor: pointer; max-width: 720px; text-align: center; margin: 0 auto;
+  transition: opacity .5s cubic-bezier(.22,.9,.32,1), color .35s ease, transform .55s cubic-bezier(.34,1.56,.64,1), filter .5s cubic-bezier(.22,.9,.32,1);
+  content-visibility: auto; contain-intrinsic-size: 0 64px;
+}
+.aivy-lyrics-line.d0{ color: var(--ink); opacity: 1; filter: blur(0); transform: scale(1.045); will-change: transform, filter; }
+.aivy-lyrics-line.d1{ opacity: .52; filter: blur(1px); transform: scale(.982); }
+.aivy-lyrics-line.d2{ opacity: .3; filter: blur(1.6px); transform: scale(.968); }
+.aivy-lyrics-line.d3{ opacity: .16; filter: blur(2.2px); transform: scale(.958); }
+.aivy-lyrics-line.d4{ opacity: .07; filter: none; transform: scale(.95); }
+.aivy-lyrics-line:hover{ opacity: .8; filter: blur(0); }
+
+/* Word-by-word karaoke sweep, active line only. `.base` sits underneath in
+   the dim ink colour and defines layout/wrapping; `.fill` is an absolutely
+   positioned copy in the accent colour, revealed left-to-right by animating
+   clip-path from fully-clipped to fully-visible. The animation-delay for
+   each word is computed ONCE (see LyricLine) from the audio position at the
+   moment the line became active, so the sweep runs on the browser's own
+   compositor timeline rather than being redrawn from JS on every
+   `timeupdate` tick — this is what keeps it silky on slower phones. */
+.aivy-lyric-words{ display: inline; }
 .aivy-lyric-word{ position: relative; display: inline-block; white-space: pre; }
 .aivy-lyric-word .base{ color: var(--ink-faint); }
 .aivy-lyric-word .fill{
-  position: absolute; inset: 0; color: var(--lyrics-accent, var(--moss-strong));
-  clip-path: inset(0 100% 0 0); transition: clip-path .15s linear; white-space: pre;
+  position: absolute; inset: 0; white-space: pre; color: var(--lyrics-accent, var(--moss-strong));
+  clip-path: inset(0 100% 0 0);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--lyrics-accent, var(--moss-strong)) 45%, transparent);
+  animation-name: aivy-word-fill;
+  animation-duration: var(--wdur, .3s);
+  animation-delay: var(--wdelay, 0s);
+  animation-timing-function: linear;
+  animation-fill-mode: both;
 }
+.aivy-lyric-words.paused .fill{ animation-play-state: paused; }
+@keyframes aivy-word-fill{
+  from{ clip-path: inset(0 100% 0 0); }
+  to{ clip-path: inset(0 0% 0 0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .aivy-lyrics-line{ transition: opacity .3s ease, color .3s ease; }
+  .aivy-lyric-word .fill{ animation: none; clip-path: inset(0 0 0 0); }
+}
+
 .aivy-lyrics-plain{ position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 28px 30vh; font-size: var(--lyrics-fs, 16px); line-height: 2; color: var(--ink-dim); white-space: pre-line; max-width: 680px; margin: 0 auto; text-align: center; }
 .aivy-lyrics-footer{ position: relative; z-index: 1; flex-shrink: 0; display: flex; justify-content: center; padding: 10px 24px calc(20px + var(--safe-b)); }
 @media (max-width: 640px){ .aivy-lyrics-line{ padding: 8px 22px; } .aivy-lyrics-plain{ padding: 12px 22px 30vh; } }
