@@ -1623,27 +1623,23 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
     const el = elRef.current;
     if (!el || !track) return;
     let cancelled = false;
+    let pollId = null;
 
-    const applyMetadata = () => {
+    const applyMetadata = (forceRetrigger) => {
       if (cancelled) return;
       const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
       const durationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
       const query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
-      // TEMP DEBUG — remove once the "first play shows Unavailable" bug is
-      // confirmed fixed. Tells us: was this element already upgraded when
-      // we touched it, is it connected to the DOM, and what values did we
-      // actually send.
-      // eslint-disable-next-line no-console
-      console.log("[am-lyrics debug] applyMetadata", {
-        trackId: track.id,
-        cleanedTitle,
-        artist: track.artist?.name,
-        durationMs,
-        query,
-        elUpgraded: el.constructor !== HTMLElement && el.constructor?.name,
-        elConnected: el.isConnected,
-        elTagName: el.tagName,
-      });
+      if (forceRetrigger) {
+        // The very first fetch to these lyrics providers occasionally fails
+        // on a cold connection (fresh DNS/TLS to a domain the browser
+        // hasn't touched yet) even though a retry with the exact same
+        // title/artist succeeds moments later. Lit only re-fetches when a
+        // property actually *changes*, so re-assigning the identical string
+        // wouldn't retrigger anything — nudge it through a throwaway value
+        // first so the real value change still fires.
+        el.songTitle = `${cleanedTitle}\u200b`;
+      }
       el.songTitle = cleanedTitle;
       el.songArtist = track.artist?.name || "";
       // NOTE: the reactive JS property is `songDurationMs`, NOT `songDuration`
@@ -1656,13 +1652,26 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
       // attribute is `autoscroll`.
       el.autoScroll = true;
       el.interpolate = true;
-      // eslint-disable-next-line no-console
-      console.log("[am-lyrics debug] after set", {
-        readBackTitle: el.songTitle,
-        readBackArtist: el.songArtist,
-        readBackDurationMs: el.songDurationMs,
-        readBackQuery: el.query,
-      });
+    };
+
+    const watchForFailureAndRetryOnce = () => {
+      let attempts = 0;
+      const maxAttempts = Math.ceil(9000 / 300); // ~9s, a hair over am-lyrics' own 8s fetch timeout
+      pollId = setInterval(() => {
+        attempts++;
+        if (cancelled) { clearInterval(pollId); return; }
+        // `isLoading`/`lyricsSource` are TS `private` on AmLyrics, which
+        // only affects compile-time type-checking — at runtime they're
+        // ordinary instance properties we can read from outside.
+        if (el.isLoading === false) {
+          clearInterval(pollId);
+          if (!el.lyricsSource && !el.ttml) {
+            applyMetadata(true); // one silent retry
+          }
+          return;
+        }
+        if (attempts >= maxAttempts) clearInterval(pollId);
+      }, 300);
     };
 
     // <am-lyrics> is loaded from a separate <script type="module"> tag (CDN)
@@ -1673,19 +1682,15 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
     // for the definition first guarantees we're always setting properties
     // on the real, upgraded element.
     if (typeof customElements !== "undefined" && customElements.get("am-lyrics")) {
-      console.log("[am-lyrics debug] already defined, applying immediately");
-      applyMetadata();
+      applyMetadata(false);
     } else if (typeof customElements !== "undefined") {
-      console.log("[am-lyrics debug] NOT yet defined, waiting...");
-      customElements.whenDefined("am-lyrics").then(() => {
-        console.log("[am-lyrics debug] now defined, applying");
-        applyMetadata();
-      });
+      customElements.whenDefined("am-lyrics").then(() => applyMetadata(false));
     } else {
-      applyMetadata();
+      applyMetadata(false);
     }
+    watchForFailureAndRetryOnce();
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; if (pollId) clearInterval(pollId); };
   }, [track?.id]);
 
   useEffect(() => {
