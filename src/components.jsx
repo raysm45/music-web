@@ -1622,19 +1622,41 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
   useEffect(() => {
     const el = elRef.current;
     if (!el || !track) return;
-    const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
-    el.songTitle = cleanedTitle;
-    el.songArtist = track.artist?.name || "";
-    // NOTE: the reactive JS property is `songDurationMs`, NOT `songDuration`
-    // — only the HTML *attribute* is called `song-duration`. Setting
-    // `el.songDuration` silently sets an untracked stray property and never
-    // reaches the component.
-    el.songDurationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
-    el.query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
-    // Same story here: the property is `autoScroll` (camelCase), the
-    // attribute is `autoscroll`.
-    el.autoScroll = true;
-    el.interpolate = true;
+    let cancelled = false;
+
+    const applyMetadata = () => {
+      if (cancelled) return;
+      const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
+      el.songTitle = cleanedTitle;
+      el.songArtist = track.artist?.name || "";
+      // NOTE: the reactive JS property is `songDurationMs`, NOT `songDuration`
+      // — only the HTML *attribute* is called `song-duration`. Setting
+      // `el.songDuration` silently sets an untracked stray property and never
+      // reaches the component.
+      el.songDurationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
+      el.query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
+      // Same story here: the property is `autoScroll` (camelCase), the
+      // attribute is `autoscroll`.
+      el.autoScroll = true;
+      el.interpolate = true;
+    };
+
+    // <am-lyrics> is loaded from a separate <script type="module"> tag (CDN)
+    // rather than bundled with the app. If that tag hasn't finished
+    // registering the custom element yet the very first time this mounts,
+    // setting properties on the not-yet-upgraded element can silently miss
+    // Lit's reactive pipeline — nothing fires and no fetch happens. Waiting
+    // for the definition first guarantees we're always setting properties
+    // on the real, upgraded element.
+    if (typeof customElements !== "undefined" && customElements.get("am-lyrics")) {
+      applyMetadata();
+    } else if (typeof customElements !== "undefined") {
+      customElements.whenDefined("am-lyrics").then(applyMetadata);
+    } else {
+      applyMetadata();
+    }
+
+    return () => { cancelled = true; };
   }, [track?.id]);
 
   useEffect(() => {
