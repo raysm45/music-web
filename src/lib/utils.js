@@ -39,40 +39,6 @@ export function parseLRC(lrc) {
   }
   return out.sort((a, b) => a.time - b.time);
 }
-function ttmlEscape(str) {
-  return String(str || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-function formatTtmlTime(sec) {
-  const total = Math.max(0, sec || 0);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${s.toFixed(3).padStart(6, "0")}`;
-}
-export function linesToTTML(lines, trackDuration) {
-  if (!Array.isArray(lines) || !lines.length) return "";
-  const body = lines
-    .map((line, i) => {
-      const begin = line.time;
-      const next = lines[i + 1]?.time;
-      const end = Number.isFinite(next)
-        ? next
-        : Number.isFinite(trackDuration) && trackDuration > begin
-          ? trackDuration
-          : begin + 5;
-      const text = ttmlEscape(line.text || "");
-      if (!text) return "";
-      return `      <p begin="${formatTtmlTime(begin)}" end="${formatTtmlTime(end)}">${text}</p>`;
-    })
-    .filter(Boolean)
-    .join("\n");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<tt xmlns="http://www.w3.org/ns/ttml">\n  <body>\n    <div>\n${body}\n    </div>\n  </body>\n</tt>`;
-}
-
 export function estimateWordTimeline(lines, trackDuration) {
   if (!Array.isArray(lines) || !lines.length) return [];
   return lines.map((line, i) => {
@@ -161,6 +127,8 @@ export function cleanTrackTitleForLyrics(rawTitle, artistName) {
     prev = t;
     t = t.replace(clutterPattern, " ");
   } while (t !== prev);
+
+  // Strip a trailing "- Official Video"-style suffix without brackets
   t = t.replace(/\s*[-\u2013\u2014]\s*(official\s*)?(lyric[s]?|music)?\s*(video|audio)\s*$/i, "");
   t = t.replace(/\s{2,}/g, " ").replace(/^[\s\-\u2013\u2014:|]+|[\s\-\u2013\u2014:|]+$/g, "").trim();
 

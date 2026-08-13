@@ -14,7 +14,7 @@ import {
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
-import { formatTime, formatDuration, relativeTime, formatClockTime, parseLRC, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics, linesToTTML } from "./lib/utils.js";
+import { formatTime, formatDuration, relativeTime, formatClockTime, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "./lib/utils.js";
 function usePanelResize({ width, setWidth, min, max, side }) {
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, width: 0 });
@@ -1611,30 +1611,31 @@ const AM_LYRICS_FONT_SIZES = {
   md: "clamp(26px, 4.2vw, 32px)",
   lg: "clamp(32px, 5vw, 40px)",
 };
-function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize, ttml }) {
+// am-lyrics already resolves lyrics through its own internal provider chain
+// (BiniLyrics/LyricsPlus first, then Unison/YouLyPlus, then LRCLIB, then
+// Genius as a last resort) whenever it's given song-title/song-artist — so
+// we don't fetch or pre-build anything ourselves; we just feed it clean
+// metadata and let it do the searching, matching, and syncing natively.
+function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize }) {
   const elRef = useRef(null);
 
   useEffect(() => {
     const el = elRef.current;
     if (!el || !track) return;
-    if (ttml) {
-      // Pre-resolved lyrics (e.g. from lrclib) — render directly, no
-      // network request from am-lyrics itself.
-      el.ttml = ttml;
-      el.songTitle = undefined;
-      el.songArtist = undefined;
-      el.query = undefined;
-    } else {
-      const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
-      el.ttml = undefined;
-      el.songTitle = cleanedTitle;
-      el.songArtist = track.artist?.name || "";
-      el.songDuration = track.duration ? Math.round(track.duration * 1000) : undefined;
-      el.query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
-    }
-    el.autoscroll = true;
+    const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
+    el.songTitle = cleanedTitle;
+    el.songArtist = track.artist?.name || "";
+    // NOTE: the reactive JS property is `songDurationMs`, NOT `songDuration`
+    // — only the HTML *attribute* is called `song-duration`. Setting
+    // `el.songDuration` silently sets an untracked stray property and never
+    // reaches the component.
+    el.songDurationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
+    el.query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
+    // Same story here: the property is `autoScroll` (camelCase), the
+    // attribute is `autoscroll`.
+    el.autoScroll = true;
     el.interpolate = true;
-  }, [track?.id, ttml]);
+  }, [track?.id]);
 
   useEffect(() => {
     const el = elRef.current;
@@ -1759,11 +1760,6 @@ function extractDominantColor(url) {
 export function LyricsOverlay() {
   const { lyricsOpen, closeLyrics, pushToast, t } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
-  // `ttml` set  -> lrclib had a line-synced match; feed it straight into
-  //                <am-lyrics> via its `ttml` property (no am-lyrics fetch).
-  // `ttml` null -> let <am-lyrics> resolve it itself against LyricsPlus
-  //                (binilyrics/KPoe, word-synced) then Apple Music.
-  const [state, setState] = useState({ loading: false, ttml: null, lrcLines: [], checkedFor: null });
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [accentColor, setAccentColor] = useState(null);
@@ -1799,55 +1795,13 @@ export function LyricsOverlay() {
     };
   }, [lyricsOpen]);
 
-  // Resolve the lyrics source: try lrclib first (line-synced, keyless,
-  // client-side); if it has nothing usable, probe binilyrics (LyricsPlus/
-  // KPoe — the same backend <am-lyrics> uses natively) just to confirm a
-  // word-synced match exists before handing the track off to <am-lyrics>
-  // for its own fetch + rendering + sync.
-  useEffect(() => {
-    if (!lyricsOpen || !currentTrack) return;
-    if (state.checkedFor === trackKey) return;
-    let cancelled = false;
-    setState((s) => ({ ...s, loading: true }));
-    const rawTitle = currentTrack.title;
-    const artistName = currentTrack.artist?.name;
-    const album = currentTrack.album?.title;
-    const cleanedTitle = cleanTrackTitleForLyrics(rawTitle, artistName);
-    const trackDuration = currentTrack.duration;
-
-    import("./lib/api.js").then(({ LyricsSource }) => {
-      const tryLrclib = (title) => LyricsSource.lrclib({ title, artist: artistName, album, duration: trackDuration });
-
-      tryLrclib(cleanedTitle)
-        .then((res) => (res ? res : cleanedTitle !== rawTitle ? tryLrclib(rawTitle) : null))
-        .then((res) => {
-          if (cancelled) return;
-          if (res?.syncedLyrics) {
-            const lrcLines = parseLRC(res.syncedLyrics);
-            setState({ loading: false, ttml: linesToTTML(lrcLines, trackDuration), lrcLines, checkedFor: trackKey });
-            return;
-          }
-          // lrclib had nothing synced — let am-lyrics try binilyrics
-          // (LyricsPlus/KPoe) + Apple Music on its own; we don't need to
-          // block on a pre-check since am-lyrics degrades gracefully.
-          setState({ loading: false, ttml: null, lrcLines: [], checkedFor: trackKey });
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setState({ loading: false, ttml: null, lrcLines: [], checkedFor: trackKey });
-        });
-    });
-    return () => { cancelled = true; };
-  }, [lyricsOpen, trackKey]);
-
-  const activeLineText = useMemo(() => {
-    if (!state.lrcLines?.length) return "";
-    let text = "";
-    for (const line of state.lrcLines) {
-      if (line.time <= currentTime + 0.15) text = line.text; else break;
-    }
-    return text;
-  }, [state.lrcLines, currentTime]);
+  // No manual lyrics fetch here anymore — <am-lyrics> (AppleLyricsPane)
+  // resolves everything itself against its own provider chain (BiniLyrics/
+  // LyricsPlus first, then LRCLIB and a couple of other fallbacks) as soon
+  // as it's given song-title/song-artist. We just show the track title as
+  // the "active line" placeholder for the share/save-image panel, since
+  // am-lyrics keeps its parsed lines inside its own shadow DOM.
+  const activeLineText = currentTrack?.title || "";
 
   const handleSaveImage = useCallback(() => {
     if (!currentTrack) return;
@@ -1957,18 +1911,13 @@ export function LyricsOverlay() {
           </div>
 
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
-            {state.loading ? (
-              <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><IvyFallLoader size={54} /><div className="sub">{t("searchingLyrics")}</div></div>
-            ) : (
-              <AppleLyricsPane
-                track={currentTrack}
-                currentTime={currentTime}
-                onSeek={seekTo}
-                highlightColor={accentColor}
-                fontSize={fontSize}
-                ttml={state.ttml}
-              />
-            )}
+            <AppleLyricsPane
+              track={currentTrack}
+              currentTime={currentTime}
+              onSeek={seekTo}
+              highlightColor={accentColor}
+              fontSize={fontSize}
+            />
           </div>
         </div>
       )}
