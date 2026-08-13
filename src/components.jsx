@@ -1627,18 +1627,42 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
     const applyMetadata = () => {
       if (cancelled) return;
       const cleanedTitle = cleanTrackTitleForLyrics(track.title, track.artist?.name);
+      const durationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
+      const query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
+      // TEMP DEBUG — remove once the "first play shows Unavailable" bug is
+      // confirmed fixed. Tells us: was this element already upgraded when
+      // we touched it, is it connected to the DOM, and what values did we
+      // actually send.
+      // eslint-disable-next-line no-console
+      console.log("[am-lyrics debug] applyMetadata", {
+        trackId: track.id,
+        cleanedTitle,
+        artist: track.artist?.name,
+        durationMs,
+        query,
+        elUpgraded: el.constructor !== HTMLElement && el.constructor?.name,
+        elConnected: el.isConnected,
+        elTagName: el.tagName,
+      });
       el.songTitle = cleanedTitle;
       el.songArtist = track.artist?.name || "";
       // NOTE: the reactive JS property is `songDurationMs`, NOT `songDuration`
       // — only the HTML *attribute* is called `song-duration`. Setting
       // `el.songDuration` silently sets an untracked stray property and never
       // reaches the component.
-      el.songDurationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
-      el.query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
+      el.songDurationMs = durationMs;
+      el.query = query;
       // Same story here: the property is `autoScroll` (camelCase), the
       // attribute is `autoscroll`.
       el.autoScroll = true;
       el.interpolate = true;
+      // eslint-disable-next-line no-console
+      console.log("[am-lyrics debug] after set", {
+        readBackTitle: el.songTitle,
+        readBackArtist: el.songArtist,
+        readBackDurationMs: el.songDurationMs,
+        readBackQuery: el.query,
+      });
     };
 
     // <am-lyrics> is loaded from a separate <script type="module"> tag (CDN)
@@ -1649,9 +1673,14 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
     // for the definition first guarantees we're always setting properties
     // on the real, upgraded element.
     if (typeof customElements !== "undefined" && customElements.get("am-lyrics")) {
+      console.log("[am-lyrics debug] already defined, applying immediately");
       applyMetadata();
     } else if (typeof customElements !== "undefined") {
-      customElements.whenDefined("am-lyrics").then(applyMetadata);
+      console.log("[am-lyrics debug] NOT yet defined, waiting...");
+      customElements.whenDefined("am-lyrics").then(() => {
+        console.log("[am-lyrics debug] now defined, applying");
+        applyMetadata();
+      });
     } else {
       applyMetadata();
     }
