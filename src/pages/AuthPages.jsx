@@ -3,6 +3,9 @@ import { LogIn, Users, Heart, Share2, Sparkles, ChevronDown, AlertTriangle, Shie
 import { LeafMark, IvyFallLoader, SmartCover } from "../lib/brand.jsx";
 import { useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
+
+/* Ikon provider — digambar manual (bukan aset luar) supaya ringan dan tidak
+   menambah request/font/lib baru. Ukuran & warna diatur lewat props. */
 function GoogleGlyph({ size = 18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
@@ -320,6 +323,12 @@ const VISUAL_POINTS = [
   { icon: Users, text: "Ruang untuk mendengarkan bersama teman secara real-time" },
   { icon: ShieldCheck, text: "Hanya meminta informasi profil dasar akunmu" },
 ];
+
+/* Beberapa daun kecil melayang di panel visual. Semua digerakkan lewat
+   `transform` + `opacity` saja (bukan top/left, width, atau filter yang
+   di-animasikan) supaya browser cukup mengkomposit ulang layer-nya tanpa
+   perlu re-layout/re-paint — ini yang bikin animasinya tetap mulus walau
+   dijalankan di HP atau laptop lawas. Jumlahnya sengaja dibatasi 4 saja. */
 const LEAVES = [
   { top: "14%", left: "72%", delay: "0s", duration: "10s" },
   { top: "58%", left: "84%", delay: "1.8s", duration: "12s" },
@@ -358,6 +367,8 @@ export function LoginPage() {
       setPending("google");
       loginGoogle();
     } else {
+      // Backend Google belum terpasang di context.jsx — tampilkan info,
+      // jangan biarkan tombolnya diam saja tanpa umpan balik.
       setErrorCode("google_not_ready");
     }
   };
