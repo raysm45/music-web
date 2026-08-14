@@ -712,8 +712,86 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-login-card{ width: min(420px, 100%); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 40px 32px; border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .aivy-login-card h1{ font-family: var(--font-display); font-size: 24px; font-weight: 600; }
 .aivy-login-card p{ font-size: 13.5px; color: var(--ink-faint); line-height: 1.6; }
-.aivy-login-back{ font-size: 12.5px; color: var(--ink-faint); margin-top: 4px; }
+.aivy-login-back{ font-size: 12.5px; color: var(--ink-faint); margin-top: 4px; transition: color var(--dur-fast) var(--ease); }
 .aivy-login-back:hover{ color: var(--ink-dim); }
+
+/* --- Login v2: tampilan unik, dua provider, dioptimalkan untuk perangkat lama ---
+   Prinsip performa yang dipakai di seluruh blok ini:
+   1) Hanya animasikan `transform` dan `opacity` (dikerjakan GPU, tidak memicu
+      layout/paint ulang) — tidak ada animasi pada width/height/top/left/blur.
+   2) Tidak memakai backdrop-filter (berat di GPU low-end / kadang di-disable
+      di HP jadul dan bikin scroll patah-patah).
+   3) Animasi "masuk" berjalan sekali (bukan loop) sehingga CPU/GPU beristirahat
+      setelah ~0.6 detik; hanya 4 daun kecil yang berputar terus-menerus.
+   4) prefers-reduced-motion sudah ditangani secara global (lihat atas file ini). */
+
+.aivy-login-card2{ position: relative; background: var(--bg-elev); box-shadow: var(--shadow-pop); overflow: hidden; }
+.aivy-login-card2::before{
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .5;
+  background: radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--moss) 16%, transparent) 0%, transparent 60%);
+}
+.aivy-login-card2 > *{ position: relative; z-index: 1; }
+
+.aivy-login-mark{ position: relative; width: 62px; height: 62px; display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+.aivy-login-mark::before{
+  content: ""; position: absolute; inset: -5px; border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--moss-strong) 0%, transparent 32%, transparent 68%, var(--gold) 88%, var(--moss-strong) 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  animation: aivy-mark-spin 9s linear infinite; opacity: .7; will-change: transform;
+}
+.aivy-login-mark svg{ position: relative; z-index: 1; }
+@keyframes aivy-mark-spin{ from{ transform: rotate(0deg); } to{ transform: rotate(360deg); } }
+
+.aivy-login-providers{ width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 4px; }
+.aivy-provider-btn{
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 13px 18px; border-radius: var(--radius-md); font-weight: 650; font-size: 14px;
+  border: 1px solid var(--line); transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.aivy-provider-btn:disabled{ opacity: .6; pointer-events: none; }
+.aivy-provider-btn.google{ background: var(--ink); color: var(--moss-ink); border-color: transparent; }
+:root[data-theme="light"] .aivy-provider-btn.google{ background: #fff; color: #1f1f1f; border-color: var(--line); }
+.aivy-provider-btn.google:hover{ transform: translateY(-2px); }
+.aivy-provider-btn.google:active{ transform: translateY(0) scale(.98); }
+.aivy-provider-btn.discord{ background: var(--bg-elev-2); color: var(--ink); position: relative; }
+.aivy-provider-btn.discord:hover{ transform: translateY(-2px); border-color: var(--moss-strong); }
+.aivy-provider-btn.discord:active{ transform: translateY(0) scale(.98); }
+.aivy-provider-arrow{ opacity: 0; margin-left: -4px; transition: opacity var(--dur-fast) var(--ease), margin var(--dur-fast) var(--ease); }
+.aivy-provider-btn.discord:hover .aivy-provider-arrow{ opacity: 1; margin-left: 0; }
+
+.aivy-login-divider{ display: flex; align-items: center; gap: 12px; width: 100%; color: var(--ink-faint); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.aivy-login-divider::before, .aivy-login-divider::after{ content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.aivy-login-alt-note{ font-size: 11.5px; color: var(--ink-faint); margin-top: -2px; }
+
+.aivy-login-error-anim{ animation: aivy-error-in .32s var(--ease) both; }
+@keyframes aivy-error-in{ from{ opacity: 0; transform: translateY(-6px); } to{ opacity: 1; transform: translateY(0); } }
+
+/* Entrance beruntun — sekali jalan, murah, tidak butuh IntersectionObserver
+   karena kartu login selalu berada di viewport saat halaman dibuka. */
+.stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5{
+  animation: aivy-rise-in .55s var(--ease) both;
+}
+.stagger-1{ animation-delay: .02s; }
+.stagger-2{ animation-delay: .08s; }
+.stagger-3{ animation-delay: .14s; }
+.stagger-4{ animation-delay: .2s; }
+.stagger-5{ animation-delay: .26s; }
+@keyframes aivy-rise-in{ from{ opacity: 0; transform: translateY(12px); } to{ opacity: 1; transform: translateY(0); } }
+
+/* Daun kecil melayang di panel visual (hanya transform + opacity). */
+.aivy-login-leaf{
+  position: absolute; display: block; opacity: 0; animation-name: aivy-leaf-drift;
+  animation-timing-function: ease-in-out; animation-iteration-count: infinite; will-change: transform, opacity;
+}
+@keyframes aivy-leaf-drift{
+  0%{ transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  12%{ opacity: .5; }
+  50%{ transform: translate3d(8px, -22px, 0) rotate(10deg); opacity: .5; }
+  88%{ opacity: 0; }
+  100%{ transform: translate3d(-6px, -40px, 0) rotate(-8deg); opacity: 0; }
+}
 
 .reveal{ opacity: 0; transform: translateY(18px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
 .reveal.in{ opacity: 1; transform: translateY(0); }
