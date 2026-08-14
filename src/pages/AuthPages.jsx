@@ -116,7 +116,7 @@ function PreviewMockup() {
         <div className="art"><SmartCover seed="aivy-preview-hero" size={64} radius={12} style={{ width: 52, height: 52 }} /></div>
         <div className="txt">
           <div className="t">Perjalanan Sore</div>
-          <div className="a">Studio Ivy \u00b7 Lagu Instrumental</div>
+          <div className="a">Studio Ivy kampret tes berubah Lagu Instrumental</div>
         </div>
         <Waves size={18} color="var(--moss-strong)" className="wave" />
       </div>
