@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { LogIn, Users, ShieldCheck, Music2, AlertTriangle } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { LogIn, Users, ShieldCheck, Music2, AlertTriangle, ChevronRight } from "lucide-react";
 import { LeafMark, IvyFallLoader } from "../lib/brand.jsx";
 import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
@@ -11,6 +11,34 @@ const LOGIN_ERRORS = {
   user_not_found: "Akun kamu tidak ditemukan setelah proses masuk. Coba ulangi beberapa saat lagi.",
   login_failed: "Terjadi gangguan saat menghubungkan akunmu. Silakan coba lagi sebentar lagi.",
 };
+
+function useCardSpotlight(ref) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onMove = (e) => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      el.style.setProperty("--my", `${e.clientY - r.top}px`);
+    };
+    el.addEventListener("pointermove", onMove);
+    return () => el.removeEventListener("pointermove", onMove);
+  }, [ref]);
+}
+
+function spawnRipple(e) {
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 1.4;
+  const ripple = document.createElement("span");
+  ripple.className = "aivy-auth-ripple";
+  ripple.style.width = `${size}px`;
+  ripple.style.height = `${size}px`;
+  ripple.style.left = `${(e.clientX ?? rect.left + rect.width / 2) - rect.left - size / 2}px`;
+  ripple.style.top = `${(e.clientY ?? rect.top + rect.height / 2) - rect.top - size / 2}px`;
+  btn.appendChild(ripple);
+  ripple.addEventListener("animationend", () => ripple.remove());
+}
 
 function GoogleGlyph({ size = 19 }) {
   return (
@@ -48,6 +76,8 @@ export function LoginPage() {
   const { navigate } = useRouter();
   const [errorCode, setErrorCode] = useState(null);
   const [pending, setPending] = useState(null);
+  const cardRef = useRef(null);
+  useCardSpotlight(cardRef);
 
   useEffect(() => {
     if (authChecked && authUser) navigate("home", { replace: true });
@@ -61,8 +91,8 @@ export function LoginPage() {
     }
   }, []);
 
-  const handleGoogle = () => { setPending("google"); loginGoogle(); };
-  const handleDiscord = () => { setPending("discord"); login(); };
+  const handleGoogle = (e) => { spawnRipple(e); setPending("google"); loginGoogle(); };
+  const handleDiscord = (e) => { spawnRipple(e); setPending("discord"); login(); };
 
   return (
     <div className="aivy-login-shell">
@@ -76,22 +106,31 @@ export function LoginPage() {
           <div className="aivy-brand"><LeafMark size={24} color="var(--moss-strong)" /><span className="word font-display">AIVY</span></div>
           <VineDecoration />
         </div>
-        <div>
+        <div className="aivy-login-visual-bottom">
           <p className="aivy-login-visual-quote">{"\u201cMusik yang tumbuh perlahan bersama seleramu, bukan yang dipaksakan kepadamu.\u201d"}</p>
-          <div className="aivy-login-visual-points" style={{ marginTop: 24 }}>
-            <div className="aivy-login-visual-point"><Music2 size={17} color="var(--moss-strong)" style={{ flexShrink: 0 }} /><span>Beranda yang terus menyesuaikan diri dengan seleramu</span></div>
-            <div className="aivy-login-visual-point"><Users size={17} color="var(--moss-strong)" style={{ flexShrink: 0 }} /><span>Ruang untuk mendengarkan bersama teman secara real-time</span></div>
-            <div className="aivy-login-visual-point"><ShieldCheck size={17} color="var(--moss-strong)" style={{ flexShrink: 0 }} /><span>Hanya meminta informasi profil dasar akunmu</span></div>
+          <div className="aivy-login-visual-points">
+            <div className="aivy-login-visual-point"><span className="dot"><Music2 size={14} color="var(--moss-strong)" /></span><span>Beranda yang terus menyesuaikan diri dengan seleramu</span></div>
+            <div className="aivy-login-visual-point"><span className="dot"><Users size={14} color="var(--moss-strong)" /></span><span>Ruang untuk mendengarkan bersama teman secara real-time</span></div>
+            <div className="aivy-login-visual-point"><span className="dot"><ShieldCheck size={14} color="var(--moss-strong)" /></span><span>Hanya meminta informasi profil dasar akunmu</span></div>
+          </div>
+          <div className="aivy-login-eq">
+            <span style={{ height: 6, animationDelay: "0ms" }} />
+            <span style={{ height: 12, animationDelay: "120ms" }} />
+            <span style={{ height: 8, animationDelay: "260ms" }} />
+            <span style={{ height: 14, animationDelay: "80ms" }} />
+            <span style={{ height: 5, animationDelay: "200ms" }} />
           </div>
         </div>
       </div>
 
       <div className="aivy-login">
-        <div className="aivy-login-card">
+        <div className="aivy-login-card" ref={cardRef}>
+          <div className="aivy-login-card-spotlight" aria-hidden="true" />
           <div className="aivy-login-card-glow" aria-hidden="true" />
+
           <div className="aivy-login-mark"><LeafMark size={26} color="var(--moss-strong)" /></div>
           <h1 className="font-display">Masuk ke AIVY</h1>
-          <p>Pilih salah satu akun untuk menyimpan lagu, membuat playlist, dan mendengarkan bersama teman di ruang.</p>
+          <p className="aivy-login-sub">Pilih salah satu akun untuk menyimpan lagu, membuat playlist, dan mendengarkan bersama teman di ruang.</p>
 
           {errorCode && (
             <div className="aivy-login-error" role="alert">
@@ -104,27 +143,33 @@ export function LoginPage() {
             <div style={{ padding: "18px 0" }}><IvyFallLoader size={30} /></div>
           ) : (
             <div className="aivy-auth-providers">
-              <button className="aivy-auth-btn google" onClick={handleGoogle} disabled={!!pending}>
+              <button className="aivy-auth-btn google" style={{ animationDelay: "60ms" }} onClick={handleGoogle} disabled={!!pending}>
                 <span className="shine" aria-hidden="true" />
                 <span className="icon-wrap">{pending === "google" ? <IvyFallLoader size={18} /> : <GoogleGlyph size={18} />}</span>
                 <span className="label-wrap">
                   <span>Lanjutkan dengan Google</span>
+                  <span className="sub">Cepat &amp; direkomendasikan</span>
                 </span>
+                <ChevronRight size={16} className="chevron" />
               </button>
 
               <div className="aivy-auth-divider">atau</div>
 
-              <span className="aivy-auth-alt-label">Alternatif login</span>
-              <button className="aivy-auth-btn discord" onClick={handleDiscord} disabled={!!pending}>
+              <div className="aivy-auth-alt-row">
+                <span className="aivy-auth-alt-label">Alternatif login</span>
+                <span className="aivy-auth-alt-hint"><DiscordGlyph size={12} color="#5865F2" /> Discord</span>
+              </div>
+              <button className="aivy-auth-btn discord" style={{ animationDelay: "130ms" }} onClick={handleDiscord} disabled={!!pending}>
                 <span className="icon-wrap">{pending === "discord" ? <IvyFallLoader size={18} /> : <DiscordGlyph size={18} color="#5865F2" />}</span>
                 <span className="label-wrap">
                   <span>Lanjutkan dengan Discord</span>
                 </span>
+                <ChevronRight size={16} className="chevron" />
               </button>
             </div>
           )}
 
-          <span className="aivy-login-fineprint"><LogIn size={11} style={{ verticalAlign: -1, marginRight: 4 }} />Kami hanya meminta akses nama dan foto profil — bukan pesan, kontak, atau data pribadi lainnya.</span>
+          <span className="aivy-login-fineprint"><LogIn size={13} />Kami hanya meminta akses nama dan foto profil — bukan pesan, kontak, atau data pribadi lainnya.</span>
         </div>
       </div>
     </div>
