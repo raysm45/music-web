@@ -729,16 +729,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-login-visual{ display: none; position: relative; overflow: hidden; background: linear-gradient(165deg, var(--bg-elev) 0%, var(--bg) 75%); border-right: 1px solid var(--line); padding: 48px 44px; flex-direction: column; justify-content: space-between; gap: 40px; isolation: isolate; }
 .aivy-login-visual .aivy-blob{ z-index: -1; }
 .aivy-login-visual-top{ position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 34px; }
-.aivy-login-vine{ width: 100%; max-width: 190px; height: auto; overflow: visible; align-self: center; }
-.aivy-login-vine .vine-path{ fill: none; stroke: var(--moss-strong); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 620; stroke-dashoffset: 620; animation: aivy-auth-draw 2.4s var(--ease) .15s forwards; opacity: .85; }
-.aivy-login-vine .vine-leaf{ opacity: 0; transform-origin: center; animation: aivy-auth-leaf-pop .5s var(--ease) forwards; }
-.aivy-login-vine .vine-leaf:nth-of-type(1){ animation-delay: .55s; }
-.aivy-login-vine .vine-leaf:nth-of-type(2){ animation-delay: 1.0s; }
-.aivy-login-vine .vine-leaf:nth-of-type(3){ animation-delay: 1.45s; }
-.aivy-login-vine .vine-leaf:nth-of-type(4){ animation-delay: 1.9s; }
-.aivy-login-particle{ position: absolute; color: var(--moss-strong); opacity: .5; animation: aivy-auth-float 9s ease-in-out infinite; }
-.aivy-login-particle:nth-of-type(2){ animation-duration: 12s; animation-delay: 1.2s; }
-.aivy-login-particle:nth-of-type(3){ animation-duration: 10.5s; animation-delay: 2.4s; }
 
 .aivy-login-visual-bottom{ position: relative; z-index: 1; display: flex; flex-direction: column; gap: 26px; }
 .aivy-login-visual-quote{ font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(18px, 2vw, 23px); line-height: 1.42; max-width: 32ch; color: var(--ink); }
@@ -749,9 +739,45 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-login-eq{ display: flex; align-items: flex-end; gap: 3px; height: 14px; }
 .aivy-login-eq span{ width: 3px; background: var(--moss-strong); border-radius: 1px; animation: aivy-eq 900ms ease-in-out infinite; }
 
+/* --- ivy border frame --- */
+@keyframes aivy-ivy-leaf-sway{
+  0%, 100%{ transform: rotate(-6deg); }
+  25%{ transform: rotate(4deg); }
+  50%{ transform: rotate(-2deg); }
+  75%{ transform: rotate(6deg); }
+}
+@keyframes aivy-ivy-stem-sway{
+  0%, 100%{ transform: rotate(-0.6deg); }
+  50%{ transform: rotate(0.6deg); }
+}
+.aivy-login-frame{ position: relative; width: min(410px, 100%); }
+.aivy-ivy-frame{
+  position: absolute; inset: -26px -16px -10px -16px; width: calc(100% + 32px); height: calc(100% + 36px);
+  pointer-events: none; overflow: visible; z-index: 4;
+}
+.aivy-ivy-vine-path{
+  fill: none; stroke: var(--moss-strong); stroke-width: 2.6; stroke-linecap: round;
+  stroke-dasharray: 900; stroke-dashoffset: 900; opacity: .8;
+  animation: aivy-auth-draw 1.8s var(--ease) .1s forwards;
+}
+.aivy-ivy-stem{ transform-origin: 0% 100%; animation: aivy-ivy-stem-sway 6.5s ease-in-out infinite; }
+.aivy-ivy-stem.flip{ animation-duration: 7.2s; animation-delay: -1.4s; }
+.aivy-ivy-leaf-sway{
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation-name: aivy-ivy-leaf-sway; animation-timing-function: ease-in-out; animation-iteration-count: infinite;
+}
+@media (max-width: 480px){
+  .aivy-ivy-frame{ inset: -18px -8px -6px -8px; width: calc(100% + 16px); height: calc(100% + 24px); }
+}
+@media (prefers-reduced-motion: reduce){
+  .aivy-ivy-vine-path{ animation: none; stroke-dashoffset: 0; }
+  .aivy-ivy-stem{ animation: none; }
+  .aivy-ivy-leaf-sway{ animation: none; }
+}
+
 /* --- card (right / centered) --- */
 .aivy-login-card{
-  width: min(410px, 100%); display: flex; flex-direction: column; align-items: center; text-align: center;
+  width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center;
   padding: 40px 32px 32px; border: 1px solid var(--line); border-radius: var(--radius-lg);
   background: var(--bg-elev); position: relative; overflow: hidden;
   animation: aivy-auth-card-in .55s var(--ease) both;
@@ -812,8 +838,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-auth-alt-hint{ display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--ink-faint); }
 
 .aivy-login-error{ display: flex; align-items: flex-start; gap: 9px; width: 100%; text-align: left; background: color-mix(in srgb, var(--berry) 14%, transparent); border: 1px solid color-mix(in srgb, var(--berry) 42%, transparent); color: var(--berry-strong); border-radius: var(--radius-md); padding: 12px 14px; font-size: 12.5px; line-height: 1.55; margin-bottom: 18px; }
-.aivy-login-fineprint{ display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; color: var(--ink-faint); line-height: 1.5; margin-top: 22px; text-align: left; }
-.aivy-login-fineprint svg{ flex-shrink: 0; margin-top: 2px; }
 
 @media (min-width: 900px){
   .aivy-login-shell{ grid-template-columns: 1.05fr 1fr; }

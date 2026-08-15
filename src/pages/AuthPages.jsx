@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { LogIn, Users, ShieldCheck, Music2, AlertTriangle, ChevronRight } from "lucide-react";
+import { Users, ShieldCheck, Music2, AlertTriangle, ChevronRight } from "lucide-react";
 import { LeafMark, IvyFallLoader } from "../lib/brand.jsx";
 import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
@@ -59,14 +59,56 @@ function DiscordGlyph({ size = 18, color = "currentColor" }) {
   );
 }
 
-function VineDecoration() {
+const IVY_LEAF_D = "M0,0 C-2,-5 -6,-6 -10,-9 C-15,-13 -15,-20 -10,-23 C-6,-26 -2,-22 0,-16 C2,-22 6,-26 10,-23 C15,-20 15,-13 10,-9 C6,-6 2,-5 0,0 Z";
+
+function IvyHalf({ flip = false, gradId, seedOffset = 0 }) {
+  const sx = flip ? -1 : 1;
+  const path = "M20,466 C8,428 30,392 16,354 C4,318 26,282 14,244 C3,208 24,172 13,134 C3,98 27,66 58,40 C92,15 148,6 196,10";
+  const leaves = [
+    [18, 400, -18, 0.95],
+    [12, 320, 14, 1.05],
+    [18, 240, -12, 0.9],
+    [10, 160, 16, 1.0],
+    [40, 84, -22, 1.05],
+    [110, 24, 8, 0.95],
+  ];
   return (
-    <svg className="aivy-login-vine" viewBox="0 0 160 320" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path className="vine-path" d="M20 10 C 60 40, -10 90, 40 130 S 130 190, 70 230 S 10 280, 60 310" />
-      <g className="vine-leaf"><ellipse cx="46" cy="55" rx="12" ry="7" fill="var(--moss)" transform="rotate(-30 46 55)" /></g>
-      <g className="vine-leaf"><ellipse cx="18" cy="115" rx="12" ry="7" fill="var(--moss-strong)" transform="rotate(35 18 115)" /></g>
-      <g className="vine-leaf"><ellipse cx="118" cy="185" rx="13" ry="7" fill="var(--moss)" transform="rotate(-20 118 185)" /></g>
-      <g className="vine-leaf"><ellipse cx="30" cy="270" rx="12" ry="7" fill="var(--moss-strong)" transform="rotate(25 30 270)" /></g>
+    <g transform={flip ? "translate(400,0) scale(-1,1)" : undefined} className={`aivy-ivy-stem ${flip ? "flip" : ""}`}>
+      <path className="aivy-ivy-vine-path" d={path} />
+      {leaves.map(([x, y, angle, scale], i) => (
+        <g key={i} transform={`translate(${x} ${y}) rotate(${angle}) scale(${scale})`}>
+          <g
+            className="aivy-ivy-leaf-sway"
+            style={{
+              animationDuration: `${3.4 + ((i + seedOffset) % 4) * 0.55}s`,
+              animationDelay: `-${(i * 0.63 + seedOffset * 0.31).toFixed(2)}s`,
+            }}
+          >
+            <path d={IVY_LEAF_D} fill={`url(#${gradId})`} stroke="var(--moss-ink)" strokeWidth="0.6" strokeOpacity="0.3" />
+            <path d="M0,-1 L0,-20" stroke="var(--moss-strong)" strokeWidth="0.7" strokeOpacity="0.4" strokeLinecap="round" />
+            <path d="M0,-7 L-7,-13 M0,-7 L7,-13" stroke="var(--moss-strong)" strokeWidth="0.5" strokeOpacity="0.3" strokeLinecap="round" />
+          </g>
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function IvyBorder() {
+  return (
+    <svg className="aivy-ivy-frame" viewBox="0 0 400 480" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="ivyLeafGradA" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--moss-strong)" />
+          <stop offset="100%" stopColor="var(--moss)" />
+        </linearGradient>
+        <linearGradient id="ivyLeafGradB" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="var(--moss)" />
+          <stop offset="100%" stopColor="var(--moss-strong)" />
+        </linearGradient>
+      </defs>
+      <IvyHalf flip={false} gradId="ivyLeafGradA" seedOffset={0} />
+      <IvyHalf flip={true} gradId="ivyLeafGradB" seedOffset={3} />
     </svg>
   );
 }
@@ -104,7 +146,6 @@ export function LoginPage() {
       <div className="aivy-login-visual" aria-hidden="true">
         <div className="aivy-login-visual-top">
           <div className="aivy-brand"><LeafMark size={24} color="var(--moss-strong)" /><span className="word font-display">AIVY</span></div>
-          <VineDecoration />
         </div>
         <div className="aivy-login-visual-bottom">
           <p className="aivy-login-visual-quote">{"\u201cMusik yang tumbuh perlahan bersama seleramu, bukan yang dipaksakan kepadamu.\u201d"}</p>
@@ -124,52 +165,52 @@ export function LoginPage() {
       </div>
 
       <div className="aivy-login">
-        <div className="aivy-login-card" ref={cardRef}>
-          <div className="aivy-login-card-spotlight" aria-hidden="true" />
-          <div className="aivy-login-card-glow" aria-hidden="true" />
+        <div className="aivy-login-frame">
+          <IvyBorder />
+          <div className="aivy-login-card" ref={cardRef}>
+            <div className="aivy-login-card-spotlight" aria-hidden="true" />
+            <div className="aivy-login-card-glow" aria-hidden="true" />
 
-          <div className="aivy-login-mark"><LeafMark size={26} color="var(--moss-strong)" /></div>
-          <h1 className="font-display">Masuk ke AIVY</h1>
-          <p className="aivy-login-sub">Pilih salah satu akun untuk menyimpan lagu, membuat playlist, dan mendengarkan bersama teman di ruang.</p>
+            <div className="aivy-login-mark"><LeafMark size={26} color="var(--moss-strong)" /></div>
+            <h1 className="font-display">Masuk ke AIVY</h1>
+            <p className="aivy-login-sub">Pilih salah satu akun untuk menyimpan lagu, membuat playlist, dan mendengarkan bersama teman di ruang.</p>
 
-          {errorCode && (
-            <div className="aivy-login-error" role="alert">
-              <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>{LOGIN_ERRORS[errorCode] || LOGIN_ERRORS.login_failed}</span>
-            </div>
-          )}
-
-          {!authChecked ? (
-            <div style={{ padding: "18px 0" }}><IvyFallLoader size={30} /></div>
-          ) : (
-            <div className="aivy-auth-providers">
-              <button className="aivy-auth-btn google" style={{ animationDelay: "60ms" }} onClick={handleGoogle} disabled={!!pending}>
-                <span className="shine" aria-hidden="true" />
-                <span className="icon-wrap">{pending === "google" ? <IvyFallLoader size={18} /> : <GoogleGlyph size={18} />}</span>
-                <span className="label-wrap">
-                  <span>Lanjutkan dengan Google</span>
-                  <span className="sub">Cepat &amp; direkomendasikan</span>
-                </span>
-                <ChevronRight size={16} className="chevron" />
-              </button>
-
-              <div className="aivy-auth-divider">atau</div>
-
-              <div className="aivy-auth-alt-row">
-                <span className="aivy-auth-alt-label">Alternatif login</span>
-                <span className="aivy-auth-alt-hint"><DiscordGlyph size={12} color="#5865F2" /> Discord</span>
+            {errorCode && (
+              <div className="aivy-login-error" role="alert">
+                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>{LOGIN_ERRORS[errorCode] || LOGIN_ERRORS.login_failed}</span>
               </div>
-              <button className="aivy-auth-btn discord" style={{ animationDelay: "130ms" }} onClick={handleDiscord} disabled={!!pending}>
-                <span className="icon-wrap">{pending === "discord" ? <IvyFallLoader size={18} /> : <DiscordGlyph size={18} color="#5865F2" />}</span>
-                <span className="label-wrap">
-                  <span>Lanjutkan dengan Discord</span>
-                </span>
-                <ChevronRight size={16} className="chevron" />
-              </button>
-            </div>
-          )}
+            )}
 
-          <span className="aivy-login-fineprint"><LogIn size={13} />Kami hanya meminta akses nama dan foto profil — bukan pesan, kontak, atau data pribadi lainnya.</span>
+            {!authChecked ? (
+              <div style={{ padding: "18px 0" }}><IvyFallLoader size={30} /></div>
+            ) : (
+              <div className="aivy-auth-providers">
+                <button className="aivy-auth-btn google" style={{ animationDelay: "60ms" }} onClick={handleGoogle} disabled={!!pending}>
+                  <span className="shine" aria-hidden="true" />
+                  <span className="icon-wrap">{pending === "google" ? <IvyFallLoader size={18} /> : <GoogleGlyph size={18} />}</span>
+                  <span className="label-wrap">
+                    <span>Lanjutkan dengan Google</span>
+                  </span>
+                  <ChevronRight size={16} className="chevron" />
+                </button>
+
+                <div className="aivy-auth-divider">atau</div>
+
+                <div className="aivy-auth-alt-row">
+                  <span className="aivy-auth-alt-label">Alternatif login</span>
+                  <span className="aivy-auth-alt-hint"><DiscordGlyph size={12} color="#5865F2" /> Discord</span>
+                </div>
+                <button className="aivy-auth-btn discord" style={{ animationDelay: "130ms" }} onClick={handleDiscord} disabled={!!pending}>
+                  <span className="icon-wrap">{pending === "discord" ? <IvyFallLoader size={18} /> : <DiscordGlyph size={18} color="#5865F2" />}</span>
+                  <span className="label-wrap">
+                    <span>Lanjutkan dengan Discord</span>
+                  </span>
+                  <ChevronRight size={16} className="chevron" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
