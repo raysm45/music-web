@@ -51,6 +51,7 @@ export const Api = {
   me: () => apiGet("/auth/me"),
   logout: () => apiSend("/auth/logout", "POST"),
   discordLoginUrl: () => `${API_BASE}/auth/discord`,
+  googleLoginUrl: () => `${API_BASE}/auth/google`,
 
   likes: () => apiGet("/api/me/likes"),
   like: (videoId, meta) => apiSend(`/api/me/likes/${encodeURIComponent(videoId)}`, "POST", meta),

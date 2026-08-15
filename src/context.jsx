@@ -125,6 +125,7 @@ export function UIProvider({ children }) {
   }, []);
 
   const login = useCallback(() => { window.location.href = Api.discordLoginUrl(); }, []);
+  const loginGoogle = useCallback(() => { window.location.href = Api.googleLoginUrl(); }, []);
   const loggingOutRef = useRef(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const logout = useCallback(async () => {
@@ -200,7 +201,7 @@ export function UIProvider({ children }) {
   const [rightPanelPeek, setRightPanelPeek] = useState(false);
 
   const value = {
-    authUser, authChecked, login, logout, loggingOut,
+    authUser, authChecked, login, loginGoogle, logout, loggingOut,
     settings, updateSettings, resetSettings,
     theme, toggleTheme, t,
     toasts, pushToast,
