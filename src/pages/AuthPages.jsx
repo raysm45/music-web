@@ -58,14 +58,9 @@ function DiscordGlyph({ size = 18, color = "currentColor" }) {
     </svg>
   );
 }
-
-/* Realistic-ish trefoil ivy leaf: base at (0,0), tip pointing up (-y). */
 const IVY_LEAF_D = "M0,0 C-2,-5 -6,-6 -10,-9 C-15,-13 -15,-20 -10,-23 C-6,-26 -2,-22 0,-16 C2,-22 6,-26 10,-23 C15,-20 15,-13 10,-9 C6,-6 2,-5 0,0 Z";
-
-/* One vine "half" (bottom edge -> hugging the side up to the top corner), with leaves attached. Mirrored via `flip`. */
 function IvyHalf({ flip = false, gradId, seedOffset = 0 }) {
   const path = "M14,466 C4,430 24,394 12,358 C2,322 22,286 12,250 C3,214 21,178 11,142 C3,106 19,70 11,34 C5,14 16,4 30,2";
-  // leaves: [x, y, angle, scale]
   const leaves = [
     [18, 432, -16, 0.95],
     [8, 378, 15, 1.0],
@@ -76,8 +71,8 @@ function IvyHalf({ flip = false, gradId, seedOffset = 0 }) {
     [16, 92, -18, 0.95],
     [10, 38, 12, 0.85],
   ];
-  return (
-    <g transform={flip ? "translate(400,0) scale(-1,1)" : undefined} className={`aivy-ivy-stem ${flip ? "flip" : ""}`}>
+  const stem = (
+    <g className={`aivy-ivy-stem ${flip ? "flip" : ""}`}>
       <path className="aivy-ivy-vine-path" d={path} />
       {leaves.map(([x, y, angle, scale], i) => (
         <g key={i} transform={`translate(${x} ${y}) rotate(${angle}) scale(${scale})`}>
@@ -96,6 +91,7 @@ function IvyHalf({ flip = false, gradId, seedOffset = 0 }) {
       ))}
     </g>
   );
+  return flip ? <g transform="translate(400,0) scale(-1,1)">{stem}</g> : stem;
 }
 
 function IvyBorder() {
@@ -195,7 +191,6 @@ export function LoginPage() {
                   <span className="icon-wrap">{pending === "google" ? <IvyFallLoader size={18} /> : <GoogleGlyph size={18} />}</span>
                   <span className="label-wrap">
                     <span>Lanjutkan dengan Google</span>
-                    <span className="sub">Cepat &amp; direkomendasikan</span>
                   </span>
                   <ChevronRight size={16} className="chevron" />
                 </button>
