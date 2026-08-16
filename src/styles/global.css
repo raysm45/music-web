@@ -94,8 +94,8 @@ svg{ display: block; }
 .aivy-shell{
   height: 100dvh; width: 100%; display: grid;
   grid-template-columns: var(--sidebar-w) 1fr var(--rightpanel-w);
-  grid-template-rows: 1fr var(--player-h);
-  grid-template-areas: "side main right" "side player right";
+  grid-template-rows: 1fr;
+  grid-template-areas: "side main right";
   transition: grid-template-columns var(--dur-slow) var(--ease);
 }
 /* Hover-peek on the collapsed right panel: its own, slower timing so the
@@ -108,6 +108,7 @@ svg{ display: block; }
 .aivy-shell.is-mobile{ grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: "main"; }
 /* while dragging a resize handle, kill the transition so the panel tracks the cursor 1:1 */
 body.aivy-resizing .aivy-shell{ transition: none; }
+body.aivy-resizing .aivy-player{ transition: none; }
 body.aivy-resizing{ cursor: col-resize; }
 body.aivy-resizing *{ user-select: none !important; }
 
@@ -265,11 +266,14 @@ body.aivy-resizing *{ user-select: none !important; }
 @keyframes aivy-eq{ 0%,100%{ height: 3px; } 50%{ height: 12px; } }
 
 .aivy-player{
-  grid-area: player;
-  margin: 14px auto;
+  position: fixed;
+  left: var(--sidebar-w);
+  right: var(--rightpanel-w);
+  bottom: 14px;
+  margin: 0 auto;
   width: min(92%, 860px);
   padding: 0 18px;
-  height: calc(var(--player-h) - 28px);
+  height: 80px;
   border-radius: var(--radius-lg);
   display: flex; align-items: center; gap: 16px; min-width: 0;
   background: color-mix(in srgb, var(--bg-elev) 62%, transparent);
@@ -280,9 +284,12 @@ body.aivy-resizing *{ user-select: none !important; }
   -webkit-backdrop-filter: blur(22px) saturate(160%);
   border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
   box-shadow: 0 16px 40px -12px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.18), inset 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent);
-  /* isolasi layer sendiri biar browser ga perlu repaint elemen lain saat player berubah */
+  /* isolasi layer sendiri biar browser ga perlu repaint elemen lain saat player berubah;
+     left/right ngikutin lebar sidebar & rightpanel yang lagi aktif (termasuk saat resize/collapse) */
   will-change: transform;
   transform: translateZ(0);
+  z-index: 40;
+  transition: left var(--dur-slow) var(--ease), right var(--dur-slow) var(--ease);
 }
 .aivy-player .now{ display: flex; align-items: center; gap: 12px; min-width: 0; width: min(28%, 300px); }
 .aivy-player .now .meta{ min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -574,7 +581,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-playlist-pick{ display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; margin-bottom: 10px; }
 .aivy-playlist-pick button{ display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-sm); text-align: left; font-size: 13.5px; }
 .aivy-playlist-pick button:hover{ background: var(--bg-elev-2); }
-.aivy-toast-host{ position: fixed; left: 50%; bottom: calc(var(--player-h) + 22px); transform: translateX(-50%); z-index: 80; display: flex; flex-direction: column-reverse; gap: 8px; align-items: center; pointer-events: none; }
+.aivy-toast-host{ position: fixed; left: 50%; bottom: calc(80px + 14px + 22px); transform: translateX(-50%); z-index: 80; display: flex; flex-direction: column-reverse; gap: 8px; align-items: center; pointer-events: none; }
 .aivy-toast-host.is-mobile{ bottom: calc(var(--tabbar-h) + var(--player-h-mobile) + var(--safe-b) + 18px); }
 .aivy-toast{ background: var(--ink); color: var(--bg); font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: var(--radius-pill); animation: aivy-toast-in var(--dur-base) var(--ease) forwards; white-space: nowrap; box-shadow: var(--shadow-pop); }
 
@@ -1002,7 +1009,7 @@ body.aivy-resizing *{ user-select: none !important; }
 :root[data-contrast="high"]:not([data-theme="dark"]){ --ink: #000000; --ink-faint: #262b26; --bg: #ffffff; }
 :root[data-contrast="high"] .aivy-row.is-current{ outline: 1px solid var(--moss-strong); }
 
-@media (max-width: 1240px){ :root{ --rightpanel-w: 0px; } .aivy-shell{ grid-template-columns: var(--sidebar-w) 1fr; grid-template-areas: "side main" "side player"; } .aivy-rightpanel{ display: none; } }
+@media (max-width: 1240px){ :root{ --rightpanel-w: 0px; } .aivy-shell{ grid-template-columns: var(--sidebar-w) 1fr; grid-template-areas: "side main"; } .aivy-rightpanel{ display: none; } }
 @media (max-width: 1080px){ :root{ --sidebar-w: 208px; } .aivy-grid{ grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); } }
 
 .aivy-ivyloader{ position: relative; display: inline-block; }
