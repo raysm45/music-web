@@ -95,7 +95,7 @@ svg{ display: block; }
   height: 100dvh; width: 100%; display: grid;
   grid-template-columns: var(--sidebar-w) 1fr var(--rightpanel-w);
   grid-template-rows: 1fr var(--player-h);
-  grid-template-areas: "side main right" "player player player";
+  grid-template-areas: "side main right" "side player right";
   transition: grid-template-columns var(--dur-slow) var(--ease);
 }
 /* Hover-peek on the collapsed right panel: its own, slower timing so the
@@ -267,7 +267,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-player{
   grid-area: player;
   margin: 14px auto;
-  width: min(94%, 720px);
+  width: min(92%, 860px);
   padding: 0 18px;
   height: calc(var(--player-h) - 28px);
   border-radius: var(--radius-lg);
@@ -1002,7 +1002,7 @@ body.aivy-resizing *{ user-select: none !important; }
 :root[data-contrast="high"]:not([data-theme="dark"]){ --ink: #000000; --ink-faint: #262b26; --bg: #ffffff; }
 :root[data-contrast="high"] .aivy-row.is-current{ outline: 1px solid var(--moss-strong); }
 
-@media (max-width: 1240px){ :root{ --rightpanel-w: 0px; } .aivy-shell{ grid-template-columns: var(--sidebar-w) 1fr; grid-template-areas: "side main" "player player"; } .aivy-rightpanel{ display: none; } }
+@media (max-width: 1240px){ :root{ --rightpanel-w: 0px; } .aivy-shell{ grid-template-columns: var(--sidebar-w) 1fr; grid-template-areas: "side main" "side player"; } .aivy-rightpanel{ display: none; } }
 @media (max-width: 1080px){ :root{ --sidebar-w: 208px; } .aivy-grid{ grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); } }
 
 .aivy-ivyloader{ position: relative; display: inline-block; }
