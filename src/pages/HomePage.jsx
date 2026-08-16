@@ -14,13 +14,13 @@ function greetingKeys() {
   return ["greetNightTitle", "greetNightSub"];
 }
 
-function useDiscoverRow(seed, limit = 14) {
+function useDiscoverRow(seed, limit = 12, type = null) {
   const [items, setItems] = useState(null);
   useEffect(() => {
     let alive = true;
-    Api.discover(seed, 0, limit).then((res) => { if (alive) setItems(res.items || []); }).catch(() => { if (alive) setItems([]); });
+    Api.discover(seed, 0, limit, type).then((res) => { if (alive) setItems(res.items || []); }).catch(() => { if (alive) setItems([]); });
     return () => { alive = false; };
-  }, [seed, limit]);
+  }, [seed, limit, type]);
   return items;
 }
 
@@ -39,18 +39,35 @@ function Row({ title, items, render }) {
   );
 }
 
+function mapHistoryRow(row) {
+  return {
+    id: row.video_id, videoId: row.video_id, title: row.title,
+    artist: row.artist_name ? { name: row.artist_name } : null,
+    cover: row.thumbnail || null, duration: row.duration || null,
+  };
+}
+
 export function HomePage() {
-  const { t, settings } = useUI();
+  const { t, settings, authUser } = useUI();
   const [greetKey1, greetKey2] = useMemo(greetingKeys, []);
-  const { liked, history: playedHistory } = usePlayer();
+  const { liked, history: sessionHistory } = usePlayer();
+  const [savedHistory, setSavedHistory] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    if (!authUser) { setSavedHistory([]); return; }
+    Api.history(12)
+      .then((rows) => { if (alive) setSavedHistory((rows || []).map(mapHistoryRow)); })
+      .catch(() => { if (alive) setSavedHistory([]); });
+    return () => { alive = false; };
+  }, [authUser]);
+  const playedHistory = authUser ? savedHistory : sessionHistory;
 
-  const trending = useDiscoverRow("trending-" + new Date().toDateString());
-  const fresh = useDiscoverRow("fresh-" + Math.floor(Date.now() / 3600000));
-  const moodCalm = useDiscoverRow("mood-santai");
-
-  const trendingTracks = useMemo(() => filterExplicit((trending || []).filter((i) => i.type === "track"), settings).slice(0, 12), [trending, settings]);
-  const freshAlbums = useMemo(() => (fresh || []).filter((i) => i.type === "album").slice(0, 12), [fresh]);
-  const artists = useMemo(() => (moodCalm || []).filter((i) => i.type === "artist").slice(0, 12), [moodCalm]);
+  const trending = useDiscoverRow("trending-" + new Date().toDateString(), 12, "track");
+  const fresh = useDiscoverRow("fresh-" + Math.floor(Date.now() / 3600000), 12, "album");
+  const moodCalm = useDiscoverRow("mood-santai", 12, "artist");
+  const trendingTracks = useMemo(() => filterExplicit(trending || [], settings).slice(0, 12), [trending, settings]);
+  const freshAlbums = useMemo(() => (fresh || []).slice(0, 12), [fresh]);
+  const artists = useMemo(() => (moodCalm || []).slice(0, 12), [moodCalm]);
 
   const [similarItems, setSimilarItems] = useState(null);
   useEffect(() => {
@@ -103,9 +120,9 @@ export function HomePage() {
     <div className="aivy-view-enter">
       <div className="aivy-greet"><h1 className="font-display">{t(greetKey1)}</h1><p>{t(greetKey2)}</p></div>
 
-      {playedHistory.length > 0 && (
-        <Row title={t("rowContinueListening")} items={playedHistory.slice(0, 12)} render={(tr) => <CardTrack key={tr.id} track={tr} list={playedHistory} />} />
-      )}
+      {playedHistory === null || playedHistory.length > 0 ? (
+        <Row title={t("rowContinueListening")} items={playedHistory === null ? null : playedHistory.slice(0, 12)} render={(tr) => <CardTrack key={tr.id} track={tr} list={playedHistory} />} />
+      ) : null}
       <Row title={t("rowTrending")} items={trending === null ? null : trendingTracks} render={(tr) => <CardTrack key={tr.id} track={tr} list={trendingTracks} />} />
       {similarItems && similarItems.length > 0 && (
         <Row title={t("rowBecauseYouLiked")} items={similarItems} render={(tr) => <CardTrack key={tr.id} track={tr} list={similarItems} />} />

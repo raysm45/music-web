@@ -27,8 +27,8 @@ async function apiSend(path, method, body) {
 }
 
 export const Api = {
-  discover: (seed, cursor, limit) =>
-    apiGet(`/api/discover?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 20}`),
+  discover: (seed, cursor, limit, type) =>
+    apiGet(`/api/discover?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 20}${type ? `&type=${encodeURIComponent(type)}` : ""}`),
   search: (q) => apiGet(`/api/search?q=${encodeURIComponent(q)}`),
   artist: (q) => apiGet(`/api/artist?q=${encodeURIComponent(q)}`),
   artistQuick: (q) => apiGet(`/api/artist/quick?q=${encodeURIComponent(q)}`),
