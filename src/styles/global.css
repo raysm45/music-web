@@ -266,7 +266,8 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-player{
   grid-area: player;
-  margin: 14px 14px 14px;
+  margin: 14px auto;
+  width: min(94%, 720px);
   padding: 0 18px;
   height: calc(var(--player-h) - 28px);
   border-radius: var(--radius-lg);
