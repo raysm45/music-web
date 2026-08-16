@@ -72,6 +72,7 @@ export const Api = {
   playlists: () => apiGet("/api/playlists"),
   createPlaylist: (body) => apiSend("/api/playlists", "POST", body),
   playlist: (id) => apiGet(`/api/playlists/${id}`),
+  updatePlaylist: (id, body) => apiSend(`/api/playlists/${id}`, "PATCH", body),
   addSong: (id, videoId, meta) => apiSend(`/api/playlists/${id}/songs`, "POST", { videoId, ...meta }),
   removeSong: (id, videoId) => apiSend(`/api/playlists/${id}/songs/${encodeURIComponent(videoId)}`, "DELETE"),
   deletePlaylist: (id) => apiSend(`/api/playlists/${id}`, "DELETE"),

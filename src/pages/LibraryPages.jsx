@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle } from "lucide-react";
+import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle, ImagePlus, X, RotateCcw } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
 import { TrackRow, ViewNotFound, ConfirmDialog, CustomSelect } from "../components.jsx";
@@ -25,7 +25,7 @@ export function LibraryPage() {
           <div className="title">{t("navLikedSongs")}</div><div className="sub">{liked.size} {t("songsCount")}</div>
         </Link>
         {playlists.map((pl) => {
-          const cover = pl.songs?.[0]?.cover ?? pl.cover_thumbnail ?? null;
+          const cover = pl.cover_thumbnail ?? pl.songs?.[0]?.cover ?? null;
           const count = pl.songs ? pl.songs.length : (pl.song_count ?? 0);
           return (
             <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-card" style={{ textAlign: "left" }}>
@@ -95,12 +95,76 @@ export function LikedPage() {
   );
 }
 
+function PlaylistCoverModal({ pl, onClose }) {
+  const { setPlaylistCover } = usePlayer();
+  const { t } = useUI();
+
+  // unique thumbnails available across the playlist's songs
+  const options = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const s of pl.songs || []) {
+      if (!s.cover || seen.has(s.cover)) continue;
+      seen.add(s.cover);
+      out.push(s);
+    }
+    return out;
+  }, [pl.songs]);
+
+  const currentCover = pl.cover_thumbnail ?? null;
+
+  const handlePick = (song) => {
+    setPlaylistCover(pl.id, song.cover, song.videoId || song.id);
+    onClose();
+  };
+
+  const handleReset = () => {
+    setPlaylistCover(pl.id, null, null);
+    onClose();
+  };
+
+  return (
+    <div className="aivy-modal-backdrop" onClick={onClose}>
+      <div className="aivy-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="aivy-modal-head">
+          <div className="aivy-modal-title">{t("changeCoverTitle")}</div>
+          <button className="aivy-icon-btn sm" onClick={onClose} aria-label={t("close")}><X size={17} /></button>
+        </div>
+        <p className="aivy-bio" style={{ padding: 0, marginBottom: 14, fontSize: 13 }}>{t("changeCoverSub")}</p>
+        {options.length > 0 ? (
+          <div className="aivy-cover-pick-grid">
+            {options.map((s) => (
+              <button
+                key={s.id}
+                className={`aivy-cover-pick-item ${currentCover === s.cover ? "active" : ""}`}
+                onClick={() => handlePick(s)}
+                title={s.title}
+              >
+                <SmartCover src={s.cover} seed={"cov" + s.id} size={110} radius={8} style={{ width: "100%", aspectRatio: "1 / 1" }} />
+                {currentCover === s.cover && <span className="check"><Check size={14} /></span>}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="eyebrow" style={{ padding: "8px 2px" }}>{t("changeCoverEmpty")}</div>
+        )}
+        {currentCover && (
+          <button className="aivy-btn-ghost" style={{ width: "100%", marginTop: 14 }} onClick={handleReset}>
+            <RotateCcw size={14} /> {t("useDefaultCover")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PlaylistPage() {
   const { params } = useRouter();
   const { playlists, playList, removeFromPlaylist, deletePlaylist, setPlaylistDetail } = usePlayer();
   const { navigate } = useRouter();
   const { t } = useUI();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [coverPickerOpen, setCoverPickerOpen] = React.useState(false);
   const pl = playlists.find((p) => String(p.id) === String(params.id));
 
   React.useEffect(() => {
@@ -113,20 +177,32 @@ export function PlaylistPage() {
   }, [params.id]);
 
   if (!pl) return <ViewNotFound label={t("playlistLabel")} />;
+  const cover = pl.cover_thumbnail ?? pl.songs?.[0]?.cover ?? null;
   return (
-    <div className="aivy-view-enter">
-      <div className="aivy-hero">
-        <div className="art">
-          {pl.songs?.[0]?.cover ? <SmartCover src={pl.songs[0].cover} seed={"pl" + pl.id} size={176} radius={16} style={{ width: 176, height: 176 }} /> : (
+    <div className="aivy-view-enter aivy-playlist-page">
+      {cover && (
+        <div className="aivy-playlist-banner">
+          <SmartCover src={cover} seed={"banner-pl" + pl.id} size={800} radius={0} style={{ width: "100%", height: "100%" }} />
+          <div className="aivy-playlist-banner-fade" />
+        </div>
+      )}
+      <div className={`aivy-hero ${cover ? "aivy-playlist-hero" : ""}`}>
+        <div className="art" style={{ position: "relative" }}>
+          {cover ? <SmartCover src={cover} seed={"pl" + pl.id} size={176} radius={16} style={{ width: 176, height: 176 }} /> : (
             <div style={{ width: 176, height: 176, borderRadius: "var(--radius-lg)", background: "var(--bg-elev-2)", display: "flex", alignItems: "center", justifyContent: "center" }}><LibraryIcon size={40} color="var(--ink-faint)" /></div>
           )}
+          <button className="aivy-cover-edit-btn" onClick={() => setCoverPickerOpen(true)} aria-label={t("changeCoverBtn")} title={t("changeCoverBtn")}>
+            <ImagePlus size={16} />
+          </button>
         </div>
         <div className="aivy-hero-meta"><div className="eyebrow">{t("playlistLabel")}</div><h1 className="font-display">{pl.name}</h1><div className="stats"><span>{pl.songs?.length || 0} {t("songsCount")}</span></div></div>
       </div>
       <div className="aivy-hero-actions">
         {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
+        <button className="aivy-btn-ghost" onClick={() => setCoverPickerOpen(true)}><ImagePlus size={15} /> {t("changeCoverBtn")}</button>
         <button className="aivy-btn-ghost" onClick={() => setConfirmDelete(true)}>{t("deletePlaylistBtn")}</button>
       </div>
+      {coverPickerOpen && <PlaylistCoverModal pl={pl} onClose={() => setCoverPickerOpen(false)} />}
       <ConfirmDialog
         open={confirmDelete}
         title={`${t("deletePlaylistConfirmTitle")} "${pl.name}"?`}

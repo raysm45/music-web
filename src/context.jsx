@@ -920,6 +920,19 @@ export function PlayerProvider({ children }) {
     try { await Api.deletePlaylist(playlistId); pushToast(t("toastPlaylistDeleted")); } catch { pushToast(t("toastPlaylistDeleteFailed")); }
   }, [pushToast, t]);
 
+  const setPlaylistCover = useCallback(async (playlistId, thumbnailUrl, videoId = null) => {
+    const prev = playlists.find((p) => String(p.id) === String(playlistId));
+    const prevCover = prev?.cover_thumbnail;
+    setPlaylists((list) => list.map((pl) => (String(pl.id) === String(playlistId) ? { ...pl, cover_thumbnail: thumbnailUrl } : pl)));
+    try {
+      await Api.updatePlaylist(playlistId, { coverThumbnail: thumbnailUrl, coverVideoId: videoId });
+      pushToast(t("coverUpdatedToast"));
+    } catch {
+      setPlaylists((list) => list.map((pl) => (String(pl.id) === String(playlistId) ? { ...pl, cover_thumbnail: prevCover } : pl)));
+      pushToast(t("coverUpdateFailedToast"));
+    }
+  }, [playlists, pushToast, t]);
+
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const authUserRef = useRef(authUser);
@@ -1032,7 +1045,7 @@ export function PlayerProvider({ children }) {
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
     removeFromQueue, moveQueueItem, clearUpNext, selectQueuePosition,
-    playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, refreshPlaylists,
+    playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, setPlaylistCover, refreshPlaylists,
     registerProgressEl,
     suggestedQueue, promoteSuggestion,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
