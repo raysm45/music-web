@@ -1097,11 +1097,12 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 :root[data-theme="light"] .aivy-lyrics-scrim{
   background:
-    radial-gradient(38% 30% at 12% 10%, rgba(20,21,15,.10) 0%, transparent 68%),
-    radial-gradient(46% 38% at 88% 6%, rgba(20,21,15,.07) 0%, transparent 70%),
-    radial-gradient(50% 44% at 90% 88%, rgba(20,21,15,.11) 0%, transparent 68%),
-    radial-gradient(34% 28% at 8% 92%, rgba(20,21,15,.08) 0%, transparent 65%),
-    radial-gradient(60% 50% at 50% 50%, rgba(20,21,15,.03) 0%, transparent 72%),
+    radial-gradient(42% 34% at 10% 8%, rgba(15,16,10,.28) 0%, rgba(15,16,10,.10) 42%, transparent 72%),
+    radial-gradient(50% 40% at 92% 4%, rgba(15,16,10,.20) 0%, rgba(15,16,10,.07) 45%, transparent 74%),
+    radial-gradient(58% 48% at 95% 92%, rgba(15,16,10,.26) 0%, rgba(15,16,10,.09) 44%, transparent 74%),
+    radial-gradient(40% 34% at 4% 96%, rgba(15,16,10,.22) 0%, rgba(15,16,10,.08) 42%, transparent 72%),
+    radial-gradient(34% 28% at 55% 30%, rgba(15,16,10,.10) 0%, transparent 70%),
+    radial-gradient(30% 24% at 30% 70%, rgba(15,16,10,.09) 0%, transparent 68%),
     #fff;
 }
 :root[data-theme="light"] .aivy-lyrics-fbtn{ background: rgba(0,0,0,.06); }
