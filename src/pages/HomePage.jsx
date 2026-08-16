@@ -24,7 +24,32 @@ function useDiscoverRow(seed, limit = 12, type = null) {
   return items;
 }
 
+function useFullCardsWidth() {
+  const ref = useRef(null);
+  const [width, setWidth] = useState("100%");
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const compute = () => {
+      const items = el.children;
+      if (items.length < 2) { setWidth("100%"); return; }
+      const first = items[0].getBoundingClientRect();
+      const second = items[1].getBoundingClientRect();
+      const step = second.left - first.left;
+      if (!step || step <= 0) { setWidth("100%"); return; }
+      const remainder = el.clientWidth % step;
+      setWidth(remainder > 2 ? `calc(100% - ${remainder}px)` : "100%");
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width];
+}
+
 function Row({ title, items, render }) {
+  const [rowRef, rowWidth] = useFullCardsWidth();
   if (items === null) return (
     <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{title}</h2></div>
       <div className="aivy-hrow"><IvyFallLoader size={26} /></div>
@@ -34,7 +59,7 @@ function Row({ title, items, render }) {
   return (
     <section className="aivy-section">
       <div className="aivy-section-head"><h2 className="aivy-section-title">{title}</h2></div>
-      <div className="aivy-hrow aivy-scroll">{items.map(render)}</div>
+      <div className="aivy-hrow aivy-scroll" ref={rowRef} style={{ width: rowWidth }}>{items.map(render)}</div>
     </section>
   );
 }

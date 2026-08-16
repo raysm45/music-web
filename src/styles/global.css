@@ -179,7 +179,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-navbtn:hover{ color: var(--ink); }
 .aivy-topbar-title{ font-size: 14px; font-weight: 600; color: var(--ink-dim); }
 .aivy-topbar-spacer{ flex: 1; }
-.aivy-content{ flex: 1; min-height: 0; overflow-y: auto; padding: 6px 14px 40px 28px; }
+.aivy-content{ flex: 1; min-height: 0; overflow-y: auto; padding: 6px 20px 40px 28px; }
 .aivy-content.is-mobile{ padding: 6px 16px 24px; }
 .aivy-content.no-pad{ padding: 0; overflow: hidden; }
 
@@ -329,7 +329,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-vol.is-bumping .track{ background: var(--bg-elev-2); }
 .aivy-vol.is-bumping .fill{ background: var(--moss-strong); }
 
-.aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
+.aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: none; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
 
 /* Collapsed right panel: a slim rail, not fully hidden. Idle it shows a
    right-pointing arrow in the middle (closed / "pull this way to open"), no
