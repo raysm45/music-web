@@ -267,11 +267,9 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-player{
   position: fixed;
-  left: var(--sidebar-w);
-  right: var(--rightpanel-w);
+  left: calc(var(--sidebar-w) + 12px);
+  right: calc(var(--rightpanel-w) + 12px);
   bottom: 14px;
-  margin: 0 auto;
-  width: min(92%, 860px);
   padding: 0 18px;
   height: 80px;
   border-radius: var(--radius-lg);
