@@ -6,7 +6,8 @@ const TASKS = [
   { icon: Music4, label: "Memperbaiki sistem player" },
   { icon: RadioTower, label: "Menulis ulang kode Listening Room" },
   { icon: LayoutGrid, label: "Mengoptimalkan tampilan UI" },
-  { icon: Wrench, label: "Membereskan bug-bug lainnya" },
+  { icon: Wrench, label: "fix bug lainnya" },
+  { icon: Wrench, label: "menambah banyak fitur baru" },
 ];
 
 function useFakeProgress() {
@@ -25,7 +26,7 @@ function useFakeProgress() {
 }
 
 export function MaintenancePage() {
-  const pct = useFakeProgress();
+  const pct = 25;
 
   useEffect(() => {
     const prevTitle = document.title;
@@ -68,7 +69,7 @@ export function MaintenancePage() {
         </ul>
 
         <p className="aivy-maint-footer">
-          Terima kasih atas sudah sabar.
+          Berikan Saran Untuk Aivy.
         </p>
       </div>
     </div>
