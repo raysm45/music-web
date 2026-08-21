@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { MaintenancePage } from "./pages/MaintenancePage.jsx";
 import { RouterProvider, useRouter } from "./router.jsx";
 import {
   UIProvider, PlayerProvider, useUI, usePlayer,
@@ -99,7 +100,15 @@ function AppInner() {
   );
 }
 
+// Set ke `false` untuk mengembalikan aplikasi ke tampilan normal.
+const MAINTENANCE_MODE = true;
+
 export default function App() {
+  if (MAINTENANCE_MODE) {
+    // Semua route (apa pun path-nya) akan menampilkan halaman under-maintenance.
+    return <MaintenancePage />;
+  }
+
   return (
     <ErrorBoundary>
       <RouterProvider>
