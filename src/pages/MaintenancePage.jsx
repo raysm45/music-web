@@ -26,7 +26,7 @@ function useFakeProgress() {
 }
 
 export function MaintenancePage() {
-  const pct = 25;
+  const pct = 12;
 
   useEffect(() => {
     const prevTitle = document.title;
