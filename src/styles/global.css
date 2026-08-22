@@ -100,15 +100,10 @@ svg{ display: block; }
   grid-template-areas: "side main right";
   transition: grid-template-columns var(--dur-slow) var(--ease);
 }
-/* Hover-peek on the collapsed right panel: its own, slower timing so the
-   reveal doesn't feel rushed — separate from --dur-slow, which also drives
-   unrelated transitions (sheets, view-enter, click-to-collapse) that should
-   stay at their normal speed. */
 .aivy-shell.is-rightpanel-peeking{
   transition: grid-template-columns 620ms var(--ease);
 }
 .aivy-shell.is-mobile{ grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: "main"; }
-/* while dragging a resize handle, kill the transition so the panel tracks the cursor 1:1 */
 body.aivy-resizing .aivy-shell{ transition: none; }
 body.aivy-resizing .aivy-player{ transition: none; }
 body.aivy-resizing{ cursor: col-resize; }
@@ -116,7 +111,6 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-sidebar{ grid-area: side; background: var(--bg-elev); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 20px 14px 14px; position: relative; overflow: hidden; }
 
-/* Drag handle for resizing the sidebar / right panel */
 .aivy-resize-handle{ position: absolute; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 26; display: flex; align-items: center; justify-content: center; touch-action: none; }
 .aivy-resize-handle.right{ right: -5px; }
 .aivy-resize-handle.left{ left: -5px; }
@@ -125,16 +119,13 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-resize-grip{ opacity: 0; color: var(--ink-faint); background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-pill); width: 16px; height: 26px; display: flex; align-items: center; justify-content: center; transition: opacity var(--dur-fast) var(--ease); pointer-events: none; }
 .aivy-resize-handle:hover .aivy-resize-grip, .aivy-resize-handle.active .aivy-resize-grip{ opacity: 1; }
 
-/* Plain sidebar/panel toggle icon — no arrow, no circle badge, just the icon itself */
 .aivy-panel-icon-btn{ width: 26px; height: 26px; border-radius: var(--radius-sm); background: transparent; border: none; color: var(--ink-dim); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
 .aivy-panel-icon-btn:hover{ background: var(--bg-elev-2); color: var(--ink); }
-/* Top-left header row: toggle icon sits directly beside the brand text, same row, same baseline */
 .aivy-sidebar-topline{ display: flex; align-items: center; gap: 0; padding: 4px 8px 22px 6px; }
 .aivy-sidebar-topline .aivy-brand{ padding: 0; }
 .aivy-sidebar-topline .aivy-panel-icon-btn{ width: 0; min-width: 0; opacity: 0; margin-right: 0; overflow: hidden; pointer-events: none; transition: width var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease), margin-right var(--dur-fast) var(--ease); }
 .aivy-sidebar:hover .aivy-sidebar-topline .aivy-panel-icon-btn{ width: 26px; opacity: 1; margin-right: 6px; pointer-events: auto; }
 
-/* Collapsed left sidebar: a slim icon-only rail instead of hiding everything */
 .aivy-sidebar-rail{ align-items: center; padding: 16px 10px 14px; gap: 4px; }
 .aivy-sidebar-rail .aivy-rail-toggle{ margin-bottom: 14px; }
 .aivy-nav-rail{ width: 100%; align-items: center; gap: 4px; }
@@ -277,15 +268,10 @@ body.aivy-resizing *{ user-select: none !important; }
   border-radius: var(--radius-lg);
   display: flex; align-items: center; gap: 16px; min-width: 0;
   background: color-mix(in srgb, var(--bg-elev) 62%, transparent);
-  /* backdrop-filter di-set sekali & statis (bukan yang dianimasikan tiap frame),
-     jadi tetap smooth — GPU compositing-nya cuma dihitung ulang saat konten di
-     belakangnya berubah, bukan tiap re-render player. */
   backdrop-filter: blur(22px) saturate(160%);
   -webkit-backdrop-filter: blur(22px) saturate(160%);
   border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
   box-shadow: 0 16px 40px -12px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.18), inset 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent);
-  /* isolasi layer sendiri biar browser ga perlu repaint elemen lain saat player berubah;
-     left/right ngikutin lebar sidebar & rightpanel yang lagi aktif (termasuk saat resize/collapse) */
   will-change: transform;
   transform: translateZ(0);
   z-index: 40;
@@ -330,13 +316,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-vol.is-bumping .fill{ background: var(--moss-strong); }
 
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: none; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
-
-/* Collapsed right panel: a slim rail, not fully hidden. Idle it shows a
-   right-pointing arrow in the middle (closed / "pull this way to open"), no
-   cover thumbnail. Hovering the rail pushes the MAIN content column over a
-   little (grid track width driven by rightPanelPeek state in App.jsx) instead
-   of floating a layer on top — that extra room is what reveals a natural-width,
-   semi-transparent sliver of the real panel UI. The arrow flips to point left. */
 .aivy-rightpanel-rail{
   width: 100%; height: 100%; min-width: 0; overflow: hidden;
   display: flex; flex-direction: row; align-items: stretch; position: relative;
@@ -347,17 +326,9 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-rightpanel-rail:hover, .aivy-rightpanel-rail:focus-visible{
   background: color-mix(in srgb, var(--bg-elev) 96%, transparent);
 }
-
-/* fills the whole rail — extra room the grid track gives up on hover/focus is
-   0 width idle, so nothing shows until the column has actually grown. The
-   arrow overlay (below) sits on top of this, not beside it. */
 .aivy-rightpanel-rail-peek-wrap{
   flex: 1 1 auto; min-width: 0; overflow: hidden;
 }
-
-/* the real panel content — natural width, not squished, just clipped by the
-   wrapper above. Left-anchored so the newly available room reveals the
-   panel's own beginning (icon/thumbnail/title), not a random middle slice. */
 .aivy-rightpanel-rail-peek{
   display: flex; flex-direction: column;
   opacity: 0;
@@ -368,10 +339,6 @@ body.aivy-resizing *{ user-select: none !important; }
   opacity: 0.4;
   transition-delay: 120ms;
 }
-
-/* Overlay, not a flex slot: pinned to the rail's own left edge (same spot the
-   peek content starts from), floating on top of it. Rides along with that
-   edge as the column widens on hover instead of sitting in a separate box. */
 .aivy-rightpanel-rail-arrow-wrap{
   position: absolute; left: 0; top: 0; bottom: 0; width: 56px;
   display: flex; align-items: center; justify-content: center;
@@ -400,12 +367,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-rightpanel-tabs .aivy-rightpanel-tab-icon.active{ color: var(--moss-strong); background: var(--bg-elev-2); }
 .aivy-rightpanel-tabs .aivy-rightpanel-title{ flex: 1; padding: 13px 6px 13px 14px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
 .aivy-rightpanel-tabs .aivy-icon-btn{ margin: 6px 8px; flex: none; }
-/* Toggle icon is hidden by default and only reveals itself (pushing the source label right) when the cursor is over the right sidebar */
 .aivy-rightpanel-tabs .aivy-panel-icon-btn{ flex: none; width: 0; min-width: 0; height: 26px; margin: 6px 0 6px 8px; padding: 0; border-bottom: none; opacity: 0; overflow: hidden; pointer-events: none; transition: width var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease), margin var(--dur-fast) var(--ease); }
-/* Hover-reveal for the collapse toggle icon (next to the tabs) — only when
-   the panel is genuinely expanded. Excluded while collapsed+peeking: that
-   state already has its own always-visible arrow overlay marking the toggle,
-   so showing this icon too on hover would just duplicate it. */
 .aivy-rightpanel:hover:not(.aivy-rightpanel-collapsed) .aivy-rightpanel-tabs .aivy-panel-icon-btn{ width: 26px; margin: 6px 4px 6px 8px; opacity: 1; pointer-events: auto; }
 .aivy-rightpanel-tabs .aivy-rightpanel-source{ display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; padding: 0 10px 0 8px; font-size: 12px; color: var(--ink-faint); overflow: hidden; transition: padding var(--dur-fast) var(--ease); }
 .aivy-rightpanel-tabs .aivy-rightpanel-source svg{ flex-shrink: 0; }
@@ -489,8 +451,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-nowplaying-about-bio{ margin: 14px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-dim); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .aivy-nowplaying-pane .aivy-nowplaying-about{ text-align: left; }
 
-/* Compact credits card — Main Artist + any known writers, each a name/role
-   pair, with a "Show all" link to the full CreditsModal breakdown. */
 .aivy-credits-card{ width: 100%; margin-top: 14px; border-radius: var(--radius-lg); background: var(--bg-elev); border: 1px solid var(--line-soft); padding: 16px 18px 6px; }
 .aivy-credits-card-head{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .aivy-credits-card-title{ font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--ink); }
@@ -637,7 +597,6 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-artist-hero{ margin-top: -48px; }
 }
 
-/* Playlist page: blurred banner behind the hero, YouTube Music style */
 .aivy-playlist-banner{ position: relative; margin: -6px -28px 0; height: clamp(220px, 34vw, 380px); overflow: hidden; background: var(--bg-elev-2); }
 .aivy-playlist-banner img{ width: 100%; height: 100%; object-fit: cover; }
 .aivy-playlist-banner :is(img, canvas, svg){ filter: blur(36px) saturate(1.35) brightness(.62); transform: scale(1.25); }
@@ -756,7 +715,6 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-step-index{ width: 36px; font-size: 24px; }
 }
 
-/* ===== AIVY Login (dedicated) ===== */
 @keyframes aivy-auth-card-in{ from{ opacity: 0; transform: translateY(16px) scale(.985); } to{ opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes aivy-auth-item-in{ from{ opacity: 0; transform: translateY(10px); } to{ opacity: 1; transform: translateY(0); } }
 @keyframes aivy-auth-glow-pulse{ 0%, 100%{ opacity: .45; transform: translateX(-50%) scale(1); } 50%{ opacity: .8; transform: translateX(-50%) scale(1.08); } }
@@ -767,13 +725,11 @@ body.aivy-resizing *{ user-select: none !important; }
 @keyframes aivy-auth-ripple{ from{ opacity: .45; transform: scale(0); } to{ opacity: 0; transform: scale(2.6); } }
 @keyframes aivy-auth-mark-breathe{ 0%, 100%{ transform: scale(1); } 50%{ transform: scale(1.05); } }
 
-/* --- layout shell --- */
 .aivy-login-shell{ min-height: 100dvh; display: grid; grid-template-columns: 1fr; position: relative; overflow-x: hidden; }
 .aivy-login-ambient{ position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 .aivy-login-ambient .aivy-blob{ animation: none; }
 .aivy-login{ min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative; z-index: 1; }
 
-/* --- visual (left) panel --- */
 .aivy-login-visual{ display: none; position: relative; overflow: hidden; background: linear-gradient(165deg, var(--bg-elev) 0%, var(--bg) 75%); border-right: 1px solid var(--line); padding: 48px 44px; flex-direction: column; justify-content: space-between; gap: 40px; isolation: isolate; }
 .aivy-login-visual .aivy-blob{ z-index: -1; }
 .aivy-login-visual-top{ position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 34px; }
@@ -787,7 +743,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-login-eq{ display: flex; align-items: flex-end; gap: 3px; height: 14px; }
 .aivy-login-eq span{ width: 3px; background: var(--moss-strong); border-radius: 1px; animation: aivy-eq 900ms ease-in-out infinite; }
 
-/* --- ivy border frame --- */
 @keyframes aivy-ivy-leaf-sway{
   0%, 100%{ transform: rotate(-6deg); }
   25%{ transform: rotate(4deg); }
@@ -822,8 +777,6 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-ivy-stem{ animation: none; }
   .aivy-ivy-leaf-sway{ animation: none; }
 }
-
-/* --- card (right / centered) --- */
 .aivy-login-card{
   width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center;
   padding: 40px 32px 32px; border: 1px solid var(--line); border-radius: var(--radius-lg);
@@ -1068,7 +1021,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-btn-primary.danger{ background: var(--berry); color: #fff; }
 .aivy-btn-primary.danger:hover{ background: var(--berry-strong); }
 
-/* ===== Lyrics overlay — monochrome fullscreen player ===== */
 .aivy-lyrics-overlay{
   position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh; z-index: 75;
   background: #000;
@@ -1088,8 +1040,6 @@ body.aivy-resizing *{ user-select: none !important; }
     #000;
 }
 
-/* Light theme: flip the lyrics screen to a white background with dark text,
-   instead of the fixed black/white palette used in dark mode. */
 :root[data-theme="light"] .aivy-lyrics-overlay{
   background: #fff;
   --lyr-ink: #14150f; --lyr-ink-dim: rgba(20,21,15,.64); --lyr-ink-faint: rgba(20,21,15,.42);
@@ -1118,7 +1068,6 @@ body.aivy-resizing *{ user-select: none !important; }
 :root[data-theme="light"] .aivy-lyric-word .base{ color: rgba(20,21,15,.34); }
 :root[data-theme="light"] .aivy-lyric-word .fill{ color: #000; text-shadow: none; }
 
-/* floating top-left controls (mobile / narrow) */
 .aivy-lyrics-float{ position: absolute; z-index: 3; top: calc(16px + env(safe-area-inset-top,0px)); left: 16px; display: flex; gap: 8px; }
 .aivy-lyrics-fbtn{
   width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -1200,11 +1149,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-line:hover{ opacity: .8; filter: blur(0); }
 .aivy-lyrics-line.active{ color: var(--lyr-ink); opacity: 1; filter: blur(0); transform: scale(1.03); }
 
-/* Word-by-word karaoke sweep (active line only). .base sits underneath at
-   dim color and defines layout; .fill is an absolutely-positioned copy in
-   the highlight color, revealed left-to-right via clip-path as the estimated
-   word progress advances. The clip-path transition smooths out the jump
-   between currentTime ticks (~4/sec from the audio timeupdate event). */
 .aivy-lyric-word{ position: relative; display: inline-block; white-space: pre; }
 .aivy-lyric-word .base{ color: rgba(245,245,245,.38); }
 .aivy-lyric-word .fill{
@@ -1278,21 +1222,21 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 
 .aivy-maint-card{
-  width: 100%; max-width: 440px;
+  width: 100%; max-width: 420px;
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 32px 28px 26px;
+  padding: 30px 26px 24px;
   text-align: center;
-  animation: aivy-maint-in .4s var(--ease) both;
+  animation: aivy-maint-in .35s var(--ease) both;
 }
 @keyframes aivy-maint-in{
-  from{ opacity: 0; transform: translateY(10px); }
+  from{ opacity: 0; transform: translateY(8px); }
   to{ opacity: 1; transform: translateY(0); }
 }
 
 .aivy-maint-mark{
-  width: 64px; height: 64px;
+  width: 60px; height: 60px;
   margin: 0 auto 16px;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-elev-2);
@@ -1302,7 +1246,7 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-maint-eyebrow{
   display: inline-block;
-  font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   color: var(--moss-strong);
   background: var(--bg-elev-2);
   border: 1px solid var(--line);
@@ -1312,65 +1256,48 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-maint-title{
   font-family: var(--font-display);
-  font-size: 21px; font-weight: 800; line-height: 1.3;
-  color: var(--ink); margin: 0 0 10px;
+  font-size: 20px; font-weight: 800; letter-spacing: .01em;
+  color: var(--ink); margin: 0 0 8px;
 }
 .aivy-maint-sub{
-  font-size: 14px; line-height: 1.6; color: var(--ink-dim);
+  font-size: 13.5px; line-height: 1.55; color: var(--ink-dim);
   margin: 0 0 22px;
 }
 
-.aivy-maint-progress{ display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+.aivy-maint-progress{ display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
 .aivy-maint-progress-track{
-  flex: 1; height: 7px; border-radius: var(--radius-pill);
+  flex: 1; height: 6px; border-radius: var(--radius-pill);
   background: var(--bg-elev-3); overflow: hidden;
 }
 .aivy-maint-progress-fill{
   height: 100%; border-radius: var(--radius-pill);
   background: var(--moss-strong);
-  transition: width .3s var(--ease);
 }
 .aivy-maint-progress-pct{
   font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint);
-  min-width: 34px; text-align: right;
+  min-width: 32px; text-align: right;
 }
 
-.aivy-maint-tasks{ text-align: left; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.aivy-maint-tasks{ text-align: left; display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
 .aivy-maint-task{
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: var(--radius-md);
+  padding: 9px 12px; border-radius: var(--radius-md);
   background: var(--bg-elev-2); border: 1px solid var(--line-soft);
-  opacity: 0; animation: aivy-maint-task-in .4s var(--ease) forwards;
-  animation-delay: calc(120ms + var(--i) * 80ms);
-}
-@keyframes aivy-maint-task-in{
-  from{ opacity: 0; transform: translateY(6px); }
-  to{ opacity: 1; transform: translateY(0); }
 }
 .aivy-maint-task-icon{
   display: flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; border-radius: 50%; flex: none;
+  width: 24px; height: 24px; border-radius: 50%; flex: none;
   background: var(--bg-elev-3); color: var(--moss-strong);
 }
-.aivy-maint-task-label{ flex: 1; font-size: 13.5px; color: var(--ink); }
-.aivy-maint-task-dot{
-  width: 6px; height: 6px; border-radius: 50%; flex: none;
-  background: var(--gold);
-  animation: aivy-maint-dot 1.4s ease-in-out infinite;
-  animation-delay: calc(var(--i) * .2s);
-}
-@keyframes aivy-maint-dot{
-  0%, 100%{ opacity: .35; } 50%{ opacity: 1; }
-}
+.aivy-maint-task-label{ flex: 1; font-size: 13px; color: var(--ink); }
 
 .aivy-maint-footer{ font-size: 12px; color: var(--ink-faint); margin: 0; }
 
 @media (max-width: 480px){
-  .aivy-maint-card{ padding: 26px 20px 20px; border-radius: var(--radius-md); }
-  .aivy-maint-title{ font-size: 18.5px; }
+  .aivy-maint-card{ padding: 24px 18px 18px; border-radius: var(--radius-md); }
+  .aivy-maint-title{ font-size: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce){
-  .aivy-maint-task-dot{ animation: none !important; }
-  .aivy-maint-card, .aivy-maint-task{ animation-duration: .01ms !important; }
+  .aivy-maint-card{ animation-duration: .01ms !important; }
 }

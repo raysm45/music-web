@@ -1,33 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { Music4, RadioTower, LayoutGrid, Wrench } from "lucide-react";
+import React, { useEffect } from "react";
+import { Music4, RadioTower, LayoutGrid, Wrench, Sparkles } from "lucide-react";
 import { LeafMark } from "../lib/brand.jsx";
 
+const PROGRESS = 12;
+
 const TASKS = [
-  { icon: Music4, label: "Memperbaiki sistem player" },
-  { icon: RadioTower, label: "Menulis ulang kode Listening Room" },
-  { icon: LayoutGrid, label: "Mengoptimalkan tampilan UI" },
-  { icon: Wrench, label: "fix bug lainnya" },
-  { icon: Wrench, label: "menambah banyak fitur baru" },
+  { icon: Music4, label: "Perbaikan sistem player" },
+  { icon: RadioTower, label: "Penulisan ulang kode Listening Room" },
+  { icon: LayoutGrid, label: "Optimasi tampilan UI" },
+  { icon: Wrench, label: "Perbaikan bug lainnya" },
+  { icon: Sparkles, label: "Penambahan fitur baru" },
 ];
 
-function useFakeProgress() {
-  const [pct, setPct] = useState(8);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setPct((p) => {
-        if (p >= 92) return p;
-        const step = p < 40 ? 3.2 : p < 70 ? 1.4 : 0.5;
-        return Math.min(92, +(p + step).toFixed(1));
-      });
-    }, 220);
-    return () => clearInterval(id);
-  }, []);
-  return pct;
-}
-
 export function MaintenancePage() {
-  const pct = 12;
-
   useEffect(() => {
     const prevTitle = document.title;
     document.title = "Sedang Pemeliharaan · Aivy";
@@ -41,36 +26,39 @@ export function MaintenancePage() {
           <LeafMark size={36} color="var(--moss-strong)" />
         </div>
 
-        <div className="aivy-maint-eyebrow">pemeliharaan sistem</div>
+        <div className="aivy-maint-eyebrow">Pemeliharaan Sistem</div>
 
-        <h1 className="aivy-maint-title">UNDER MAINTENANCE</h1>
+        <h1 className="aivy-maint-title">Under Maintenance</h1>
         <p className="aivy-maint-sub">
-          Tunggu hingga kami up kembali
+          Mohon tunggu, kami sedang melakukan pembaruan sistem.
         </p>
 
-        <div className="aivy-maint-progress" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+        <div
+          className="aivy-maint-progress"
+          role="progressbar"
+          aria-valuenow={PROGRESS}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div className="aivy-maint-progress-track">
-            <div className="aivy-maint-progress-fill" style={{ width: `${pct}%` }} />
+            <div className="aivy-maint-progress-fill" style={{ width: `${PROGRESS}%` }} />
           </div>
-          <span className="aivy-maint-progress-pct">{Math.round(pct)}%</span>
+          <span className="aivy-maint-progress-pct">{PROGRESS}%</span>
         </div>
 
         <ul className="aivy-maint-tasks">
-          {TASKS.map((task, i) => {
+          {TASKS.map((task) => {
             const Icon = task.icon;
             return (
-              <li key={task.label} className="aivy-maint-task" style={{ "--i": i }}>
+              <li key={task.label} className="aivy-maint-task">
                 <span className="aivy-maint-task-icon"><Icon size={16} /></span>
                 <span className="aivy-maint-task-label">{task.label}</span>
-                <span className="aivy-maint-task-dot" />
               </li>
             );
           })}
         </ul>
 
-        <p className="aivy-maint-footer">
-          Berikan Saran Untuk Aivy.
-        </p>
+        <p className="aivy-maint-footer">Punya saran untuk Aivy? Kami siap mendengarkan.</p>
       </div>
     </div>
   );
