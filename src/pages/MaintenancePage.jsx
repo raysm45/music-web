@@ -72,9 +72,25 @@ function PixelSprite({ cells, cols, rows, className, style }) {
       preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
     >
-      {cells.map((c, i) => (
-        <rect key={i} x={c.x} y={c.y} width={1.06} height={1.06} fill={c.color} />
-      ))}
+      {cells.map((c, i) => {
+        if (!c.flicker) {
+          return <rect key={i} x={c.x} y={c.y} width={1.06} height={1.06} fill={c.color} />;
+        }
+        const ledGroupX = Math.floor(c.x / 2) * 2;
+        const baseDelay = ((ledGroupX * 53 + c.y * 29) % 37) / 10;
+        return (
+          <rect
+            key={i}
+            x={c.x}
+            y={c.y}
+            width={1.06}
+            height={1.06}
+            fill={c.color}
+            className="pm-led-flicker"
+            style={{ animationDelay: `calc(${baseDelay}s + var(--pm-rack-seed, 0) * 0.6s)` }}
+          />
+        );
+      })}
     </svg>
   );
 }
@@ -112,12 +128,21 @@ function buildServerRack() {
     rectCells(2, 2, 12, 22, PALETTE.metal),
     rectCells(4, 2, 8, 2, PALETTE.metalLight),
   ];
+  const baseCells = paint(...layers);
+
   const ledRows = [6, 9, 12, 15, 18, 21];
+  const ledCells = [];
   ledRows.forEach((y, i) => {
-    layers.push(rectCells(4, y, 2, 1, i === 4 ? PALETTE.ledRed : PALETTE.screenGlow));
-    layers.push(rectCells(10, y, 2, 1, PALETTE.screenGlow));
+    const isFaultRow = i === 4;
+    rectCells(4, y, 2, 1, isFaultRow ? PALETTE.ledRed : PALETTE.screenGlow).forEach((c) => {
+      ledCells.push({ ...c, flicker: !isFaultRow });
+    });
+    rectCells(10, y, 2, 1, PALETTE.screenGlow).forEach((c) => {
+      ledCells.push({ ...c, flicker: true });
+    });
   });
-  return { cells: paint(...layers), cols: 16, rows: 26 };
+
+  return { cells: [...baseCells, ...ledCells], cols: 16, rows: 26 };
 }
 
 function buildComputerDesk() {
@@ -355,9 +380,9 @@ function SmokeEffect() {
   );
 }
 
-const FLOOR_BOUNDS = { xMin: 8, xMax: 84, yMin: 30, yMax: 90 };
-const BED_SPOT = { x: 20, y: 50, rx: 13, ry: 13 };
-const DESK_SPOT = { x: 76, y: 50, rx: 12, ry: 13 };
+const FLOOR_BOUNDS = { xMin: 10, xMax: 72, yMin: 26, yMax: 82 };
+const BED_SPOT = { x: 22, y: 44, rx: 13, ry: 13 };
+const DESK_SPOT = { x: 64, y: 44, rx: 12, ry: 13 };
 
 function randomFloorPoint() {
   return {
@@ -661,7 +686,7 @@ export function MaintenancePage() {
 
       <div className="pm-scene" ref={sceneRef}>
         <div className="pm-wall">
-          <div className="pm-item pm-item-tv" style={{ left: "64%", top: "3%" }}>
+          <div className="pm-item pm-item-tv" style={{ left: "56%", top: "4%" }}>
             <PixelSprite {...TV_SPRITE} className="pm-sprite" />
             <div className="pm-tv-label">
               <span>SEDANG</span>
@@ -670,57 +695,57 @@ export function MaintenancePage() {
             </div>
           </div>
 
-          <div className="pm-item pm-item-ac" style={{ left: "38%", top: "2%" }}>
+          <div className="pm-item pm-item-ac" style={{ left: "32%", top: "2%" }}>
             <PixelSprite {...AC_SPRITE} className="pm-sprite" />
             <WindEffect />
           </div>
         </div>
 
-        <div className="pm-item pm-item-door" style={{ left: "40%", top: "14%" }}>
+        <div className="pm-item pm-item-door" style={{ left: "42%", top: "12%" }}>
           <PixelSprite {...DOOR_SPRITE} className="pm-sprite" />
         </div>
 
         <div className="pm-floor">
-          <div className="pm-item pm-item-rug" style={{ left: "36%", top: "54%" }}>
+          <div className="pm-item pm-item-rug" style={{ left: "30%", top: "46%" }}>
             <PixelSprite {...RUG_SPRITE} className="pm-sprite" />
           </div>
 
-          <div className="pm-item pm-item-sofa" style={{ left: "34%", top: "78%" }}>
+          <div className="pm-item pm-item-sofa" style={{ left: "32%", top: "62%" }}>
             <PixelSprite {...SOFA_SPRITE} className="pm-sprite" />
           </div>
 
           <div
             className={`pm-item pm-item-bed ${isNearBed ? "is-target" : ""}`}
-            style={{ left: "8%", top: "32%" }}
+            style={{ left: "10%", top: "26%" }}
           >
             <PixelSprite {...BED_SPRITE} className="pm-sprite" />
             {isNearBed && <span className="pm-target-label">lepas untuk tidur</span>}
           </div>
 
-          <div className="pm-item pm-item-pot" style={{ left: "3%", top: "78%" }}>
+          <div className="pm-item pm-item-pot" style={{ left: "6%", top: "62%" }}>
             <PixelSprite {...POT_SPRITE} className="pm-sprite" />
           </div>
 
           <div
             className={`pm-item pm-item-desk ${isNearDesk ? "is-target" : ""}`}
-            style={{ left: "64%", top: "32%" }}
+            style={{ left: "52%", top: "26%" }}
           >
             <PixelSprite {...DESK_SPRITE} className="pm-sprite" />
             {isNearDesk && <span className="pm-target-label">lepas untuk main komputer</span>}
           </div>
 
-          <div className="pm-item pm-item-rack" style={{ left: "88%", top: "28%" }}>
+          <div className="pm-item pm-item-rack" style={{ left: "74%", top: "22%", "--pm-rack-seed": 0 }}>
             <PixelSprite {...RACK_SPRITE} className="pm-sprite" />
             <SmokeEffect />
           </div>
-          <div className="pm-item pm-item-rack" style={{ left: "88%", top: "46%" }}>
+          <div className="pm-item pm-item-rack" style={{ left: "74%", top: "36%", "--pm-rack-seed": 1 }}>
             <PixelSprite {...RACK_SPRITE} className="pm-sprite" />
           </div>
-          <div className="pm-item pm-item-rack" style={{ left: "88%", top: "64%" }}>
+          <div className="pm-item pm-item-rack" style={{ left: "74%", top: "50%", "--pm-rack-seed": 2 }}>
             <PixelSprite {...RACK_SPRITE} className="pm-sprite" />
             <SmokeEffect />
           </div>
-          <div className="pm-item pm-item-rack" style={{ left: "88%", top: "82%" }}>
+          <div className="pm-item pm-item-rack" style={{ left: "74%", top: "64%", "--pm-rack-seed": 3 }}>
             <PixelSprite {...RACK_SPRITE} className="pm-sprite" />
           </div>
 
@@ -927,6 +952,15 @@ const CSS = `
   0%,90%,100%{ opacity:0; } 91%{ opacity:1; } 92.5%{ opacity:0; } 94%{ opacity:1; } 95.5%{ opacity:0; }
 }
 
+.pm-led-flicker{ animation: pm-led-flicker 3.8s steps(1) infinite; }
+@keyframes pm-led-flicker{
+  0%, 55%{ fill:#7CD68C; }
+  60%{ fill:#F4F1E4; }
+  64%{ fill:#E0645A; }
+  68%{ fill:#F4F1E4; }
+  72%, 100%{ fill:#7CD68C; }
+}
+
 .pm-char{
   position:absolute; width:78px; height:96px; transform: translate(-50%,-88%);
   transition-property: left, top; transition-timing-function: linear;
@@ -1024,7 +1058,7 @@ const CSS = `
 @media (prefers-reduced-motion: reduce){
   .pm-status-dot, .pm-music-btn.is-playing .pm-music-icon, .pm-wind-streak, .pm-smoke-puff, .pm-spark,
   .pm-char--walking .pm-foot-left, .pm-char--walking .pm-foot-right, .pm-char--walking .pm-body,
-  .pm-char--computer .pm-arm-right, .pm-zzz span, .pm-tv-cursor, .pm-tv-label, .pm-target-pulse{
+  .pm-char--computer .pm-arm-right, .pm-zzz span, .pm-tv-cursor, .pm-tv-label, .pm-target-pulse, .pm-led-flicker{
     animation: none !important;
   }
 }
