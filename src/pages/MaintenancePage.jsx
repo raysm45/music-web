@@ -1,34 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-/**
- * UnderMaintenanceRoom
- * =====================================================================
- * Halaman "Sedang Dalam Pemeliharaan" berbentuk kamar pixel-art dilihat
- * dari sudut top-down (gaya Stardew Valley / Habbo: ruangan dari atas,
- * karakter digambar chibi menghadap depan supaya ekspresinya kebaca —
- * ini konvensi umum di game top-down, bukan bug perspektif).
- *
- * Isi ruangan: AC, TV, komputer + kursi, kasur, sofa, pot bunga,
- * rak server, dan karpet — semuanya statis (pointer-events: none).
- * Hanya maskot yang bisa di-drag.
- *
- * Maskot "Moku" berjalan sendiri keliling kamar, kadang tidur di kasur,
- * kadang "membetulkan" server di komputer, dan sesekali berdiri diam.
- * Ekspresinya berpindah antara netral / senang / sedih tergantung
- * aktivitas & seberapa lama dibiarkan sendirian (bosan -> sedih).
- *
- * Semua visual digambar murni dengan React + SVG (tanpa aset gambar
- * eksternal) memakai teknik "grid piksel": tiap sprite dibangun dari
- * kumpulan sel {x,y,color} yang dirender sebagai <rect> 1x1 dengan
- * shape-rendering="crispEdges" supaya tetap tegas seperti pixel art
- * asli walau di-scale oleh CSS.
- *
- * Audio: taruh file lagu di /public/audio.mp3 (untuk Vite/CRA, apa pun
- * yang ada di folder /public akan tersedia di root "/"). Kalau lokasi
- * filemu beda, tinggal ubah AUDIO_SRC di bawah.
- * =====================================================================
- */
-
 const AUDIO_SRC = "/audio.mp3";
 
 /* --------------------------------------------------------------------
