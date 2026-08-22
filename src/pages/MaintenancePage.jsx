@@ -58,7 +58,7 @@ export function MaintenancePage() {
           })}
         </ul>
 
-        <p className="aivy-maint-footer">Punya saran untuk Aivy? Kami siap mendengarkan.</p>
+        <p className="aivy-maint-footer">Punya saran untuk Aivy?</p>
       </div>
     </div>
   );
