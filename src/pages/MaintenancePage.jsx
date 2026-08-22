@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Music4, RadioTower, LayoutGrid, Wrench, Sparkles } from "lucide-react";
 import { LeafMark } from "../lib/brand.jsx";
 
-const PROGRESS = 01;
+const PROGRESS = 1;
 
 const TASKS = [
   { icon: Music4, label: "Perbaikan sistem player yang lebih optimal" },
