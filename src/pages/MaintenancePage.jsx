@@ -5,7 +5,7 @@ import { LeafMark } from "../lib/brand.jsx";
 const PROGRESS = 12;
 
 const TASKS = [
-  { icon: Music4, label: "Perbaikan sistem player" },
+  { icon: Music4, label: "Perbaikan sistem player yang lebih optimal" },
   { icon: RadioTower, label: "Penulisan ulang kode Listening Room" },
   { icon: LayoutGrid, label: "Optimasi tampilan UI" },
   { icon: Wrench, label: "Perbaikan bug lainnya" },
