@@ -2,9 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 const AUDIO_SRC = "/audio.mp3";
 
-/* --------------------------------------------------------------------
- * 1. PALET WARNA
- * ------------------------------------------------------------------ */
 const PALETTE = {
   ink2: "var(--pm-outline, #14170D)",
   moss: "var(--pm-moss, #8CA37C)",
@@ -28,9 +25,6 @@ const PALETTE = {
   clay: "#B8734F",
 };
 
-/* --------------------------------------------------------------------
- * 2. GEOMETRI PIKSEL — helper murni, tanpa React
- * ------------------------------------------------------------------ */
 function rectCells(x0, y0, w, h, color) {
   const out = [];
   for (let y = y0; y < y0 + h; y++) {
@@ -55,8 +49,6 @@ function ellipseCells(cx, cy, rx, ry, color) {
   return out;
 }
 
-// Menggabungkan beberapa layer sel; layer belakangan menimpa yang duluan
-// pada koordinat yang sama (dipakai untuk bikin outline + isian + bayangan).
 function paint(...layers) {
   const map = new Map();
   layers.flat().forEach((c) => map.set(`${c.x},${c.y}`, c.color));
@@ -70,9 +62,6 @@ function clampNum(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
-/* --------------------------------------------------------------------
- * 3. RENDERER SPRITE PIKSEL (SVG)
- * ------------------------------------------------------------------ */
 function PixelSprite({ cells, cols, rows, className, style }) {
   return (
     <svg
@@ -90,11 +79,6 @@ function PixelSprite({ cells, cols, rows, className, style }) {
   );
 }
 
-/* --------------------------------------------------------------------
- * 4. SPRITE PERABOTAN (dibangun sekali saja, di luar komponen)
- * ------------------------------------------------------------------ */
-
-// --- AC ---
 function buildAC() {
   const layers = [
     rectCells(1, 1, 24, 8, PALETTE.ink2),
@@ -106,7 +90,6 @@ function buildAC() {
   return { cells: paint(...layers), cols: 26, rows: 10 };
 }
 
-// --- TV ---
 function buildTV() {
   const layers = [
     rectCells(1, 1, 20, 13, PALETTE.ink2),
@@ -123,7 +106,6 @@ function buildTV() {
   return { cells: paint(...layers), cols: 22, rows: 16 };
 }
 
-// --- Rak Server ---
 function buildServerRack() {
   const layers = [
     rectCells(1, 1, 14, 24, PALETTE.ink2),
@@ -138,7 +120,6 @@ function buildServerRack() {
   return { cells: paint(...layers), cols: 16, rows: 26 };
 }
 
-// --- Meja komputer + monitor + kursi ---
 function buildComputerDesk() {
   const layers = [
     rectCells(1, 10, 20, 6, PALETTE.wood),
@@ -159,7 +140,6 @@ function buildComputerDesk() {
   return { cells: paint(...layers), cols: 22, rows: 20 };
 }
 
-// --- Kasur ---
 function buildBed() {
   const layers = [
     rectCells(1, 1, 24, 16, PALETTE.woodDark),
@@ -174,7 +154,6 @@ function buildBed() {
   return { cells: paint(...layers), cols: 26, rows: 18 };
 }
 
-// --- Sofa ---
 function buildSofa() {
   const layers = [
     rectCells(1, 1, 22, 12, PALETTE.ink2),
@@ -188,7 +167,6 @@ function buildSofa() {
   return { cells: paint(...layers), cols: 24, rows: 14 };
 }
 
-// --- Pot Bunga ---
 function buildPlantPot() {
   const layers = [
     rectCells(4, 2, 4, 3, PALETTE.moss),
@@ -202,7 +180,6 @@ function buildPlantPot() {
   return { cells: paint(...layers), cols: 12, rows: 14 };
 }
 
-// --- Karpet ---
 function buildRug() {
   const layers = [
     rectCells(0, 0, 30, 18, PALETTE.mossDark),
@@ -216,6 +193,21 @@ function buildRug() {
   return { cells: paint(...layers), cols: 30, rows: 18 };
 }
 
+function buildDoor() {
+  const layers = [
+    rectCells(0, 0, 14, 28, PALETTE.ink2),
+    rectCells(1, 1, 12, 26, PALETTE.woodDark),
+    rectCells(2, 2, 10, 24, PALETTE.wood),
+    rectCells(2, 2, 10, 1, PALETTE.woodDark),
+    rectCells(4, 5, 6, 8, PALETTE.woodDark),
+    rectCells(4, 15, 6, 8, PALETTE.woodDark),
+    rectCells(5, 6, 4, 6, PALETTE.wood),
+    rectCells(5, 16, 4, 6, PALETTE.wood),
+    rectCells(10, 14, 1, 2, PALETTE.gold),
+  ];
+  return { cells: paint(...layers), cols: 14, rows: 28 };
+}
+
 const AC_SPRITE = buildAC();
 const TV_SPRITE = buildTV();
 const RACK_SPRITE = buildServerRack();
@@ -224,10 +216,8 @@ const BED_SPRITE = buildBed();
 const SOFA_SPRITE = buildSofa();
 const POT_SPRITE = buildPlantPot();
 const RUG_SPRITE = buildRug();
+const DOOR_SPRITE = buildDoor();
 
-/* --------------------------------------------------------------------
- * 5. SPRITE MASKOT — badan/lengan/kaki statis + kepala dinamis (ekspresi)
- * ------------------------------------------------------------------ */
 function buildBody() {
   const cx = 9, cy = 8, rx = 7.2, ry = 6.4;
   const layers = [
@@ -260,7 +250,6 @@ function buildHead(expression) {
     ellipseCells(cx, cy, rx + 0.7, ry + 0.7, PALETTE.ink2),
     ellipseCells(cx, cy, rx, ry, PALETTE.moss),
     ellipseCells(cx, cy + 1.8, rx - 2.4, ry - 3, PALETTE.mossStrong),
-    // tunas daun kecil di kepala
     rectCells(cx - 1, 0, 2, 3, PALETTE.mossStrong),
     rectCells(cx - 3, 1, 1, 1, PALETTE.moss),
     rectCells(cx + 2, 1, 1, 1, PALETTE.moss),
@@ -335,9 +324,6 @@ function Character({ state, expression, facing, dragging, handlers, style }) {
   );
 }
 
-/* --------------------------------------------------------------------
- * 6. EFEK VISUAL — angin (dari AC) & asap (dari rak server)
- * ------------------------------------------------------------------ */
 function WindEffect() {
   const streaks = [0, 1, 2, 3, 4, 5];
   return (
@@ -369,12 +355,9 @@ function SmokeEffect() {
   );
 }
 
-/* --------------------------------------------------------------------
- * 7. TATA LETAK RUANGAN (posisi statis, persen dari panggung)
- * ------------------------------------------------------------------ */
-const FLOOR_BOUNDS = { xMin: 8, xMax: 90, yMin: 32, yMax: 90 };
-const BED_SPOT = { x: 17, y: 74, rx: 13, ry: 14 };
-const DESK_SPOT = { x: 74, y: 76, rx: 12, ry: 14 };
+const FLOOR_BOUNDS = { xMin: 8, xMax: 84, yMin: 30, yMax: 90 };
+const BED_SPOT = { x: 20, y: 50, rx: 13, ry: 13 };
+const DESK_SPOT = { x: 76, y: 50, rx: 12, ry: 13 };
 
 function randomFloorPoint() {
   return {
@@ -398,9 +381,6 @@ const BUBBLE_LINES = {
   dropDesk: "Oke, kerja dulu!",
 };
 
-/* --------------------------------------------------------------------
- * 8. MUSIK LATAR
- * ------------------------------------------------------------------ */
 function useBackgroundMusic(src) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -416,7 +396,7 @@ function useBackgroundMusic(src) {
     audio
       .play()
       .then(() => setPlaying(true))
-      .catch(() => setBlocked(true)); // banyak browser memblokir autoplay bersuara
+      .catch(() => setBlocked(true));
 
     return () => {
       audio.pause();
@@ -445,10 +425,7 @@ function useBackgroundMusic(src) {
   return { playing, blocked, toggle };
 }
 
-/* --------------------------------------------------------------------
- * 9. KOMPONEN UTAMA
- * ------------------------------------------------------------------ */
-export default function UnderMaintenanceRoom() {
+export function MaintenancePage() {
   const sceneRef = useRef(null);
   const posRef = useRef({ x: 50, y: 60 });
   const genRef = useRef(0);
@@ -460,13 +437,20 @@ export default function UnderMaintenanceRoom() {
 
   const [pos, setPos] = useState(posRef.current);
   const [moveDuration, setMoveDuration] = useState(1);
-  const [charState, setCharState] = useState("idle"); // idle | walking | sleeping | computer
-  const [expression, setExpression] = useState("neutral"); // neutral | happy | sad
+  const [charState, setCharState] = useState("idle");
+  const [expression, setExpression] = useState("neutral");
   const [facing, setFacing] = useState("right");
   const [isDragging, setIsDragging] = useState(false);
   const [bubble, setBubble] = useState(null);
+  const [progress, setProgress] = useState(0);
 
   const music = useBackgroundMusic(AUDIO_SRC);
+
+  useEffect(() => {
+    const target = 58 + Math.floor(Math.random() * 27);
+    const t = setTimeout(() => setProgress(target), 500);
+    return () => clearTimeout(t);
+  }, []);
 
   const say = useCallback((text, ms = 2000) => {
     setBubble(text);
@@ -479,7 +463,6 @@ export default function UnderMaintenanceRoom() {
     setPos(p);
   }, []);
 
-  // ---- Jalan menuju titik tujuan, lalu panggil onArrive ----
   const walkTo = useCallback((target, myGen, onArrive) => {
     const from = posRef.current;
     setFacing(target.x >= from.x ? "right" : "left");
@@ -502,7 +485,6 @@ export default function UnderMaintenanceRoom() {
     }, duration * 1000);
   }, [setPosBoth]);
 
-  // ---- Siklus aktivitas otonom ----
   const runCycle = useCallback(() => {
     const myGen = genRef.current;
     const roll = Math.random();
@@ -564,13 +546,11 @@ export default function UnderMaintenanceRoom() {
       clearTimeout(arriveTimerRef.current);
       clearTimeout(bubbleTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- Interaksi drag & drop (HANYA pada maskot) ----
   const onPointerDown = useCallback((e) => {
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    genRef.current += 1; // batalkan semua timer siklus otonom yang tertunda
+    genRef.current += 1;
     clearTimeout(cycleTimerRef.current);
     clearTimeout(arriveTimerRef.current);
 
@@ -615,7 +595,6 @@ export default function UnderMaintenanceRoom() {
     const dropped = posRef.current;
 
     if (!dragMovedRef.current) {
-      // sekadar diketuk, bukan diseret
       setExpression("happy");
       say(BUBBLE_LINES.tapHappy, 1500);
       cycleTimerRef.current = setTimeout(() => {
@@ -680,35 +659,9 @@ export default function UnderMaintenanceRoom() {
     <div className="pm-root">
       <style>{CSS}</style>
 
-      <header className="pm-header">
-        <div className="pm-brand">
-          <span className="pm-brand-dot" />
-          <span className="pm-brand-word">Kamar Moku</span>
-        </div>
-        <div className="pm-status-pill">
-          <span className="pm-status-dot" />
-          Sedang dalam pemeliharaan
-        </div>
-        <button
-          type="button"
-          className={`pm-music-btn ${music.playing ? "is-playing" : ""}`}
-          onClick={music.toggle}
-          aria-pressed={music.playing}
-          aria-label={music.playing ? "Matikan musik" : "Putar musik"}
-        >
-          <span className="pm-music-icon" />
-          {music.playing ? "Musik on" : music.blocked ? "Ketuk untuk musik" : "Musik"}
-        </button>
-      </header>
-
       <div className="pm-scene" ref={sceneRef}>
         <div className="pm-wall">
-          <div className="pm-item pm-item-ac" style={{ left: "6%", top: "4%" }}>
-            <PixelSprite {...AC_SPRITE} className="pm-sprite" />
-            <WindEffect />
-          </div>
-
-          <div className="pm-item pm-item-tv" style={{ left: "58%", top: "2%" }}>
+          <div className="pm-item pm-item-tv" style={{ left: "64%", top: "3%" }}>
             <PixelSprite {...TV_SPRITE} className="pm-sprite" />
             <div className="pm-tv-label">
               <span>SEDANG</span>
@@ -716,43 +669,59 @@ export default function UnderMaintenanceRoom() {
               <span className="pm-tv-cursor" />
             </div>
           </div>
+
+          <div className="pm-item pm-item-ac" style={{ left: "38%", top: "2%" }}>
+            <PixelSprite {...AC_SPRITE} className="pm-sprite" />
+            <WindEffect />
+          </div>
+        </div>
+
+        <div className="pm-item pm-item-door" style={{ left: "40%", top: "14%" }}>
+          <PixelSprite {...DOOR_SPRITE} className="pm-sprite" />
         </div>
 
         <div className="pm-floor">
-          <div
-            className="pm-item pm-item-rug"
-            style={{ left: "30%", top: "58%" }}
-          >
+          <div className="pm-item pm-item-rug" style={{ left: "36%", top: "54%" }}>
             <PixelSprite {...RUG_SPRITE} className="pm-sprite" />
           </div>
 
-          <div className="pm-item pm-item-sofa" style={{ left: "35%", top: "60%" }}>
+          <div className="pm-item pm-item-sofa" style={{ left: "34%", top: "78%" }}>
             <PixelSprite {...SOFA_SPRITE} className="pm-sprite" />
           </div>
 
           <div
             className={`pm-item pm-item-bed ${isNearBed ? "is-target" : ""}`}
-            style={{ left: "4%", top: "55%" }}
+            style={{ left: "8%", top: "32%" }}
           >
             <PixelSprite {...BED_SPRITE} className="pm-sprite" />
             {isNearBed && <span className="pm-target-label">lepas untuk tidur</span>}
           </div>
 
-          <div className="pm-item pm-item-pot" style={{ left: "5%", top: "30%" }}>
+          <div className="pm-item pm-item-pot" style={{ left: "3%", top: "78%" }}>
             <PixelSprite {...POT_SPRITE} className="pm-sprite" />
           </div>
 
           <div
             className={`pm-item pm-item-desk ${isNearDesk ? "is-target" : ""}`}
-            style={{ left: "64%", top: "56%" }}
+            style={{ left: "64%", top: "32%" }}
           >
             <PixelSprite {...DESK_SPRITE} className="pm-sprite" />
             {isNearDesk && <span className="pm-target-label">lepas untuk main komputer</span>}
           </div>
 
-          <div className="pm-item pm-item-rack" style={{ left: "89%", top: "20%" }}>
+          <div className="pm-item pm-item-rack" style={{ left: "88%", top: "28%" }}>
             <PixelSprite {...RACK_SPRITE} className="pm-sprite" />
             <SmokeEffect />
+          </div>
+          <div className="pm-item pm-item-rack" style={{ left: "88%", top: "46%" }}>
+            <PixelSprite {...RACK_SPRITE} className="pm-sprite" />
+          </div>
+          <div className="pm-item pm-item-rack" style={{ left: "88%", top: "64%" }}>
+            <PixelSprite {...RACK_SPRITE} className="pm-sprite" />
+            <SmokeEffect />
+          </div>
+          <div className="pm-item pm-item-rack" style={{ left: "88%", top: "82%" }}>
+            <PixelSprite {...RACK_SPRITE} className="pm-sprite" />
           </div>
 
           <Character
@@ -778,12 +747,40 @@ export default function UnderMaintenanceRoom() {
             </div>
           )}
         </div>
-      </div>
 
-      <p className="pm-hint">
-        Moku jalan-jalan sendiri di kamarnya — seret dia ke kasur biar tidur, atau ke meja
-        komputer biar coba benerin server. Semua perabotan lain diam di tempat.
-      </p>
+        <div className="pm-topbar">
+          <div className="pm-brand">
+            <span className="pm-brand-dot" />
+            <span className="pm-brand-word">Kamar Moku</span>
+          </div>
+          <button
+            type="button"
+            className={`pm-music-btn ${music.playing ? "is-playing" : ""}`}
+            onClick={music.toggle}
+            aria-pressed={music.playing}
+            aria-label={music.playing ? "Matikan musik" : "Putar musik"}
+          >
+            <span className="pm-music-icon" />
+            {music.playing ? "Musik on" : music.blocked ? "Ketuk untuk musik" : "Musik"}
+          </button>
+        </div>
+
+        <div className="pm-progress-panel">
+          <span className="pm-status-dot" />
+          <div className="pm-progress-info">
+            <span className="pm-progress-label">Sedang dalam pemeliharaan</span>
+            <div className="pm-progress-track">
+              <span className="pm-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="pm-progress-pct">{progress}% selesai</span>
+          </div>
+        </div>
+
+        <p className="pm-hint">
+          Moku jalan-jalan sendiri di kamarnya — seret dia ke kasur biar tidur, atau ke meja
+          komputer biar coba benerin server. Semua perabotan lain diam di tempat.
+        </p>
+      </div>
 
       <span className="sr-only" aria-live="polite">
         {charState === "sleeping" && "Moku sedang tidur"}
@@ -795,46 +792,66 @@ export default function UnderMaintenanceRoom() {
   );
 }
 
-/* --------------------------------------------------------------------
- * 10. CSS
- * ------------------------------------------------------------------ */
 const CSS = `
 .pm-root{
-  min-height: 100dvh;
+  width:100vw; height:100dvh;
   background: var(--pm-bg, #12140F);
   color: var(--pm-ink, #ECE8D9);
   font-family: var(--pm-font, "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif);
-  padding: 22px 20px 40px;
-  display:flex; flex-direction:column; align-items:center; gap:16px;
-  overflow-x:hidden;
+  margin:0; padding:0;
+  overflow:hidden;
 }
 .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
-.pm-header{ width:100%; max-width:1180px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-.pm-brand{ display:flex; align-items:center; gap:8px; margin-right:auto; }
+.pm-topbar{
+  position:absolute; left:0; right:0; top:0; z-index:30;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding: 18px 22px; pointer-events:none;
+}
+.pm-topbar > *{ pointer-events:auto; }
+.pm-brand{
+  display:flex; align-items:center; gap:8px; margin-right:auto;
+  background:rgba(18,20,15,.55); backdrop-filter:blur(6px);
+  border:1px solid var(--pm-line,#2A2E20); padding:8px 14px; border-radius:999px;
+}
 .pm-brand-dot{ width:10px; height:10px; border-radius:2px; background: var(--pm-moss-strong,#ADC79C); box-shadow: 2px 2px 0 var(--pm-outline,#14170D); }
 .pm-brand-word{ font-weight:700; font-size:17px; letter-spacing:.01em; }
-.pm-status-pill{
-  display:flex; align-items:center; gap:8px;
-  background:#1c1f16; border:1px solid var(--pm-line,#2A2E20);
-  color: var(--pm-ink-dim,#9BA08A); font-size:12.5px; font-weight:600;
-  padding:7px 14px; border-radius:999px;
-}
-.pm-status-dot{ width:7px; height:7px; border-radius:50%; background: var(--pm-gold,#D3B673); animation: pm-pulse 1.8s ease-out infinite; }
+.pm-status-dot{ flex-shrink:0; width:7px; height:7px; border-radius:50%; background: var(--pm-gold,#D3B673); animation: pm-pulse 1.8s ease-out infinite; margin-top:3px; }
 .pm-music-btn{
   display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600;
-  color: var(--pm-ink-dim,#9BA08A); background:#1c1f16; border:1px solid var(--pm-line,#2A2E20);
+  color: var(--pm-ink-dim,#9BA08A); background:rgba(28,31,22,.85); border:1px solid var(--pm-line,#2A2E20);
   padding:7px 14px; border-radius:999px; cursor:pointer; transition: color .15s ease, background .15s ease;
+  backdrop-filter:blur(6px);
 }
 .pm-music-btn:hover{ color: var(--pm-ink,#ECE8D9); background:#232619; }
 .pm-music-icon{ width:8px; height:8px; border-radius:50%; background: var(--pm-moss-strong,#ADC79C); }
 .pm-music-btn.is-playing .pm-music-icon{ animation: pm-pulse 1.4s ease-out infinite; }
 
+.pm-progress-panel{
+  position:absolute; left:20px; bottom:20px; z-index:30;
+  display:flex; align-items:flex-start; gap:10px;
+  background:rgba(21,23,15,.8); backdrop-filter:blur(8px);
+  border:1px solid var(--pm-line,#2A2E20); border-radius:16px;
+  padding:12px 16px; max-width:250px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.pm-progress-info{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+.pm-progress-label{ font-size:12.5px; font-weight:700; color: var(--pm-ink,#ECE8D9); white-space:nowrap; }
+.pm-progress-track{
+  width:150px; height:6px; border-radius:999px; overflow:hidden;
+  background: var(--pm-line,#2A2E20);
+}
+.pm-progress-fill{
+  display:block; height:100%; border-radius:999px;
+  background: linear-gradient(90deg, var(--pm-moss,#8CA37C), var(--pm-moss-strong,#ADC79C));
+  width:0%; transition: width 1.1s cubic-bezier(.22,.61,.36,1);
+}
+.pm-progress-pct{ font-size:11px; font-weight:600; color: var(--pm-ink-dim,#9BA08A); font-family: var(--pm-font-mono,"JetBrains Mono",monospace); }
+
 .pm-scene{
-  position:relative; width:min(100%,1180px); height:clamp(480px,74vh,720px);
-  border-radius:18px; overflow:hidden; border:1px solid var(--pm-line,#2A2E20);
-  box-shadow: 0 8px 26px rgba(0,0,0,.35);
+  position:relative; width:100vw; height:100dvh;
   touch-action:none; user-select:none; image-rendering:pixelated;
+  overflow:hidden;
 }
 .pm-wall{ position:absolute; inset:0 0 68% 0; background: linear-gradient(180deg,#1c1f16,#242819); }
 .pm-wall::after{ content:""; position:absolute; inset:0; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.02) 0 2px, transparent 2px 40px); }
@@ -851,6 +868,7 @@ const CSS = `
 .pm-item-sofa{ --w:210px; z-index:5; }
 .pm-item-pot{ --w:64px; z-index:3; }
 .pm-item-rug{ --w:280px; z-index:1; filter:none; }
+.pm-item-door{ --w:58px; z-index:2; filter:none; }
 
 .pm-item.is-target .pm-sprite{ filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
 .pm-item.is-target::before{
@@ -874,7 +892,6 @@ const CSS = `
 }
 .pm-tv-cursor{ width:5px; height:5px; background:#DDF2CE; margin-top:2px; animation: pm-blink 1s steps(1) infinite; }
 
-/* --- efek angin (dari AC) --- */
 .pm-wind{ position:absolute; left:100%; top:6%; width:220px; height:60px; pointer-events:none; }
 .pm-wind-streak{
   position:absolute; left:0; width:42px; height:2px; border-radius:2px;
@@ -888,7 +905,6 @@ const CSS = `
   100%{ transform: translate(210px,50px); opacity:0; }
 }
 
-/* --- efek asap (dari rak server) --- */
 .pm-smoke{ position:absolute; left:38%; top:-6%; width:40px; height:120px; pointer-events:none; }
 .pm-smoke-puff{
   position:absolute; left:0; bottom:0; width:7px; height:7px; border-radius:2px;
@@ -911,7 +927,6 @@ const CSS = `
   0%,90%,100%{ opacity:0; } 91%{ opacity:1; } 92.5%{ opacity:0; } 94%{ opacity:1; } 95.5%{ opacity:0; }
 }
 
-/* --- maskot --- */
 .pm-char{
   position:absolute; width:78px; height:96px; transform: translate(-50%,-88%);
   transition-property: left, top; transition-timing-function: linear;
@@ -979,7 +994,13 @@ const CSS = `
 .pm-bubble.is-sad{ color:#B9D3EA; }
 .pm-bubble.is-happy{ color: var(--pm-moss-strong,#ADC79C); }
 
-.pm-hint{ max-width:640px; text-align:center; font-size:12.5px; line-height:1.5; color: var(--pm-ink-faint,#676B57); font-style:italic; margin:0; }
+.pm-hint{
+  position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:25;
+  max-width:560px; text-align:center; font-size:12px; line-height:1.5;
+  color: var(--pm-ink-faint,#676B57); font-style:italic; margin:0; pointer-events:none;
+  background:rgba(15,17,10,.55); backdrop-filter:blur(6px);
+  border:1px solid var(--pm-line,#2A2E20); border-radius:12px; padding:8px 16px;
+}
 
 @keyframes pm-pulse{
   0%{ box-shadow: 0 0 0 0 rgba(211,182,115,.55); } 70%{ box-shadow: 0 0 0 8px rgba(211,182,115,0); } 100%{ box-shadow:0 0 0 0 rgba(211,182,115,0); }
@@ -990,9 +1011,14 @@ const CSS = `
 @keyframes pm-bubble-in{ from{ opacity:0; transform: translate(-50%,-150%) scale(.9); } to{ opacity:1; transform: translate(-50%,-168%) scale(1); } }
 
 @media (max-width:720px){
-  .pm-scene{ height: clamp(420px,66vh,560px); }
-  .pm-item-bed{ --w:170px; } .pm-item-desk{ --w:160px; } .pm-item-sofa{ --w:170px; } .pm-item-rug{ --w:220px; }
+  .pm-item-bed{ --w:150px; } .pm-item-desk{ --w:140px; } .pm-item-sofa{ --w:150px; } .pm-item-rug{ --w:200px; }
+  .pm-item-rack{ --w:52px; } .pm-item-door{ --w:38px; }
   .pm-char{ width:62px; height:78px; }
+  .pm-topbar{ padding:12px 14px; }
+  .pm-brand-word{ font-size:14.5px; }
+  .pm-progress-panel{ left:12px; bottom:12px; padding:10px 12px; max-width:190px; }
+  .pm-progress-track{ width:110px; }
+  .pm-hint{ display:none; }
 }
 
 @media (prefers-reduced-motion: reduce){
