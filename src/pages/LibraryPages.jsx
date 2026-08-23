@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle, ImagePlus, X, RotateCcw } from "lucide-react";
+import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle, ImagePlus, X, RotateCcw, Pencil, MoreHorizontal, Shuffle, Share2, Globe, Lock } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
 import { TrackRow, ViewNotFound, ConfirmDialog, CustomSelect } from "../components.jsx";
@@ -158,13 +158,89 @@ function PlaylistCoverModal({ pl, onClose }) {
   );
 }
 
+function PlaylistEditModal({ pl, onClose }) {
+  const { updatePlaylistMeta } = usePlayer();
+  const { t } = useUI();
+  const [name, setName] = React.useState(pl.name || "");
+  const [description, setDescription] = React.useState(pl.description || "");
+  const [isPublic, setIsPublic] = React.useState(!!pl.is_public);
+  const [saving, setSaving] = React.useState(false);
+  const nameRef = React.useRef(null);
+
+  React.useEffect(() => { nameRef.current?.focus(); }, []);
+
+  const handleSave = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || saving) return;
+    setSaving(true);
+    const ok = await updatePlaylistMeta(pl.id, { name: trimmed, description: description.trim(), isPublic });
+    setSaving(false);
+    if (ok) onClose();
+  };
+
+  return (
+    <div className="aivy-modal-backdrop" onClick={onClose}>
+      <div className="aivy-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="aivy-modal-head">
+          <div className="aivy-modal-title">{t("editPlaylistTitle")}</div>
+          <button className="aivy-icon-btn sm" onClick={onClose} aria-label={t("close")}><X size={17} /></button>
+        </div>
+        <div className="aivy-field">
+          <label className="aivy-field-label" htmlFor="pl-edit-name">{t("playlistNameLabel")}</label>
+          <input
+            id="pl-edit-name"
+            ref={nameRef}
+            className="aivy-input"
+            placeholder={t("playlistNamePlaceholder")}
+            value={name}
+            maxLength={100}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onClose(); }}
+          />
+        </div>
+        <div className="aivy-field">
+          <label className="aivy-field-label" htmlFor="pl-edit-desc">{t("playlistDescLabel")}</label>
+          <textarea
+            id="pl-edit-desc"
+            className="aivy-textarea"
+            placeholder={t("playlistDescPlaceholder")}
+            value={description}
+            maxLength={300}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <label className="aivy-settings-row" style={{ padding: "10px 0", borderBottom: "none" }}>
+          <div><div className="label">{t("makePublicLabel")}</div><div className="hint">{t("makePublicHint")}</div></div>
+          <span
+            className={`aivy-switch ${isPublic ? "on" : ""}`}
+            onClick={() => setIsPublic((v) => !v)}
+            role="switch"
+            aria-checked={isPublic}
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setIsPublic((v) => !v); } }}
+          >
+            <span className="knob" />
+          </span>
+        </label>
+        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+          <button className="aivy-btn-primary" style={{ flex: 1 }} disabled={!name.trim() || saving} onClick={handleSave}>
+            {saving ? <Loader2 size={15} className="aivy-spin" /> : t("save")}
+          </button>
+          <button className="aivy-btn-ghost" onClick={onClose}>{t("cancel")}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PlaylistPage() {
   const { params } = useRouter();
-  const { playlists, playList, removeFromPlaylist, deletePlaylist, setPlaylistDetail } = usePlayer();
+  const { playlists, playList, toggleShuffle, removeFromPlaylist, deletePlaylist, setPlaylistDetail } = usePlayer();
   const { navigate } = useRouter();
-  const { t } = useUI();
+  const { openContextMenu, pushToast, t } = useUI();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [coverPickerOpen, setCoverPickerOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
   const pl = playlists.find((p) => String(p.id) === String(params.id));
 
   React.useEffect(() => {
@@ -195,14 +271,44 @@ export function PlaylistPage() {
             <ImagePlus size={16} />
           </button>
         </div>
-        <div className="aivy-hero-meta"><div className="eyebrow">{t("playlistLabel")}</div><h1 className="font-display">{pl.name}</h1><div className="stats"><span>{pl.songs?.length || 0} {t("songsCount")}</span></div></div>
+        <div className="aivy-hero-meta">
+          <div className="eyebrow">
+            {t("playlistLabel")}
+            {pl.is_public !== undefined && (
+              <span className="aivy-playlist-visibility" style={{ marginLeft: 6 }}>
+                · {pl.is_public ? <Globe size={12} /> : <Lock size={12} />} {pl.is_public ? t("publicLabel") : t("privateLabel")}
+              </span>
+            )}
+          </div>
+          <h1 className="font-display">{pl.name}</h1>
+          <div className="stats"><span>{pl.songs?.length || 0} {t("songsCount")}</span></div>
+        </div>
       </div>
       <div className="aivy-hero-actions">
+        <button className="aivy-icon-btn-outline" onClick={() => setEditOpen(true)} aria-label={t("editPlaylistBtn")} title={t("editPlaylistBtn")}>
+          <Pencil size={16} />
+        </button>
         {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
-        <button className="aivy-btn-ghost" onClick={() => setCoverPickerOpen(true)}><ImagePlus size={15} /> {t("changeCoverBtn")}</button>
-        <button className="aivy-btn-ghost" onClick={() => setConfirmDelete(true)}>{t("deletePlaylistBtn")}</button>
+        <button
+          className="aivy-icon-btn-outline"
+          aria-label={t("playlistMenuLabel")}
+          title={t("playlistMenuLabel")}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            openContextMenu(r.left, r.bottom + 6, [
+              ...(pl.songs?.length > 0 ? [{ label: t("shufflePlayBtn"), icon: <Shuffle size={15} />, onSelect: () => { toggleShuffle(); playList(pl.songs, 0, { type: "library", label: pl.name }); } }] : []),
+              { label: t("changeCoverBtn"), icon: <ImagePlus size={15} />, onSelect: () => setCoverPickerOpen(true) },
+              { label: t("sharePlaylistBtn"), icon: <Share2 size={15} />, onSelect: () => { navigator.clipboard?.writeText(window.location.href); pushToast(t("playlistLinkCopied")); } },
+              { divider: true },
+              { label: t("deletePlaylistBtn"), icon: <X size={15} />, onSelect: () => setConfirmDelete(true) },
+            ]);
+          }}
+        >
+          <MoreHorizontal size={18} />
+        </button>
       </div>
       {coverPickerOpen && <PlaylistCoverModal pl={pl} onClose={() => setCoverPickerOpen(false)} />}
+      {editOpen && <PlaylistEditModal pl={pl} onClose={() => setEditOpen(false)} />}
       <ConfirmDialog
         open={confirmDelete}
         title={`${t("deletePlaylistConfirmTitle")} "${pl.name}"?`}

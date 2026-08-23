@@ -933,6 +933,30 @@ export function PlayerProvider({ children }) {
     }
   }, [playlists, pushToast, t]);
 
+  const updatePlaylistMeta = useCallback(async (playlistId, { name, description, isPublic } = {}) => {
+    const prev = playlists.find((p) => String(p.id) === String(playlistId));
+    if (!prev) return false;
+    const patch = {};
+    if (name !== undefined) patch.name = name;
+    if (description !== undefined) patch.description = description;
+    if (isPublic !== undefined) patch.isPublic = isPublic;
+    setPlaylists((list) => list.map((pl) => (String(pl.id) === String(playlistId) ? {
+      ...pl,
+      ...(name !== undefined ? { name } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(isPublic !== undefined ? { is_public: isPublic } : {}),
+    } : pl)));
+    try {
+      await Api.updatePlaylist(playlistId, patch);
+      pushToast(t("playlistUpdatedToast"));
+      return true;
+    } catch {
+      setPlaylists((list) => list.map((pl) => (String(pl.id) === String(playlistId) ? prev : pl)));
+      pushToast(t("playlistUpdateFailedToast"));
+      return false;
+    }
+  }, [playlists, pushToast, t]);
+
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const authUserRef = useRef(authUser);
@@ -1045,7 +1069,7 @@ export function PlayerProvider({ children }) {
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
     removeFromQueue, moveQueueItem, clearUpNext, selectQueuePosition,
-    playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, setPlaylistCover, refreshPlaylists,
+    playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, setPlaylistCover, updatePlaylistMeta, refreshPlaylists,
     registerProgressEl,
     suggestedQueue, promoteSuggestion,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
