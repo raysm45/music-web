@@ -296,21 +296,41 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-scrubber-row{ display: flex; align-items: center; gap: 9px; width: 100%; }
 .aivy-time{ font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); width: 34px; flex-shrink: 0; }
 .aivy-time.right{ text-align: right; }
-.aivy-scrubber{ position: relative; flex: 1; height: 14px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
-.aivy-scrubber .track{ position: relative; width: 100%; height: 3px; border-radius: 2px; background: var(--bg-elev-3); overflow: hidden; }
-.aivy-scrubber .fill{ position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--ink-dim); border-radius: 2px; }
+
+/* iOS-style seek bar: slim rounded capsule that "grows" while you touch/drag it,
+   like the Now Playing scrubber on iPhone. No separate floating knob — the whole
+   pill is the handle, with a small round thumb that appears while interacting. */
+.aivy-scrubber{ position: relative; flex: 1; height: 20px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
+.aivy-scrubber .track{
+  position: relative; width: 100%; height: 4px; border-radius: 999px; background: var(--bg-elev-3); overflow: visible;
+  transition: height .16s cubic-bezier(.22,.9,.32,1);
+}
+.aivy-scrubber:hover .track, .aivy-scrubber.dragging .track{ height: 7px; }
+.aivy-scrubber .fill{ position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--ink-dim); border-radius: 999px; }
 .aivy-scrubber:hover .fill, .aivy-scrubber.dragging .fill{ background: var(--moss-strong); }
-.aivy-scrubber .thumb{ position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%; background: var(--ink); transform: translate(-50%,-50%); opacity: 0; transition: opacity var(--dur-fast) var(--ease); left: 0%; }
-.aivy-scrubber:hover .thumb, .aivy-scrubber.dragging .thumb{ opacity: 1; }
+.aivy-scrubber .thumb{
+  position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: var(--ink);
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  transform: translate(-50%,-50%) scale(.4); opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), transform .16s cubic-bezier(.22,.9,.32,1); left: 0%;
+}
+.aivy-scrubber:hover .thumb, .aivy-scrubber.dragging .thumb{ opacity: 1; transform: translate(-50%,-50%) scale(1); }
 .aivy-scrubber.is-loading{ cursor: default; }
 .aivy-scrubber.is-loading .track{ background: var(--bg-elev-3); }
 
 @keyframes aivy-shine{ 0%{ transform: translateX(-100%); } 100%{ transform: translateX(100%); } }
 .skeleton-shine{ position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg-elev-3); }
 .skeleton-shine::after{ content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 22%, transparent), transparent); animation: aivy-shine 1.35s ease-in-out infinite; }
-.aivy-vol{ display: flex; align-items: center; gap: 8px; }
-.aivy-vol .track{ position: relative; width: 84px; height: 3px; border-radius: 2px; background: var(--bg-elev-3); cursor: pointer; touch-action: none; }
-.aivy-vol .fill{ position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--ink-dim); transition: width 0.08s linear; }
+
+/* iOS-style volume slider: longer capsule, same "grow on touch" behavior as
+   the Control Center / Now Playing volume bar. */
+.aivy-vol{ display: flex; align-items: center; gap: 9px; }
+.aivy-vol .track{
+  position: relative; width: 130px; max-width: 40vw; height: 4px; border-radius: 999px; background: var(--bg-elev-3);
+  cursor: pointer; touch-action: none; transition: height .16s cubic-bezier(.22,.9,.32,1);
+}
+.aivy-vol:hover .track, .aivy-vol.dragging .track{ height: 7px; }
+.aivy-vol .fill{ position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--ink-dim); transition: width 0.08s linear; }
 .aivy-vol:hover .fill{ background: var(--moss-strong); }
 .aivy-vol.is-bumping .track{ background: var(--bg-elev-2); }
 .aivy-vol.is-bumping .fill{ background: var(--moss-strong); }
@@ -1079,6 +1099,14 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-fbtn.active{ color: #fff; background: rgba(255,255,255,.22); }
 .aivy-lyrics-fbtn:disabled{ opacity: .3; }
 .aivy-lyrics-fbtn.primary{ background: rgba(255,255,255,.12); }
+.aivy-fontsize-btn{ position: relative; }
+.aivy-fontsize-tag{
+  position: absolute; bottom: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 2px;
+  border-radius: 999px; background: var(--lyr-ink); color: var(--lyr-ink-invert, #000);
+  font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0;
+  display: flex; align-items: center; justify-content: center; line-height: 1; pointer-events: none;
+}
+:root[data-theme="light"] .aivy-fontsize-tag{ color: #fff; }
 
 .aivy-lyrics-main{ position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-top: 64px; }
 
@@ -1114,24 +1142,36 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-next .label{ font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--lyr-ink-faint); font-weight: 600; }
 .aivy-lyrics-next .name{ font-size: 12.5px; color: var(--lyr-ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.aivy-lyrics-scrubber-row{ display: none; align-items: center; gap: 8px; padding: 0 22px; flex-shrink: 0; }
+/* Scrubber, transport controls and volume are now shown on mobile too —
+   previously they were display:none below 860px, which meant opening lyrics
+   fullscreen on a phone left you with no way to seek, play/pause, skip or
+   adjust volume until you closed the overlay. */
+.aivy-lyrics-scrubber-row{ display: flex; align-items: center; gap: 8px; padding: 0 22px; flex-shrink: 0; }
 .aivy-lyrics-scrubber-row .aivy-time{ font-size: 11px; color: var(--lyr-ink-faint); flex-shrink: 0; width: 30px; }
 .aivy-lyrics-scrubber-row .aivy-time.right{ text-align: right; }
 .aivy-lyrics-scrubber-row .aivy-scrubber .track{ background: var(--lyr-line); }
 .aivy-lyrics-scrubber-row .aivy-scrubber .fill{ background: var(--lyr-ink); }
 .aivy-lyrics-scrubber-row .aivy-scrubber .thumb{ background: var(--lyr-ink); }
 
-.aivy-lyrics-side .aivy-transport-btns{ display: none; padding: 10px 22px 4px; }
+.aivy-lyrics-side .aivy-transport-btns{ display: flex; padding: 8px 22px 6px; justify-content: center; gap: 26px; }
 .aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn{ color: var(--lyr-ink-dim); }
 .aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn:hover{ color: var(--lyr-ink); background: var(--lyr-elev); }
 .aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn.active{ color: #fff; }
 .aivy-lyrics-side .aivy-play-btn{ background: #fff; color: #000; }
 .aivy-lyrics-side .aivy-play-btn:hover{ background: #e6e6e6; }
 
-.aivy-lyrics-side .aivy-vol{ display: none; padding: 6px 22px 4px; }
+.aivy-lyrics-side .aivy-vol{ display: flex; justify-content: center; padding: 4px 22px 8px; }
 .aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); }
 .aivy-lyrics-side .aivy-vol .fill{ background: var(--lyr-ink); }
 .aivy-lyrics-side .aivy-vol .aivy-icon-btn{ color: var(--lyr-ink-dim); }
+
+/* On mobile the artwork can eat most of the screen once controls are also
+   visible, so keep it a bit more compact there. */
+@media (max-width: 859px){
+  .aivy-lyrics-track{ padding: 0 22px 10px; }
+  .aivy-lyrics-track .cover{ max-width: 190px; margin: 0 auto 16px; }
+  .aivy-lyrics-next{ margin: 0 22px 10px; }
+}
 
 .aivy-lyrics-body-wrap{ position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .aivy-am-lyrics{
@@ -1159,6 +1199,10 @@ body.aivy-resizing *{ user-select: none !important; }
 @media (max-width: 640px){ .aivy-lyrics-line{ padding: 9px 20px; } .aivy-lyrics-plain{ padding: 12px 20px 30vh; } }
 
 @media (min-width: 860px){
+  /* The side panel shows its own like/share/font-size row below, so the
+     floating copies at the top-left would just be duplicates on desktop. */
+  .aivy-lyrics-float .aivy-lyrics-fbtn-dup{ display: none; }
+
   .aivy-lyrics-main{ flex-direction: row; padding-top: 0; }
   .aivy-lyrics-side{
     width: 340px; flex-shrink: 0; padding: 88px 30px 24px; overflow-y: auto; display: flex; flex-direction: column;
@@ -1169,9 +1213,9 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-lyrics-actions{ display: flex; padding: 0 0 16px; margin-left: -8px; }
   .aivy-lyrics-share{ margin: 0 0 16px; }
   .aivy-lyrics-next{ margin: 0 0 18px; }
-  .aivy-lyrics-scrubber-row{ display: flex; padding: 0 0 6px; }
-  .aivy-lyrics-side .aivy-transport-btns{ display: flex; padding: 6px 0 12px; justify-content: center; gap: 22px; }
-  .aivy-lyrics-side .aivy-vol{ display: flex; padding: 4px 0 0; }
+  .aivy-lyrics-scrubber-row{ padding: 0 0 6px; }
+  .aivy-lyrics-side .aivy-transport-btns{ padding: 6px 0 12px; justify-content: center; gap: 22px; }
+  .aivy-lyrics-side .aivy-vol{ justify-content: flex-start; padding: 4px 0 0; }
   .aivy-lyrics-body-wrap{ padding: 88px 56px 40px; }
   .aivy-lyrics-line, .aivy-lyrics-plain{ text-align: left; margin: 0; max-width: 760px; }
   .aivy-lyrics-line{ transform-origin: left center; }

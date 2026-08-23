@@ -135,7 +135,7 @@ export function VolumeControl() {
   }, [effective, setVolume]);
 
   return (
-    <div className={`aivy-vol ${bumping ? "is-bumping" : ""}`} ref={rootRef}>
+    <div className={`aivy-vol ${bumping ? "is-bumping" : ""} ${dragging ? "dragging" : ""}`} ref={rootRef}>
       <button className="aivy-icon-btn sm" onClick={toggleMute} aria-label={muted ? t("unmute") : t("mute")}><VolIcon size={17} /></button>
       <div
         ref={trackRef} className="track"
@@ -1858,19 +1858,23 @@ export function LyricsOverlay() {
 
       <div className="aivy-lyrics-float">
         <button className="aivy-lyrics-fbtn primary" onClick={closeLyrics} aria-label={t("close")}><X size={19} /></button>
+        {/* These three are hidden on desktop (>=860px) because the side panel
+            below already shows the same like/share/font-size actions there —
+            keeping both visible was creating duplicate buttons. */}
         <button
-          className={`aivy-lyrics-fbtn ${isLiked ? "active" : ""}`}
+          className={`aivy-lyrics-fbtn aivy-lyrics-fbtn-dup ${isLiked ? "active" : ""}`}
           onClick={() => currentTrack && toggleLike(currentTrack)}
           disabled={!currentTrack}
           aria-label={t("like")}
         >
           <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
         </button>
-        <button className="aivy-lyrics-fbtn" onClick={() => setShareOpen((v) => !v)} disabled={!currentTrack} aria-label={t("share")}>
+        <button className="aivy-lyrics-fbtn aivy-lyrics-fbtn-dup" onClick={() => setShareOpen((v) => !v)} disabled={!currentTrack} aria-label={t("share")}>
           <Share2 size={16} />
         </button>
-        <button className="aivy-lyrics-fbtn" onClick={cycleFontSize} disabled={!currentTrack} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}>
+        <button className="aivy-lyrics-fbtn aivy-lyrics-fbtn-dup aivy-fontsize-btn" onClick={cycleFontSize} disabled={!currentTrack} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}>
           <Type size={16} />
+          <span className="aivy-fontsize-tag">{fontSize}</span>
         </button>
       </div>
 
@@ -1892,7 +1896,10 @@ export function LyricsOverlay() {
                 <Heart size={17} fill={isLiked ? "currentColor" : "none"} />
               </button>
               <button className="aivy-icon-btn" onClick={() => setShareOpen((v) => !v)} aria-label={t("share")}><Share2 size={17} /></button>
-              <button className="aivy-icon-btn" onClick={cycleFontSize} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}><Type size={17} /></button>
+              <button className="aivy-icon-btn aivy-fontsize-btn" onClick={cycleFontSize} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}>
+                <Type size={17} />
+                <span className="aivy-fontsize-tag">{fontSize}</span>
+              </button>
             </div>
 
             {shareOpen && (
