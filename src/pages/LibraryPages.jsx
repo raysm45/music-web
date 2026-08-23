@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle, ImagePlus, X, RotateCcw, Pencil, MoreHorizontal, Shuffle, Share2, Globe, Lock } from "lucide-react";
+import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle, ImagePlus, X, RotateCcw, Pencil, MoreHorizontal, Shuffle, Share2, Globe, Lock, Search, ListPlus } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
 import { TrackRow, ViewNotFound, ConfirmDialog, CustomSelect } from "../components.jsx";
@@ -235,12 +235,15 @@ function PlaylistEditModal({ pl, onClose }) {
 
 export function PlaylistPage() {
   const { params } = useRouter();
-  const { playlists, playList, toggleShuffle, removeFromPlaylist, deletePlaylist, setPlaylistDetail } = usePlayer();
+  const { playlists, playList, toggleShuffle, removeFromPlaylist, deletePlaylist, setPlaylistDetail, addAllToQueueEnd, playAllNext } = usePlayer();
   const { navigate } = useRouter();
-  const { openContextMenu, pushToast, t } = useUI();
+  const { openContextMenu, openAddToPlaylist, pushToast, t } = useUI();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [coverPickerOpen, setCoverPickerOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const searchRef = React.useRef(null);
   const pl = playlists.find((p) => String(p.id) === String(params.id));
 
   React.useEffect(() => {
@@ -252,8 +255,16 @@ export function PlaylistPage() {
     );
   }, [params.id]);
 
+  React.useEffect(() => { if (searchOpen) searchRef.current?.focus(); }, [searchOpen]);
+  React.useEffect(() => { setSearchOpen(false); setQuery(""); }, [params.id]);
+
   if (!pl) return <ViewNotFound label={t("playlistLabel")} />;
   const cover = pl.cover_thumbnail ?? pl.songs?.[0]?.cover ?? null;
+  const q = query.trim().toLowerCase();
+  const visibleSongs = q
+    ? (pl.songs || []).filter((s) => s.title?.toLowerCase().includes(q) || s.artist?.name?.toLowerCase().includes(q))
+    : pl.songs;
+
   return (
     <div className="aivy-view-enter aivy-playlist-page">
       {cover && (
@@ -295,8 +306,13 @@ export function PlaylistPage() {
           title={t("playlistMenuLabel")}
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
+            const hasSongs = pl.songs?.length > 0;
             openContextMenu(r.left, r.bottom + 6, [
-              ...(pl.songs?.length > 0 ? [{ label: t("shufflePlayBtn"), icon: <Shuffle size={15} />, onSelect: () => { toggleShuffle(); playList(pl.songs, 0, { type: "library", label: pl.name }); } }] : []),
+              ...(hasSongs ? [{ label: t("shufflePlayBtn"), icon: <Shuffle size={15} />, onSelect: () => { toggleShuffle(); playList(pl.songs, 0, { type: "library", label: pl.name }); } }] : []),
+              ...(hasSongs ? [{ label: t("findInPlaylistBtn"), icon: <Search size={15} />, onSelect: () => setSearchOpen(true) }] : []),
+              ...(hasSongs ? [{ label: t("playAfterThisBtn"), icon: <ListPlus size={15} />, onSelect: () => playAllNext(pl.songs) }] : []),
+              ...(hasSongs ? [{ label: t("addToQueueBtn"), icon: <ListMusic size={15} />, onSelect: () => addAllToQueueEnd(pl.songs) }] : []),
+              ...(hasSongs ? [{ label: t("saveToPlaylistBtn"), icon: <LibraryIcon size={15} />, onSelect: () => openAddToPlaylist(pl.songs) }] : []),
               { label: t("changeCoverBtn"), icon: <ImagePlus size={15} />, onSelect: () => setCoverPickerOpen(true) },
               { label: t("sharePlaylistBtn"), icon: <Share2 size={15} />, onSelect: () => { navigator.clipboard?.writeText(window.location.href); pushToast(t("playlistLinkCopied")); } },
               { divider: true },
@@ -307,6 +323,23 @@ export function PlaylistPage() {
           <MoreHorizontal size={18} />
         </button>
       </div>
+      {searchOpen && (
+        <div className="aivy-field" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ position: "relative", flex: 1 }}>
+            <Search size={15} color="var(--ink-faint)" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
+            <input
+              ref={searchRef}
+              className="aivy-input"
+              style={{ paddingLeft: 38, marginBottom: 0 }}
+              placeholder={t("findInPlaylistPlaceholder")}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setQuery(""); } }}
+            />
+          </div>
+          <button className="aivy-icon-btn sm" onClick={() => { setSearchOpen(false); setQuery(""); }} aria-label={t("close")}><X size={17} /></button>
+        </div>
+      )}
       {coverPickerOpen && <PlaylistCoverModal pl={pl} onClose={() => setCoverPickerOpen(false)} />}
       {editOpen && <PlaylistEditModal pl={pl} onClose={() => setEditOpen(false)} />}
       <ConfirmDialog
@@ -318,7 +351,11 @@ export function PlaylistPage() {
         onConfirm={() => { setConfirmDelete(false); deletePlaylist(pl.id); navigate("library"); }}
       />
       {pl.songs?.length > 0 ? (
-        <div>{pl.songs.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, tr.id)} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} />)}</div>
+        visibleSongs.length > 0 ? (
+          <div>{visibleSongs.map((tr) => <TrackRow key={tr.id} track={tr} index={pl.songs.indexOf(tr)} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, tr.id)} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} />)}</div>
+        ) : (
+          <div className="aivy-empty"><div className="title">{t("findInPlaylistNoResults")}</div></div>
+        )
       ) : (
         <div className="aivy-empty"><div className="title">{t("playlistEmpty")}</div><div className="sub">{t("playlistEmptySub")}</div></div>
       )}

@@ -829,6 +829,35 @@ export function PlayerProvider({ children }) {
     pushToast(`${t("toastPlayAfterThis")} — ${track.title}`);
   }, [inRoom, addToQueueEnd, posInOrder, pushToast, t]);
 
+  const addAllToQueueEnd = useCallback((rawTracks) => {
+    const tracks = (rawTracks || []).map(normalizeTrack).filter(Boolean);
+    if (!tracks.length) return;
+    if (inRoom) { tracks.forEach((track) => socketRef.current?.emit("queue-add", { roomId: room.id, song: track })); pushToast(t("toastAddedQueue")); return; }
+    setQueueList((list) => {
+      const newList = [...list, ...tracks];
+      setOrder((ord) => [...ord, ...tracks.map((_, i) => list.length + i)]);
+      return newList;
+    });
+    pushToast(t("toastAddedQueue"));
+  }, [inRoom, room, pushToast, t]);
+
+  const playAllNext = useCallback((rawTracks) => {
+    const tracks = (rawTracks || []).map(normalizeTrack).filter(Boolean);
+    if (!tracks.length) return;
+    if (inRoom) { addAllToQueueEnd(tracks); return; }
+    setQueueList((list) => {
+      const newList = [...list, ...tracks];
+      setOrder((ord) => {
+        const c = [...ord];
+        const inserted = tracks.map((_, i) => list.length + i);
+        c.splice(posInOrder + 1, 0, ...inserted);
+        return c;
+      });
+      return newList;
+    });
+    pushToast(t("toastPlayAfterThis"));
+  }, [inRoom, addAllToQueueEnd, posInOrder, pushToast, t]);
+
   const removeFromQueue = useCallback((upNextIndex) => {
     if (inRoom) {
       const absolutePos = (room?.currentIndex ?? -1) + 1 + upNextIndex;
@@ -1067,7 +1096,7 @@ export function PlayerProvider({ children }) {
     isPlaying, currentTime, duration: clipDuration, isPreviewClip, loadingAudio,
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
-    setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue,
+    setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue, addAllToQueueEnd, playAllNext,
     removeFromQueue, moveQueueItem, clearUpNext, selectQueuePosition,
     playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, setPlaylistCover, updatePlaylistMeta, refreshPlaylists,
     registerProgressEl,

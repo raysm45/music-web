@@ -506,7 +506,7 @@ export function ToastHost({ isMobile }) {
 }
 
 export function AddToPlaylistModal() {
-  const { addToPlaylistTarget, closeAddToPlaylist, t } = useUI();
+  const { addToPlaylistTarget, closeAddToPlaylist, pushToast, t } = useUI();
   const { playlists, addToPlaylist, createPlaylist } = usePlayer();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -514,11 +514,19 @@ export function AddToPlaylistModal() {
   useEffect(() => { if (creating) inputRef.current?.focus(); }, [creating]);
   if (!addToPlaylistTarget) return null;
 
+  const targets = Array.isArray(addToPlaylistTarget) ? addToPlaylistTarget : [addToPlaylistTarget];
+
+  const handleAdd = (playlistId) => {
+    targets.forEach((track) => addToPlaylist(playlistId, track));
+    if (targets.length > 1) pushToast(t("toastAddedToPlaylist"));
+    closeAddToPlaylist();
+  };
+
   const handleCreate = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
     const id = await createPlaylist(trimmed);
-    if (id) addToPlaylist(id, addToPlaylistTarget);
+    if (id) targets.forEach((track) => addToPlaylist(id, track));
     closeAddToPlaylist();
   };
 
@@ -531,10 +539,10 @@ export function AddToPlaylistModal() {
         </div>
         <div className="aivy-playlist-pick">
           {playlists.map((pl) => (
-            <button key={pl.id} onClick={() => { addToPlaylist(pl.id, addToPlaylistTarget); closeAddToPlaylist(); }}>
+            <button key={pl.id} onClick={() => handleAdd(pl.id)}>
               <Library size={15} color="var(--ink-faint)" />
               <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.name}</span>
-              {pl.songs?.some((s) => s.id === addToPlaylistTarget.id) && <Check size={15} color="var(--moss-strong)" />}
+              {targets.every((tr) => pl.songs?.some((s) => s.id === tr.id)) && <Check size={15} color="var(--moss-strong)" />}
             </button>
           ))}
           {!playlists.length && <div className="eyebrow" style={{ padding: "8px 10px" }}>{t("noPlaylistsYet")}</div>}
