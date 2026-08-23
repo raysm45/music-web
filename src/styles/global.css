@@ -1146,7 +1146,10 @@ body.aivy-resizing *{ user-select: none !important; }
    previously they were display:none below 860px, which meant opening lyrics
    fullscreen on a phone left you with no way to seek, play/pause, skip or
    adjust volume until you closed the overlay. */
-.aivy-lyrics-scrubber-row{ display: flex; align-items: center; gap: 8px; padding: 0 22px; flex-shrink: 0; }
+/* Grid with the same 3 columns (label / bar / label) as the scrubber row —
+   the volume row reuses it so its bar lines up exactly with the duration
+   bar's length, even though it only fills 2 of the 3 columns. */
+.aivy-lyrics-scrubber-row{ display: grid; grid-template-columns: 30px 1fr 30px; align-items: center; gap: 8px; padding: 0 22px; flex-shrink: 0; }
 .aivy-lyrics-scrubber-row .aivy-time{ font-size: 11px; color: var(--lyr-ink-faint); flex-shrink: 0; width: 30px; }
 .aivy-lyrics-scrubber-row .aivy-time.right{ text-align: right; }
 .aivy-lyrics-scrubber-row .aivy-scrubber .track{ background: var(--lyr-line); }
@@ -1160,8 +1163,8 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-side .aivy-play-btn{ background: #fff; color: #000; }
 .aivy-lyrics-side .aivy-play-btn:hover{ background: #e6e6e6; }
 
-.aivy-lyrics-side .aivy-vol{ display: flex; justify-content: center; padding: 4px 22px 8px; }
-.aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); flex: 1; width: auto; max-width: none; }
+.aivy-lyrics-side .aivy-vol{ display: grid; grid-template-columns: 30px 1fr 30px; align-items: center; gap: 8px; padding: 4px 22px 8px; }
+.aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); width: auto; }
 .aivy-lyrics-side .aivy-vol .fill{ background: var(--lyr-ink); }
 .aivy-lyrics-side .aivy-vol .aivy-icon-btn{ color: var(--lyr-ink-dim); }
 
@@ -1215,7 +1218,7 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-lyrics-next{ margin: 0 0 18px; }
   .aivy-lyrics-scrubber-row{ padding: 0 0 6px; }
   .aivy-lyrics-side .aivy-transport-btns{ padding: 6px 0 12px; justify-content: center; gap: 22px; }
-  .aivy-lyrics-side .aivy-vol{ justify-content: flex-start; padding: 4px 0 0; }
+  .aivy-lyrics-side .aivy-vol{ padding: 4px 0 0; }
   .aivy-lyrics-body-wrap{ padding: 88px 56px 40px; }
   .aivy-lyrics-line, .aivy-lyrics-plain{ text-align: left; margin: 0; max-width: 760px; }
   .aivy-lyrics-line{ transform-origin: left center; }
