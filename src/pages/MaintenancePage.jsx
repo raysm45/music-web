@@ -381,8 +381,8 @@ function SmokeEffect() {
 }
 
 const FLOOR_BOUNDS = { xMin: 10, xMax: 72, yMin: 26, yMax: 82 };
-const BED_SPOT = { x: 22, y: 44, rx: 13, ry: 13 };
-const DESK_SPOT = { x: 64, y: 44, rx: 12, ry: 13 };
+const BED_SPOT_FALLBACK = { x: 22, y: 44, rx: 13, ry: 13 };
+const DESK_SPOT_FALLBACK = { x: 64, y: 44, rx: 12, ry: 13 };
 
 function randomFloorPoint() {
   return {
@@ -450,9 +450,14 @@ function useBackgroundMusic(src) {
   return { playing, blocked, toggle };
 }
 
-export function MaintenancePage() {
+export function MaintenancePage({ progress: progressProp } = {}) {
   const sceneRef = useRef(null);
+  const floorRef = useRef(null);
+  const bedMarkerRef = useRef(null);
+  const deskMarkerRef = useRef(null);
   const posRef = useRef({ x: 50, y: 60 });
+  const bedSpotRef = useRef(BED_SPOT_FALLBACK);
+  const deskSpotRef = useRef(DESK_SPOT_FALLBACK);
   const genRef = useRef(0);
   const cycleTimerRef = useRef(null);
   const arriveTimerRef = useRef(null);
@@ -461,21 +466,53 @@ export function MaintenancePage() {
   const dragStartRef = useRef({ x: 0, y: 0 });
 
   const [pos, setPos] = useState(posRef.current);
+  const [bedSpot, setBedSpot] = useState(BED_SPOT_FALLBACK);
+  const [deskSpot, setDeskSpot] = useState(DESK_SPOT_FALLBACK);
   const [moveDuration, setMoveDuration] = useState(1);
   const [charState, setCharState] = useState("idle");
   const [expression, setExpression] = useState("neutral");
   const [facing, setFacing] = useState("right");
   const [isDragging, setIsDragging] = useState(false);
   const [bubble, setBubble] = useState(null);
-  const [progress, setProgress] = useState(0);
+  const [internalProgress, setInternalProgress] = useState(65);
+
+  const hasControlledProgress = typeof progressProp === "number" && !Number.isNaN(progressProp);
+  const progress = Math.round(clampNum(hasControlledProgress ? progressProp : internalProgress, 0, 100));
 
   const music = useBackgroundMusic(AUDIO_SRC);
 
-  useEffect(() => {
-    const target = 58 + Math.floor(Math.random() * 27);
-    const t = setTimeout(() => setProgress(target), 500);
-    return () => clearTimeout(t);
+  const measureSpots = useCallback(() => {
+    const floor = floorRef.current;
+    if (!floor) return;
+    const floorRect = floor.getBoundingClientRect();
+    if (!floorRect.width || !floorRect.height) return;
+
+    const measure = (markerEl, fallback) => {
+      if (!markerEl) return fallback;
+      const r = markerEl.getBoundingClientRect();
+      const cx = r.left + r.width / 2 - floorRect.left;
+      const cy = r.top + r.height / 2 - floorRect.top;
+      return {
+        x: (cx / floorRect.width) * 100,
+        y: (cy / floorRect.height) * 100,
+        rx: fallback.rx,
+        ry: fallback.ry,
+      };
+    };
+
+    const nextBed = measure(bedMarkerRef.current, BED_SPOT_FALLBACK);
+    const nextDesk = measure(deskMarkerRef.current, DESK_SPOT_FALLBACK);
+    bedSpotRef.current = nextBed;
+    deskSpotRef.current = nextDesk;
+    setBedSpot(nextBed);
+    setDeskSpot(nextDesk);
   }, []);
+
+  useEffect(() => {
+    measureSpots();
+    window.addEventListener("resize", measureSpots);
+    return () => window.removeEventListener("resize", measureSpots);
+  }, [measureSpots]);
 
   const say = useCallback((text, ms = 2000) => {
     setBubble(text);
@@ -515,7 +552,7 @@ export function MaintenancePage() {
     const roll = Math.random();
 
     if (roll < 0.16) {
-      walkTo(BED_SPOT, myGen, () => {
+      walkTo(bedSpotRef.current, myGen, () => {
         setCharState("sleeping");
         setExpression("neutral");
         say(BUBBLE_LINES.sleepStart, 4200);
@@ -530,7 +567,7 @@ export function MaintenancePage() {
         }, 7000 + Math.random() * 4000);
       });
     } else if (roll < 0.34) {
-      walkTo(DESK_SPOT, myGen, () => {
+      walkTo(deskSpotRef.current, myGen, () => {
         setCharState("computer");
         setExpression("happy");
         say(BUBBLE_LINES.computerStart, 2200);
@@ -630,8 +667,8 @@ export function MaintenancePage() {
       return;
     }
 
-    if (withinSpot(dropped, BED_SPOT)) {
-      setPosBoth(BED_SPOT);
+    if (withinSpot(dropped, bedSpotRef.current)) {
+      setPosBoth(bedSpotRef.current);
       setCharState("sleeping");
       setExpression("neutral");
       say(BUBBLE_LINES.dropBed, 3000);
@@ -640,8 +677,8 @@ export function MaintenancePage() {
         setCharState("idle");
         runCycle();
       }, 6000 + Math.random() * 3000);
-    } else if (withinSpot(dropped, DESK_SPOT)) {
-      setPosBoth(DESK_SPOT);
+    } else if (withinSpot(dropped, deskSpotRef.current)) {
+      setPosBoth(deskSpotRef.current);
       setCharState("computer");
       setExpression("happy");
       say(BUBBLE_LINES.dropDesk, 2200);
@@ -677,8 +714,8 @@ export function MaintenancePage() {
     },
   };
 
-  const isNearBed = isDragging && withinSpot(pos, BED_SPOT);
-  const isNearDesk = isDragging && withinSpot(pos, DESK_SPOT);
+  const isNearBed = isDragging && withinSpot(pos, bedSpot);
+  const isNearDesk = isDragging && withinSpot(pos, deskSpot);
 
   return (
     <div className="pm-root">
@@ -705,7 +742,7 @@ export function MaintenancePage() {
           <PixelSprite {...DOOR_SPRITE} className="pm-sprite" />
         </div>
 
-        <div className="pm-floor">
+        <div className="pm-floor" ref={floorRef}>
           <div className="pm-item pm-item-rug" style={{ left: "30%", top: "46%" }}>
             <PixelSprite {...RUG_SPRITE} className="pm-sprite" />
           </div>
@@ -719,6 +756,7 @@ export function MaintenancePage() {
             style={{ left: "10%", top: "26%" }}
           >
             <PixelSprite {...BED_SPRITE} className="pm-sprite" />
+            <span ref={bedMarkerRef} className="pm-spot-marker" style={{ left: "36%", top: "56%" }} />
             {isNearBed && <span className="pm-target-label">lepas untuk tidur</span>}
           </div>
 
@@ -731,6 +769,7 @@ export function MaintenancePage() {
             style={{ left: "52%", top: "26%" }}
           >
             <PixelSprite {...DESK_SPRITE} className="pm-sprite" />
+            <span ref={deskMarkerRef} className="pm-spot-marker" style={{ left: "50%", top: "88%" }} />
             {isNearDesk && <span className="pm-target-label">lepas untuk main komputer</span>}
           </div>
 
@@ -878,13 +917,23 @@ const CSS = `
   touch-action:none; user-select:none; image-rendering:pixelated;
   overflow:hidden;
 }
-.pm-wall{ position:absolute; inset:0 0 68% 0; background: linear-gradient(180deg,#1c1f16,#242819); }
-.pm-wall::after{ content:""; position:absolute; inset:0; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.02) 0 2px, transparent 2px 40px); }
+.pm-wall{
+  position:absolute; inset:0 0 68% 0;
+  background: linear-gradient(180deg, #2A3120 0%, #3C4530 62%, #4B5A40 100%);
+}
+.pm-wall::before{ content:""; position:absolute; inset:0; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 2px, transparent 2px 42px); }
+.pm-wall::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:16px;
+  background: linear-gradient(180deg, #8A6A3C 0%, #5E4527 100%);
+  border-top:2px solid var(--pm-outline,#14170D);
+  box-shadow: 0 4px 10px rgba(0,0,0,.4);
+}
 .pm-floor{ position:absolute; inset:32% 0 0 0; background: repeating-linear-gradient(0deg, #262a1c 0 34px, #22261a 34px 68px); border-top:3px solid var(--pm-line,#2A2E20); }
 .pm-floor::after{ content:""; position:absolute; inset:0; background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.14) 0 1px, transparent 1px 68px); }
 
 .pm-item{ position:absolute; pointer-events:none; filter: drop-shadow(0 6px 8px rgba(0,0,0,.35)); }
 .pm-item .pm-sprite{ display:block; width: var(--w,120px); height:auto; }
+.pm-spot-marker{ position:absolute; width:1px; height:1px; }
 .pm-item-ac{ --w:140px; }
 .pm-item-tv{ --w:150px; z-index:3; }
 .pm-item-rack{ --w:78px; z-index:4; }
@@ -996,8 +1045,8 @@ const CSS = `
 .pm-char.is-dragging .pm-arm-right{ transform: rotate(24deg) translateY(-4px); }
 .pm-char.is-dragging{ filter: drop-shadow(0 14px 16px rgba(0,0,0,.4)); }
 
-.pm-char--sleeping{ transform: translate(-50%,-70%) rotate(90deg); }
-.pm-char--sleeping.facing-left{ transform: translate(-50%,-70%) rotate(90deg) scaleX(-1); }
+.pm-char--sleeping{ transform: translate(-50%,-50%) rotate(-90deg); }
+.pm-char--sleeping.facing-left{ transform: translate(-50%,-50%) rotate(-90deg) scaleX(-1); }
 .pm-char--sleeping .pm-arm, .pm-char--sleeping .pm-foot{ opacity:.85; }
 
 .pm-zzz{
