@@ -1606,10 +1606,20 @@ const LYRICS_FONT_SIZES = {
   lg: "clamp(23px, 4.4vw, 32px)",
 };
 
+// <am-lyrics> internally uses CSS *container queries* on its own
+// `.lyrics-container` element, and those queries re-assign
+// `--lyplus-font-size-base` themselves based on the element's width:
+//   @container (max-width: 519px) -> --lyplus-font-size-base: var(--am-lyrics-compact-font-size, 28px)
+//   @container (min-width: 900px) -> --lyplus-font-size-base: var(--am-lyrics-wide-font-size, 48px)
+// So simply setting `--lyplus-font-size-base` from outside gets silently
+// clobbered the moment the panel is narrower than 519px or wider than
+// 900px (which is most of the time). We have to set all three variables —
+// the compact/wide overrides *and* the mid-range base — so the size we
+// pick actually sticks no matter how wide the lyrics panel is.
 const AM_LYRICS_FONT_SIZES = {
-  sm: "clamp(20px, 3.4vw, 24px)",
-  md: "clamp(26px, 4.2vw, 32px)",
-  lg: "clamp(32px, 5vw, 40px)",
+  sm: { "--am-lyrics-compact-font-size": "22px", "--lyplus-font-size-base": "26px", "--am-lyrics-wide-font-size": "34px" },
+  md: { "--am-lyrics-compact-font-size": "28px", "--lyplus-font-size-base": "34px", "--am-lyrics-wide-font-size": "48px" },
+  lg: { "--am-lyrics-compact-font-size": "34px", "--lyplus-font-size-base": "42px", "--am-lyrics-wide-font-size": "58px" },
 };
 // am-lyrics already resolves lyrics through its own internal provider chain
 // (BiniLyrics/LyricsPlus first, then Unison/YouLyPlus, then LRCLIB, then
@@ -1717,7 +1727,7 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
     <am-lyrics
       ref={elRef}
       class="aivy-am-lyrics"
-      style={{ "--lyplus-font-size-base": AM_LYRICS_FONT_SIZES[fontSize] || AM_LYRICS_FONT_SIZES.md }}
+      style={AM_LYRICS_FONT_SIZES[fontSize] || AM_LYRICS_FONT_SIZES.md}
     />
   );
 }

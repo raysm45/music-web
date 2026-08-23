@@ -294,7 +294,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-play-btn:disabled{ opacity: .4; }
 
 .aivy-scrubber-row{ display: flex; align-items: center; gap: 9px; width: 100%; }
-.aivy-time{ font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); width: 34px; flex-shrink: 0; }
+.aivy-time{ font-family: var(--font-body); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 11px; color: var(--ink-faint); width: 34px; flex-shrink: 0; }
 .aivy-time.right{ text-align: right; }
 
 /* iOS-style seek bar: slim rounded capsule that "grows" while you touch/drag it,
@@ -1161,7 +1161,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-side .aivy-play-btn:hover{ background: #e6e6e6; }
 
 .aivy-lyrics-side .aivy-vol{ display: flex; justify-content: center; padding: 4px 22px 8px; }
-.aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); }
+.aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); flex: 1; width: auto; max-width: none; }
 .aivy-lyrics-side .aivy-vol .fill{ background: var(--lyr-ink); }
 .aivy-lyrics-side .aivy-vol .aivy-icon-btn{ color: var(--lyr-ink-dim); }
 
