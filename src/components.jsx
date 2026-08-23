@@ -1461,7 +1461,7 @@ export function Sidebar() {
         <nav className="aivy-nav aivy-nav-rail">
           {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
             <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`} title={t(labelKey)} aria-label={t(labelKey)}>
-              <span className="aivy-nav-icon"><Icon size={17} /></span>
+              <Icon size={18} />
             </Link>
           ))}
         </nav>
@@ -1492,16 +1492,15 @@ export function Sidebar() {
         >
           <PanelLeft size={18} />
         </button>
-        <Link to="home" className="aivy-brand"><span className="aivy-brand-mark"><LeafMark size={22} color="var(--moss-strong)" className="mark" /></span><div className="word font-display">AIVY<small>{t("appTagline")}</small></div></Link>
+        <Link to="home" className="aivy-brand"><LeafMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">AIVY<small>{t("appTagline")}</small></div></Link>
       </div>
       <nav className="aivy-nav">
         {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
-          <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`}><span className="aivy-nav-icon"><Icon size={17} /></span><span>{t(labelKey)}</span></Link>
+          <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`}><Icon size={18} /><span>{t(labelKey)}</span></Link>
         ))}
       </nav>
       <div className="aivy-side-section">
-        <div className="aivy-vine-divider"><LeafMark size={11} color="var(--moss-strong)" /></div>
-        <div className="aivy-side-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="eyebrow" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span>{t("navYourPlaylists")}</span>
           <button className="aivy-icon-btn sm" onClick={() => setCreating((c) => !c)} aria-label={t("createPlaylist")}><Plus size={14} /></button>
         </div>
@@ -1512,16 +1511,14 @@ export function Sidebar() {
           </div>
         )}
         <div className="aivy-playlist-list aivy-scroll">
-          <Link to="liked" className="aivy-playlist-row"><span className="aivy-playlist-swatch liked"><Heart size={14} color="var(--berry-strong)" fill="var(--berry-strong)" /></span><span>{t("navLikedSongs")}</span></Link>
-          {playlists.map((pl) => <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-playlist-row"><CoverArt seed={pl.id} size={28} radius={7} /><span>{pl.name}</span></Link>)}
+          <Link to="liked" className="aivy-playlist-row"><Heart size={15} color="var(--berry)" fill="var(--berry)" /><span>{t("navLikedSongs")}</span></Link>
+          {playlists.map((pl) => <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-playlist-row"><Library size={15} /><span>{pl.name}</span></Link>)}
         </div>
       </div>
       <div className="aivy-side-footer">
         {}
-        <div className="aivy-side-actions">
         <Link to="settings" className="aivy-theme-btn"><SettingsIcon size={15} />{t("navSettings")}</Link>
         <button className="aivy-theme-btn" onClick={toggleTheme}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}{theme === "dark" ? t("navLightMode") : t("navDarkMode")}</button>
-      </div>
         {authUser ? (
           <Link to="settings" className="aivy-user-chip">
             <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>

@@ -134,62 +134,33 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-side-footer-rail .aivy-theme-btn{ width: 40px; height: 36px; padding: 0; justify-content: center; gap: 0; }
 .aivy-side-footer-rail .aivy-login-btn{ width: 40px; height: 36px; padding: 0; }
 .aivy-user-chip-rail{ padding: 0; justify-content: center; }
-.aivy-brand{ display: flex; align-items: center; gap: 11px; padding: 4px 8px 22px; min-width: 0; }
-.aivy-brand-mark{
-  position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  width: 38px; height: 38px; border-radius: var(--radius-md);
-  background: radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--moss) 38%, transparent), transparent 72%), var(--bg-elev-2);
-  border: 1px solid var(--line);
-}
+.aivy-brand{ display: flex; align-items: center; gap: 10px; padding: 4px 8px 22px; min-width: 0; }
+.aivy-brand .mark{ flex-shrink: 0; }
 .aivy-brand .word{ font-family: var(--font-display); font-size: 21px; font-weight: 700; letter-spacing: .01em; white-space: nowrap; }
-.aivy-brand .word small{ display: block; font-family: var(--font-body); font-size: 10.5px; letter-spacing: .02em; color: var(--ink-faint); font-weight: 500; text-transform: none; margin-top: 1px; }
+.aivy-brand .word small{ display: block; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .14em; color: var(--ink-faint); font-weight: 400; text-transform: uppercase; margin-top: 1px; }
 
-.aivy-nav{ position: relative; display: flex; flex-direction: column; gap: 2px; }
-.aivy-nav::before{
-  content: ""; position: absolute; left: 26px; top: 6px; bottom: 6px; width: 2px; z-index: 0;
-  background: linear-gradient(180deg, transparent, var(--line) 12%, var(--line) 88%, transparent);
-  border-radius: 2px;
-}
-.aivy-nav-item{ position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: var(--radius-sm); color: var(--ink-dim); font-size: 14.5px; font-weight: 500; min-width: 0; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+.aivy-nav{ display: flex; flex-direction: column; gap: 2px; }
+.aivy-nav-item{ display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: var(--radius-sm); color: var(--ink-dim); font-size: 14.5px; font-weight: 500; min-width: 0; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
 .aivy-nav-item svg{ flex-shrink: 0; }
 .aivy-nav-item span{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aivy-nav-item:hover{ background: var(--bg-elev-2); color: var(--ink); }
-.aivy-nav-item.active{ background: var(--bg-elev-2); color: var(--ink); font-weight: 600; }
-.aivy-nav-icon{
-  position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  width: 30px; height: 30px; border-radius: 9px; background: var(--bg-elev); border: 1px solid var(--line); color: var(--ink-faint);
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
-}
-.aivy-nav-item:hover .aivy-nav-icon{ color: var(--ink); border-color: var(--ink-faint); }
-.aivy-nav-item.active .aivy-nav-icon{ background: var(--moss); border-color: var(--moss); color: var(--moss-ink); }
-.aivy-nav-rail::before{ display: none; }
-.aivy-nav-rail .aivy-nav-icon{ width: 34px; height: 34px; }
+.aivy-nav-item.active{ background: var(--bg-elev-2); color: var(--ink); }
 
-.aivy-side-section{ margin-top: 14px; padding-top: 0; border-top: none; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.aivy-vine-divider{ display: flex; align-items: center; padding: 2px 10px 14px; }
-.aivy-vine-divider::before, .aivy-vine-divider::after{ content: ""; flex: 1; height: 1px; background: var(--line-soft); }
-.aivy-vine-divider svg{ margin: 0 9px; flex-shrink: 0; opacity: .85; }
-.aivy-side-label{ padding: 0 12px 8px; font-family: var(--font-display); font-size: 12.5px; font-weight: 700; color: var(--ink-dim); letter-spacing: .01em; }
+.aivy-side-section{ margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line-soft); flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.aivy-side-section .eyebrow{ padding: 0 12px 8px; }
 .aivy-playlist-list{ overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; }
-.aivy-playlist-row{ display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-radius: var(--radius-sm); min-width: 0; color: var(--ink-dim); font-size: 13.5px; }
+.aivy-playlist-row{ display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: var(--radius-sm); min-width: 0; color: var(--ink-dim); font-size: 13.5px; }
 .aivy-playlist-row span{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aivy-playlist-row:hover{ background: var(--bg-elev-2); color: var(--ink); }
-.aivy-playlist-row svg{ flex-shrink: 0; }
-.aivy-playlist-swatch{ width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-elev-2); border: 1px solid var(--line); }
-.aivy-playlist-swatch.liked{ background: color-mix(in srgb, var(--berry) 18%, var(--bg-elev-2)); border-color: color-mix(in srgb, var(--berry) 45%, var(--line)); }
-.aivy-playlist-row > svg[width="28"]{ border-radius: 7px; border: 1px solid var(--line); }
 
 .aivy-side-footer{ display: flex; flex-direction: column; gap: 8px; padding-top: 12px; }
-.aivy-side-actions{ display: flex; flex-direction: column; gap: 2px; padding: 5px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-elev-2); }
-.aivy-side-actions .aivy-theme-btn{ border: none; }
 .aivy-theme-btn{ display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--radius-sm); color: var(--ink-dim); font-size: 13px; border: 1px solid var(--line); }
-.aivy-theme-btn:hover{ color: var(--ink); background: var(--bg-elev-3); }
+.aivy-theme-btn:hover{ color: var(--ink); background: var(--bg-elev-2); }
 .aivy-login-btn{ display: flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 10px; border-radius: var(--radius-sm); background: var(--moss); color: var(--moss-ink); font-size: 13.5px; font-weight: 600; }
 .aivy-login-btn:hover{ background: var(--moss-strong); }
 .aivy-user-chip{ display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: var(--radius-sm); }
 .aivy-user-chip:hover{ background: var(--bg-elev-2); }
 .aivy-avatar{ width: 26px; height: 26px; border-radius: 50%; background: var(--bg-elev-3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 700; color: var(--ink-dim); border: 1px solid var(--line); }
-.aivy-sidebar .aivy-avatar{ border-color: var(--moss-strong); box-shadow: 0 0 0 2px color-mix(in srgb, var(--moss) 22%, transparent); }
 
 .aivy-main{ grid-area: main; min-width: 0; min-height: 0; position: relative; display: flex; flex-direction: column; }
 .aivy-topbar{ display: flex; align-items: center; gap: 10px; padding: 12px 28px; flex-shrink: 0; border-bottom: 1px solid transparent; }
@@ -345,56 +316,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-vol.is-bumping .fill{ background: var(--moss-strong); }
 
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: none; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
-
-/* ===================================================================
-   Monochrome rail — right panel restyled black & white, minimalist,
-   in the spirit of monochrome.tf's UI. Scoped to .aivy-rightpanel
-   only, so the left sidebar, player bar and every page keep their
-   normal palette. This rail stays black even in light mode, since
-   that stark contrast is the whole point of the "monochrome" look.
-   =================================================================== */
-.aivy-rightpanel{
-  --bg: #000000;
-  --bg-elev: #000000;
-  --bg-elev-2: #131313;
-  --bg-elev-3: #1e1e1e;
-  --line: #262626;
-  --line-soft: #1a1a1a;
-  --ink: #f5f5f5;
-  --ink-dim: #a3a3a3;
-  --ink-faint: #6b6b6b;
-  --moss: #ffffff;
-  --moss-strong: #ffffff;
-  --moss-ink: #000000;
-  --berry: #d9d9d9;
-  --berry-strong: #ffffff;
-  --gold: #ffffff;
-  border-left: 1px solid var(--line);
-  color-scheme: dark;
-}
-.aivy-rightpanel .aivy-rightpanel-tabs button,
-.aivy-rightpanel .aivy-rightpanel-title{
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-}
-.aivy-rightpanel .aivy-nowplaying-pane .t{ font-weight: 700; }
-.aivy-rightpanel .aivy-nowplaying-pane img,
-.aivy-rightpanel .aivy-nowplaying-pane svg{ border: 1px solid var(--line); }
-.aivy-rightpanel .aivy-credits-card,
-.aivy-rightpanel .aivy-nowplaying-about,
-.aivy-rightpanel .aivy-nextup-row,
-.aivy-rightpanel .aivy-queue-card{
-  background: var(--bg-elev-2);
-  border-color: var(--line);
-}
-.aivy-rightpanel .aivy-queue-now-card{ border-color: var(--ink); }
-.aivy-rightpanel .aivy-chip.active{
-  background: var(--ink);
-  color: var(--bg);
-  border-color: var(--ink);
-}
 .aivy-rightpanel-rail{
   width: 100%; height: 100%; min-width: 0; overflow: hidden;
   display: flex; flex-direction: row; align-items: stretch; position: relative;
