@@ -811,10 +811,6 @@ export function MaintenancePage({ progress: progressProp } = {}) {
         </div>
 
         <div className="pm-topbar">
-          <div className="pm-brand">
-            <span className="pm-brand-dot" />
-            <span className="pm-brand-word">Kamar Moku</span>
-          </div>
           <button
             type="button"
             className={`pm-music-btn ${music.playing ? "is-playing" : ""}`}
@@ -837,11 +833,6 @@ export function MaintenancePage({ progress: progressProp } = {}) {
             <span className="pm-progress-pct">{progress}% selesai</span>
           </div>
         </div>
-
-        <p className="pm-hint">
-          Moku jalan-jalan sendiri di kamarnya — seret dia ke kasur biar tidur, atau ke meja
-          komputer biar coba benerin server. Semua perabotan lain diam di tempat.
-        </p>
       </div>
 
       <span className="sr-only" aria-live="polite">
@@ -871,19 +862,12 @@ const CSS = `
   padding: 18px 22px; pointer-events:none;
 }
 .pm-topbar > *{ pointer-events:auto; }
-.pm-brand{
-  display:flex; align-items:center; gap:8px; margin-right:auto;
-  background:rgba(18,20,15,.55); backdrop-filter:blur(6px);
-  border:1px solid var(--pm-line,#2A2E20); padding:8px 14px; border-radius:999px;
-}
-.pm-brand-dot{ width:10px; height:10px; border-radius:2px; background: var(--pm-moss-strong,#ADC79C); box-shadow: 2px 2px 0 var(--pm-outline,#14170D); }
-.pm-brand-word{ font-weight:700; font-size:17px; letter-spacing:.01em; }
 .pm-status-dot{ flex-shrink:0; width:7px; height:7px; border-radius:50%; background: var(--pm-gold,#D3B673); animation: pm-pulse 1.8s ease-out infinite; margin-top:3px; }
 .pm-music-btn{
   display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600;
   color: var(--pm-ink-dim,#9BA08A); background:rgba(28,31,22,.85); border:1px solid var(--pm-line,#2A2E20);
   padding:7px 14px; border-radius:999px; cursor:pointer; transition: color .15s ease, background .15s ease;
-  backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px); margin-left:auto;
 }
 .pm-music-btn:hover{ color: var(--pm-ink,#ECE8D9); background:#232619; }
 .pm-music-icon{ width:8px; height:8px; border-radius:50%; background: var(--pm-moss-strong,#ADC79C); }
@@ -1075,14 +1059,6 @@ const CSS = `
 .pm-bubble.is-sad{ color:#B9D3EA; }
 .pm-bubble.is-happy{ color: var(--pm-moss-strong,#ADC79C); }
 
-.pm-hint{
-  position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:25;
-  max-width:560px; text-align:center; font-size:12px; line-height:1.5;
-  color: var(--pm-ink-faint,#676B57); font-style:italic; margin:0; pointer-events:none;
-  background:rgba(15,17,10,.55); backdrop-filter:blur(6px);
-  border:1px solid var(--pm-line,#2A2E20); border-radius:12px; padding:8px 16px;
-}
-
 @keyframes pm-pulse{
   0%{ box-shadow: 0 0 0 0 rgba(211,182,115,.55); } 70%{ box-shadow: 0 0 0 8px rgba(211,182,115,0); } 100%{ box-shadow:0 0 0 0 rgba(211,182,115,0); }
 }
@@ -1096,10 +1072,8 @@ const CSS = `
   .pm-item-rack{ --w:52px; } .pm-item-door{ --w:54px; }
   .pm-char{ width:62px; height:78px; }
   .pm-topbar{ padding:12px 14px; }
-  .pm-brand-word{ font-size:14.5px; }
   .pm-progress-panel{ left:12px; bottom:12px; padding:10px 12px; max-width:190px; }
   .pm-progress-track{ width:110px; }
-  .pm-hint{ display:none; }
 }
 
 @media (prefers-reduced-motion: reduce){
