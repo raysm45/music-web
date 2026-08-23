@@ -316,6 +316,56 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-vol.is-bumping .fill{ background: var(--moss-strong); }
 
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: none; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
+
+/* ===================================================================
+   Monochrome rail — right panel restyled black & white, minimalist,
+   in the spirit of monochrome.tf's UI. Scoped to .aivy-rightpanel
+   only, so the left sidebar, player bar and every page keep their
+   normal palette. This rail stays black even in light mode, since
+   that stark contrast is the whole point of the "monochrome" look.
+   =================================================================== */
+.aivy-rightpanel{
+  --bg: #000000;
+  --bg-elev: #000000;
+  --bg-elev-2: #131313;
+  --bg-elev-3: #1e1e1e;
+  --line: #262626;
+  --line-soft: #1a1a1a;
+  --ink: #f5f5f5;
+  --ink-dim: #a3a3a3;
+  --ink-faint: #6b6b6b;
+  --moss: #ffffff;
+  --moss-strong: #ffffff;
+  --moss-ink: #000000;
+  --berry: #d9d9d9;
+  --berry-strong: #ffffff;
+  --gold: #ffffff;
+  border-left: 1px solid var(--line);
+  color-scheme: dark;
+}
+.aivy-rightpanel .aivy-rightpanel-tabs button,
+.aivy-rightpanel .aivy-rightpanel-title{
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.aivy-rightpanel .aivy-nowplaying-pane .t{ font-weight: 700; }
+.aivy-rightpanel .aivy-nowplaying-pane img,
+.aivy-rightpanel .aivy-nowplaying-pane svg{ border: 1px solid var(--line); }
+.aivy-rightpanel .aivy-credits-card,
+.aivy-rightpanel .aivy-nowplaying-about,
+.aivy-rightpanel .aivy-nextup-row,
+.aivy-rightpanel .aivy-queue-card{
+  background: var(--bg-elev-2);
+  border-color: var(--line);
+}
+.aivy-rightpanel .aivy-queue-now-card{ border-color: var(--ink); }
+.aivy-rightpanel .aivy-chip.active{
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
 .aivy-rightpanel-rail{
   width: 100%; height: 100%; min-width: 0; overflow: hidden;
   display: flex; flex-direction: row; align-items: stretch; position: relative;
