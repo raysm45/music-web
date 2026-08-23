@@ -111,15 +111,13 @@ function buildTV() {
     rectCells(1, 1, 20, 13, PALETTE.ink2),
     rectCells(2, 2, 18, 10, PALETTE.metal),
     rectCells(3, 3, 16, 8, PALETTE.screen),
-    rectCells(9, 13, 4, 1, PALETTE.metal),
-    rectCells(7, 14, 8, 1, PALETTE.metalLight),
   ];
   const noiseColors = [PALETTE.mossStrong, PALETTE.white, PALETTE.screenGlow];
   const noiseSeed = [
     [5, 4], [11, 5], [15, 5], [7, 7], [13, 8], [9, 9], [17, 6], [6, 9], [14, 4],
   ];
   noiseSeed.forEach(([x, y], i) => layers.push(rectCells(x, y, 1, 1, noiseColors[i % noiseColors.length])));
-  return { cells: paint(...layers), cols: 22, rows: 16 };
+  return { cells: paint(...layers), cols: 22, rows: 15 };
 }
 
 function buildServerRack() {
@@ -738,7 +736,7 @@ export function MaintenancePage({ progress: progressProp } = {}) {
           </div>
         </div>
 
-        <div className="pm-item pm-item-door" style={{ left: "42%", top: "12%" }}>
+        <div className="pm-item pm-item-door" style={{ left: "42%", bottom: "68%" }}>
           <PixelSprite {...DOOR_SPRITE} className="pm-sprite" />
         </div>
 
@@ -942,7 +940,7 @@ const CSS = `
 .pm-item-sofa{ --w:210px; z-index:5; }
 .pm-item-pot{ --w:64px; z-index:3; }
 .pm-item-rug{ --w:280px; z-index:1; filter:none; }
-.pm-item-door{ --w:58px; z-index:2; filter:none; }
+.pm-item-door{ --w:82px; z-index:2; filter:none; }
 
 .pm-item.is-target .pm-sprite{ filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
 .pm-item.is-target::before{
@@ -1095,7 +1093,7 @@ const CSS = `
 
 @media (max-width:720px){
   .pm-item-bed{ --w:150px; } .pm-item-desk{ --w:140px; } .pm-item-sofa{ --w:150px; } .pm-item-rug{ --w:200px; }
-  .pm-item-rack{ --w:52px; } .pm-item-door{ --w:38px; }
+  .pm-item-rack{ --w:52px; } .pm-item-door{ --w:54px; }
   .pm-char{ width:62px; height:78px; }
   .pm-topbar{ padding:12px 14px; }
   .pm-brand-word{ font-size:14.5px; }
