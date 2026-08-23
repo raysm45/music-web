@@ -237,7 +237,7 @@ export function PlaylistPage() {
   const { params } = useRouter();
   const { playlists, playList, toggleShuffle, removeFromPlaylist, deletePlaylist, setPlaylistDetail, addAllToQueueEnd, playAllNext } = usePlayer();
   const { navigate } = useRouter();
-  const { openContextMenu, openAddToPlaylist, pushToast, t } = useUI();
+  const { openContextMenu, openAddToPlaylist, pushToast, authUser, t } = useUI();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [coverPickerOpen, setCoverPickerOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
@@ -259,6 +259,7 @@ export function PlaylistPage() {
   React.useEffect(() => { setSearchOpen(false); setQuery(""); }, [params.id]);
 
   if (!pl) return <ViewNotFound label={t("playlistLabel")} />;
+  const isOwner = !!authUser && String(authUser.id) === String(pl.user_id);
   const cover = pl.cover_thumbnail ?? pl.songs?.[0]?.cover ?? null;
   const q = query.trim().toLowerCase();
   const visibleSongs = q
@@ -278,9 +279,11 @@ export function PlaylistPage() {
           {cover ? <SmartCover src={cover} seed={"pl" + pl.id} size={176} radius={16} style={{ width: 176, height: 176 }} /> : (
             <div style={{ width: 176, height: 176, borderRadius: "var(--radius-lg)", background: "var(--bg-elev-2)", display: "flex", alignItems: "center", justifyContent: "center" }}><LibraryIcon size={40} color="var(--ink-faint)" /></div>
           )}
-          <button className="aivy-cover-edit-btn" onClick={() => setCoverPickerOpen(true)} aria-label={t("changeCoverBtn")} title={t("changeCoverBtn")}>
-            <ImagePlus size={16} />
-          </button>
+          {isOwner && (
+            <button className="aivy-cover-edit-btn" onClick={() => setCoverPickerOpen(true)} aria-label={t("changeCoverBtn")} title={t("changeCoverBtn")}>
+              <ImagePlus size={16} />
+            </button>
+          )}
         </div>
         <div className="aivy-hero-meta">
           <div className="eyebrow">
@@ -296,9 +299,11 @@ export function PlaylistPage() {
         </div>
       </div>
       <div className="aivy-hero-actions">
-        <button className="aivy-icon-btn-outline" onClick={() => setEditOpen(true)} aria-label={t("editPlaylistBtn")} title={t("editPlaylistBtn")}>
-          <Pencil size={16} />
-        </button>
+        {isOwner && (
+          <button className="aivy-icon-btn-outline" onClick={() => setEditOpen(true)} aria-label={t("editPlaylistBtn")} title={t("editPlaylistBtn")}>
+            <Pencil size={16} />
+          </button>
+        )}
         {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
         <button
           className="aivy-icon-btn-outline"
@@ -313,10 +318,9 @@ export function PlaylistPage() {
               ...(hasSongs ? [{ label: t("playAfterThisBtn"), icon: <ListPlus size={15} />, onSelect: () => playAllNext(pl.songs) }] : []),
               ...(hasSongs ? [{ label: t("addToQueueBtn"), icon: <ListMusic size={15} />, onSelect: () => addAllToQueueEnd(pl.songs) }] : []),
               ...(hasSongs ? [{ label: t("saveToPlaylistBtn"), icon: <LibraryIcon size={15} />, onSelect: () => openAddToPlaylist(pl.songs) }] : []),
-              { label: t("changeCoverBtn"), icon: <ImagePlus size={15} />, onSelect: () => setCoverPickerOpen(true) },
+              ...(isOwner ? [{ label: t("changeCoverBtn"), icon: <ImagePlus size={15} />, onSelect: () => setCoverPickerOpen(true) }] : []),
               { label: t("sharePlaylistBtn"), icon: <Share2 size={15} />, onSelect: () => { navigator.clipboard?.writeText(window.location.href); pushToast(t("playlistLinkCopied")); } },
-              { divider: true },
-              { label: t("deletePlaylistBtn"), icon: <X size={15} />, onSelect: () => setConfirmDelete(true) },
+              ...(isOwner ? [{ divider: true }, { label: t("deletePlaylistBtn"), icon: <X size={15} />, onSelect: () => setConfirmDelete(true) }] : []),
             ]);
           }}
         >
@@ -340,8 +344,8 @@ export function PlaylistPage() {
           <button className="aivy-icon-btn sm" onClick={() => { setSearchOpen(false); setQuery(""); }} aria-label={t("close")}><X size={17} /></button>
         </div>
       )}
-      {coverPickerOpen && <PlaylistCoverModal pl={pl} onClose={() => setCoverPickerOpen(false)} />}
-      {editOpen && <PlaylistEditModal pl={pl} onClose={() => setEditOpen(false)} />}
+      {isOwner && coverPickerOpen && <PlaylistCoverModal pl={pl} onClose={() => setCoverPickerOpen(false)} />}
+      {isOwner && editOpen && <PlaylistEditModal pl={pl} onClose={() => setEditOpen(false)} />}
       <ConfirmDialog
         open={confirmDelete}
         title={`${t("deletePlaylistConfirmTitle")} "${pl.name}"?`}
@@ -352,7 +356,7 @@ export function PlaylistPage() {
       />
       {pl.songs?.length > 0 ? (
         visibleSongs.length > 0 ? (
-          <div>{visibleSongs.map((tr) => <TrackRow key={tr.id} track={tr} index={pl.songs.indexOf(tr)} list={pl.songs} showAlbum onRemove={() => removeFromPlaylist(pl.id, tr.id)} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} />)}</div>
+          <div>{visibleSongs.map((tr) => <TrackRow key={tr.id} track={tr} index={pl.songs.indexOf(tr)} list={pl.songs} showAlbum onRemove={isOwner ? () => removeFromPlaylist(pl.id, tr.id) : undefined} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} />)}</div>
         ) : (
           <div className="aivy-empty"><div className="title">{t("findInPlaylistNoResults")}</div></div>
         )

@@ -922,9 +922,11 @@ export function PlayerProvider({ children }) {
       cover: s.thumbnail,
       duration: s.duration,
     }));
-    setPlaylists((list) =>
-      list.map((pl) => String(pl.id) === String(detail.id) ? { ...pl, ...detail, songs } : pl)
-    );
+    setPlaylists((list) => {
+      const exists = list.some((pl) => String(pl.id) === String(detail.id));
+      if (exists) return list.map((pl) => String(pl.id) === String(detail.id) ? { ...pl, ...detail, songs } : pl);
+      return [...list, { ...detail, songs }];
+    });
   }, []);
 
   const addToPlaylist = useCallback(async (playlistId, rawTrack) => {
