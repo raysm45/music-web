@@ -199,7 +199,7 @@ export function GlobalContextMenu() {
   );
 }
 
-export function CustomSelect({ value, options, onChange, placeholder, className = "" }) {
+export function CustomSelect({ value, options, onChange, placeholder, className = "", disabled = false }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [rect, setRect] = useState(null);
@@ -222,6 +222,7 @@ export function CustomSelect({ value, options, onChange, placeholder, className 
   }, []);
 
   const doOpen = () => {
+    if (disabled) return;
     const r = triggerRef.current.getBoundingClientRect();
     setRect(r);
     setHighlight(selectedIndex >= 0 ? selectedIndex : 0);
@@ -230,7 +231,7 @@ export function CustomSelect({ value, options, onChange, placeholder, className 
     setOpen(true);
   };
 
-  const toggle = () => (open ? doClose() : doOpen());
+  const toggle = () => { if (!disabled) (open ? doClose() : doOpen()); };
 
   useEffect(() => {
     if (!open) return;
@@ -287,10 +288,11 @@ export function CustomSelect({ value, options, onChange, placeholder, className 
       <button
         type="button"
         ref={triggerRef}
-        className={`aivy-cselect-trigger ${open ? "is-open" : ""}`}
+        className={`aivy-cselect-trigger ${open ? "is-open" : ""} ${disabled ? "is-disabled" : ""}`}
         onClick={toggle}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-disabled={disabled || undefined}
       >
         <span className="aivy-cselect-value">{selected ? selected.label : (placeholder || "")}</span>
         <ChevronDown size={15} className="aivy-cselect-chevron" />
