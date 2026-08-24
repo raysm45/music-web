@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
-  PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote,
+  PanelLeft, PanelRight, Type, Star, Airplay, Mic,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -147,35 +147,6 @@ export function VolumeControl() {
       >
         <div className="fill" style={{ width: `${effective * 100}%` }} />
       </div>
-    </div>
-  );
-}
-
-/* Volume ala iPhone: ikon speaker kecil di kiri, speaker besar di kanan,
-   bar panjang di tengah — dipakai di Now Playing sheet dan lyrics overlay. */
-function AppleVolumeRow() {
-  const { volume, muted, setVolume } = usePlayer();
-  const trackRef = useRef(null);
-  const draggingRef = useRef(false);
-  const effective = muted ? 0 : volume;
-  const ratioFromEvent = (e) => {
-    const r = trackRef.current.getBoundingClientRect();
-    return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-  };
-  return (
-    <div className="aivy-apple-vol">
-      <Volume1 size={15} aria-hidden="true" />
-      <div
-        ref={trackRef} className="track"
-        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); draggingRef.current = true; setVolume(ratioFromEvent(e)); }}
-        onPointerMove={(e) => { if (draggingRef.current) setVolume(ratioFromEvent(e)); }}
-        onPointerUp={(e) => { draggingRef.current = false; try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
-        onPointerCancel={(e) => { draggingRef.current = false; try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
-        role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(effective * 100)}
-      >
-        <div className="fill" style={{ width: `${effective * 100}%` }} />
-      </div>
-      <Volume2 size={17} aria-hidden="true" />
     </div>
   );
 }
@@ -745,10 +716,10 @@ export function MobileNowPlayingIconRow({ lyricsActive, onToggleLyrics, lyricsDi
         aria-label={t("lyrics")}
         title={lyricsDisabled ? t("lyricsUnavailable") : t("lyrics")}
       >
-        <MessageSquareQuote size={21} />
+        <Mic2 size={18} />
       </button>
-      <button className="aivy-icon-btn" onClick={handleAirplay} aria-label="AirPlay"><Airplay size={21} /></button>
-      <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={21} /></button>
+      <button className="aivy-icon-btn" onClick={handleAirplay} aria-label="AirPlay"><Airplay size={18} /></button>
+      <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={18} /></button>
     </div>
   );
 }
@@ -762,54 +733,47 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   const menuItems = useTrackMenuItems(currentTrack || {});
   const handleMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, menuItems); };
-  const remaining = Math.max(0, Math.round((duration || 0) - (currentTime || 0)));
-
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
       <div className={`aivy-sheet ${open ? "open" : ""}`} aria-hidden={!open}>
         {currentTrack && (
-          <div className="aivy-sheet-bg" style={{ backgroundImage: `url(${currentTrack.cover})` }} aria-hidden="true" />
+          <div
+            className="aivy-sheet-bg"
+            style={{ backgroundImage: `url(${currentTrack.cover})` }}
+            aria-hidden="true"
+          />
         )}
-        <button className="aivy-sheet-grabber" onClick={onClose} aria-label={t("close")}>
-          <span />
-        </button>
+        <div className="aivy-sheet-head">
+          <button className="aivy-icon-btn" onClick={onClose} aria-label={t("close")}><ChevronDown size={22} /></button>
+          {isPreviewClip ? <span className="eyebrow">{t("preview30")}</span> : <span />}
+          <span style={{ width: 38, flexShrink: 0 }} />
+        </div>
         {currentTrack && (
           <div className="aivy-sheet-body aivy-scroll">
-            <div className="aivy-sheet-art">
-              <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }} />
-            </div>
-
+            <PlayingFromLabel />
+            <div className="aivy-sheet-art"><SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={20} style={{ width: "100%", height: "100%" }} /></div>
             <div className="aivy-sheet-meta">
-              <div className="aivy-sheet-meta-txt">
+              <div>
                 <div className="t">{currentTrack.title}</div>
-                <div
-                  className="a"
-                  onClick={() => { currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}
-                >
-                  {currentTrack.artist?.name}
-                  {isPreviewClip && <span className="preview-tag">{` \u00b7 ${t("previewTag")}`}</span>}
-                </div>
+                <div className="a" onClick={() => { currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}>{currentTrack.artist?.name}</div>
               </div>
               <div className="aivy-sheet-meta-actions">
-                <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")}>
-                  <Star size={21} fill={isLiked ? "currentColor" : "none"} />
-                </button>
-                <button className="aivy-icon-btn" onClick={handleMore} aria-label={t("menuMore")}>
-                  <MoreHorizontal size={21} />
-                </button>
+                <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")}><Star size={21} fill={isLiked ? "currentColor" : "none"} /></button>
+                <button className="aivy-icon-btn" onClick={handleMore} aria-label={t("menuMore")}><MoreHorizontal size={21} /></button>
               </div>
             </div>
-
             <div className="aivy-scrubber-row">
               <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
               <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
-              <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : `-${formatTime(remaining)}`}</span>
+              <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(duration)}</span>
             </div>
-
             <TransportButtons big />
-            <AppleVolumeRow />
+            <VolumeControl />
             <MobileNowPlayingIconRow lyricsActive={false} onToggleLyrics={toggleLyrics} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
+            <AboutArtistSection track={currentTrack} onNavigate={onClose} />
+            <CreditsCard track={currentTrack} />
+            <NextUpPreview />
           </div>
         )}
       </div>
@@ -922,6 +886,7 @@ export function RightPanel() {
           aria-label={t("expandPanel", "Buka panel")}
           title={t("expandPanel", "Buka panel")}
         >
+          {}
           <span className="aivy-rightpanel-rail-peek-wrap">
             <span className="aivy-rightpanel-rail-peek" style={{ width: rightPanelWidth }}>{bodyContent}</span>
           </span>
@@ -944,6 +909,17 @@ export function RightPanel() {
   );
 }
 
+function PlayingFromLabel() {
+  const { playSource } = usePlayer();
+  const { t } = useUI();
+  if (playSource?.type !== "library" || !playSource.label) return null;
+  return (
+    <div className="aivy-nowplaying-source">
+      <Library size={12} />
+      <span>{t("playingFromLabel")} <strong>{playSource.label}</strong></span>
+    </div>
+  );
+}
 function RightPanelSourceLabel() {
   const { playSource } = usePlayer();
   if (playSource?.type !== "library" || !playSource.label) return null;
@@ -1506,11 +1482,11 @@ function RoomPane() {
 }
 
 const NAV_ITEMS = [
-  { route: "home", labelKey: "navHome", icon: HomeIcon },
-  { route: "shorts", labelKey: "navShorts", icon: Film },
-  { route: "search", labelKey: "navSearch", icon: Search },
-  { route: "library", labelKey: "navLibrary", icon: Library },
-  { route: "roomLobby", labelKey: "navRooms", icon: Users },
+  { route: "home", labelKey: "navHome", icon: HomeIcon, flag: "showNavHome" },
+  { route: "shorts", labelKey: "navShorts", icon: Film, flag: "showNavShorts" },
+  { route: "search", labelKey: "navSearch", icon: Search, flag: "showNavSearch" },
+  { route: "library", labelKey: "navLibrary", icon: Library, flag: "showNavLibrary" },
+  { route: "roomLobby", labelKey: "navRooms", icon: Users, flag: "showNavRooms" },
 ];
 
 export function Sidebar() {
@@ -1518,6 +1494,7 @@ export function Sidebar() {
   const {
     theme, toggleTheme, authUser, login, t,
     sidebarWidth, setSidebarWidth, sidebarCollapsed, toggleSidebarCollapsed,
+    settings,
   } = useUI();
   const { playlists, createPlaylist } = usePlayer();
   const [creating, setCreating] = useState(false);
@@ -1529,6 +1506,8 @@ export function Sidebar() {
   const { onDragStart, isDragging } = usePanelResize({
     width: sidebarWidth, setWidth: setSidebarWidth, min: SIDEBAR_MIN_W, max: SIDEBAR_MAX_W, side: "left",
   });
+
+  const visibleNavItems = NAV_ITEMS.filter(({ flag }) => settings?.[flag] !== false);
 
   if (sidebarCollapsed) {
     return (
@@ -1542,7 +1521,7 @@ export function Sidebar() {
           <PanelLeft size={18} />
         </button>
         <nav className="aivy-nav aivy-nav-rail">
-          {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
+          {visibleNavItems.map(({ route, labelKey, icon: Icon }) => (
             <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`} title={t(labelKey)} aria-label={t(labelKey)}>
               <Icon size={18} />
             </Link>
@@ -1578,7 +1557,7 @@ export function Sidebar() {
         <Link to="home" className="aivy-brand"><LeafMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">AIVY<small>{t("appTagline")}</small></div></Link>
       </div>
       <nav className="aivy-nav">
-        {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
+        {visibleNavItems.map(({ route, labelKey, icon: Icon }) => (
           <Link key={route} to={route} className={`aivy-nav-item ${name === route ? "active" : ""}`}><Icon size={18} /><span>{t(labelKey)}</span></Link>
         ))}
       </nav>
@@ -1599,6 +1578,7 @@ export function Sidebar() {
         </div>
       </div>
       <div className="aivy-side-footer">
+        {}
         <Link to="settings" className="aivy-theme-btn"><SettingsIcon size={15} />{t("navSettings")}</Link>
         <button className="aivy-theme-btn" onClick={toggleTheme}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}{theme === "dark" ? t("navLightMode") : t("navDarkMode")}</button>
         {authUser ? (
@@ -1624,10 +1604,11 @@ export function Sidebar() {
 
 export function MobileTabBar() {
   const { name } = useRouter();
-  const { t } = useUI();
+  const { t, settings } = useUI();
+  const visibleNavItems = NAV_ITEMS.filter(({ flag }) => settings?.[flag] !== false);
   return (
     <nav className="aivy-tabbar">
-      {NAV_ITEMS.map(({ route, labelKey, icon: Icon }) => (
+      {visibleNavItems.map(({ route, labelKey, icon: Icon }) => (
         <Link key={route} to={route} className={`aivy-tab ${name === route ? "active" : ""}`}><Icon size={20} /><span>{t(labelKey)}</span></Link>
       ))}
     </nav>
@@ -1662,7 +1643,9 @@ export function TopBar({ isMobile }) {
       <div className="aivy-topbar-spacer" />
       {isMobile && (
         <>
+          {}
           <button className="aivy-navbtn" onClick={toggleTheme} aria-label={t("navSettings")} title={t("navSettings")}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
+          {}
           {!authUser && <Link to="settings" className="aivy-navbtn" aria-label={t("navSettings")} title={t("navSettings")}><SettingsIcon size={15} /></Link>}
         </>
       )}
@@ -1686,12 +1669,26 @@ const LYRICS_FONT_SIZES = {
   lg: "clamp(23px, 4.4vw, 32px)",
 };
 
+// <am-lyrics> internally uses CSS *container queries* on its own
+// `.lyrics-container` element, and those queries re-assign
+// `--lyplus-font-size-base` themselves based on the element's width:
+//   @container (max-width: 519px) -> --lyplus-font-size-base: var(--am-lyrics-compact-font-size, 28px)
+//   @container (min-width: 900px) -> --lyplus-font-size-base: var(--am-lyrics-wide-font-size, 48px)
+// So simply setting `--lyplus-font-size-base` from outside gets silently
+// clobbered the moment the panel is narrower than 519px or wider than
+// 900px (which is most of the time). We have to set all three variables —
+// the compact/wide overrides *and* the mid-range base — so the size we
+// pick actually sticks no matter how wide the lyrics panel is.
 const AM_LYRICS_FONT_SIZES = {
   sm: { "--am-lyrics-compact-font-size": "22px", "--lyplus-font-size-base": "26px", "--am-lyrics-wide-font-size": "34px" },
   md: { "--am-lyrics-compact-font-size": "28px", "--lyplus-font-size-base": "34px", "--am-lyrics-wide-font-size": "48px" },
   lg: { "--am-lyrics-compact-font-size": "34px", "--lyplus-font-size-base": "42px", "--am-lyrics-wide-font-size": "58px" },
 };
-
+// am-lyrics already resolves lyrics through its own internal provider chain
+// (BiniLyrics/LyricsPlus first, then Unison/YouLyPlus, then LRCLIB, then
+// Genius as a last resort) whenever it's given song-title/song-artist — so
+// we don't fetch or pre-build anything ourselves; we just feed it clean
+// metadata and let it do the searching, matching, and syncing natively.
 function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize }) {
   const elRef = useRef(null);
 
@@ -1707,26 +1704,42 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
       const durationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
       const query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
       if (forceRetrigger) {
+        // The very first fetch to these lyrics providers occasionally fails
+        // on a cold connection (fresh DNS/TLS to a domain the browser
+        // hasn't touched yet) even though a retry with the exact same
+        // title/artist succeeds moments later. Lit only re-fetches when a
+        // property actually *changes*, so re-assigning the identical string
+        // wouldn't retrigger anything — nudge it through a throwaway value
+        // first so the real value change still fires.
         el.songTitle = `${cleanedTitle}\u200b`;
       }
       el.songTitle = cleanedTitle;
       el.songArtist = track.artist?.name || "";
+      // NOTE: the reactive JS property is `songDurationMs`, NOT `songDuration`
+      // — only the HTML *attribute* is called `song-duration`. Setting
+      // `el.songDuration` silently sets an untracked stray property and never
+      // reaches the component.
       el.songDurationMs = durationMs;
       el.query = query;
+      // Same story here: the property is `autoScroll` (camelCase), the
+      // attribute is `autoscroll`.
       el.autoScroll = true;
       el.interpolate = true;
     };
 
     const watchForFailureAndRetryOnce = () => {
       let attempts = 0;
-      const maxAttempts = Math.ceil(9000 / 300);
+      const maxAttempts = Math.ceil(9000 / 300); // ~9s, a hair over am-lyrics' own 8s fetch timeout
       pollId = setInterval(() => {
         attempts++;
         if (cancelled) { clearInterval(pollId); return; }
+        // `isLoading`/`lyricsSource` are TS `private` on AmLyrics, which
+        // only affects compile-time type-checking — at runtime they're
+        // ordinary instance properties we can read from outside.
         if (el.isLoading === false) {
           clearInterval(pollId);
           if (!el.lyricsSource && !el.ttml) {
-            applyMetadata(true);
+            applyMetadata(true); // one silent retry
           }
           return;
         }
@@ -1734,6 +1747,13 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
       }, 300);
     };
 
+    // <am-lyrics> is loaded from a separate <script type="module"> tag (CDN)
+    // rather than bundled with the app. If that tag hasn't finished
+    // registering the custom element yet the very first time this mounts,
+    // setting properties on the not-yet-upgraded element can silently miss
+    // Lit's reactive pipeline — nothing fires and no fetch happens. Waiting
+    // for the definition first guarantees we're always setting properties
+    // on the real, upgraded element.
     if (typeof customElements !== "undefined" && customElements.get("am-lyrics")) {
       applyMetadata(false);
     } else if (typeof customElements !== "undefined") {
@@ -1775,6 +1795,24 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
   );
 }
 
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = String(text || "").split(" ");
+  let line = "";
+  let lines = [];
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+}
+
 function SidebarQueuePanel() {
   const [subTab, setSubTab] = useState("queue");
   const { currentTrack, upNext, history, selectQueuePosition, clearUpNext } = usePlayer();
@@ -1812,111 +1850,190 @@ function SidebarQueuePanel() {
   );
 }
 
-/* Lyrics overlay — SATU tampilan tunggal, gaya iPhone:
-   background blur artwork, cover kecil + judul di kiri atas,
-   star / ukuran font / titik-tiga di kanan, tombol Sing,
-   scrubber dengan waktu sisa negatif, transport, volume, baris ikon. */
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, t, openContextMenu, openMobileQueue } = useUI();
-  const { currentTrack, currentTime, seekTo, liked, toggleLike } = usePlayer();
+  const { lyricsOpen, closeLyrics, pushToast, t, theme, openMobileQueue } = useUI();
+  const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
   const [fontSize, setFontSize] = useState("md");
+  const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
+  // Fixed, theme-matched highlight color for the active lyric line — not
+  // derived from the track artwork, so it stays legible (white on dark,
+  // black on light) no matter how bright/dark the cover art is.
+  const highlightColor = theme === "light" ? "#14150f" : "#f5f5f5";
+  const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
-  const menuItems = useTrackMenuItems(currentTrack || {});
-  const handleMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, menuItems); };
+  const nextTrack = upNext?.[0];
 
   useEffect(() => {
     if (!lyricsOpen) return;
     const scrollEl = document.getElementById("aivy-content-scroll");
     const prevOverflow = scrollEl ? scrollEl.style.overflow : "";
     if (scrollEl) scrollEl.style.overflow = "hidden";
-    const ALLOWED_SCROLL_SELECTOR = ".aivy-am-lyrics";
+
+    const ALLOWED_SCROLL_SELECTOR = ".aivy-lyrics-body, .aivy-lyrics-plain, .aivy-lyrics-side, .aivy-am-lyrics";
     const onTouchMove = (e) => {
-      if (e.target.closest && e.target.closest(ALLOWED_SCROLL_SELECTOR)) return;
+      if (e.target.closest(ALLOWED_SCROLL_SELECTOR)) return;
       e.preventDefault();
     };
     document.addEventListener("touchmove", onTouchMove, { passive: false });
+
     return () => {
       if (scrollEl) scrollEl.style.overflow = prevOverflow;
       document.removeEventListener("touchmove", onTouchMove);
     };
   }, [lyricsOpen]);
 
+  // No manual lyrics fetch here anymore — <am-lyrics> (AppleLyricsPane)
+  // resolves everything itself against its own provider chain (BiniLyrics/
+  // LyricsPlus first, then LRCLIB and a couple of other fallbacks) as soon
+  // as it's given song-title/song-artist. We just show the track title as
+  // the "active line" placeholder for the share/save-image panel, since
+  // am-lyrics keeps its parsed lines inside its own shadow DOM.
+  const activeLineText = currentTrack?.title || "";
+
+  const handleSaveImage = useCallback(() => {
+    if (!currentTrack) return;
+    const line = activeLineText || currentTrack.title;
+    const canvas = document.createElement("canvas");
+    canvas.width = 800; canvas.height = 800;
+    const ctx = canvas.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, "#21251A");
+    grad.addColorStop(1, "#12140F");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ADC79C";
+    ctx.font = "600 42px Georgia, serif";
+    ctx.textAlign = "center";
+    wrapCanvasText(ctx, line, canvas.width / 2, 380, 680, 54);
+    ctx.fillStyle = "#676B57";
+    ctx.font = "500 22px sans-serif";
+    ctx.fillText(`${currentTrack.artist?.name || ""} \u00b7 ${currentTrack.title || ""}`, canvas.width / 2, canvas.height - 80);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lirik-${(currentTrack.title || "lagu").replace(/\s+/g, "-").toLowerCase()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      pushToast(t("toastLyricsImageSaved"));
+    });
+  }, [currentTrack, activeLineText, pushToast, t]);
+
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime: scrubTime, duration: scrubDuration } = useScrubberBinding();
   const cycleFontSize = () => setFontSize((s) => (s === "sm" ? "md" : s === "md" ? "lg" : "sm"));
-  const remaining = Math.max(0, Math.round((scrubDuration || 0) - (scrubTime || 0)));
 
   if (!lyricsOpen) return null;
 
   return (
     <div className={`aivy-lyrics-overlay ${lyricsOpen ? "open" : ""}`}>
-      {currentTrack && (
-        <div className="aivy-sheet-bg" style={{ backgroundImage: `url(${currentTrack.cover})` }} aria-hidden="true" />
-      )}
+      <div className="aivy-lyrics-scrim" />
 
-      {currentTrack ? (
+      <div className="aivy-lyrics-float">
+        <button className="aivy-lyrics-fbtn primary" onClick={closeLyrics} aria-label={t("close")}><X size={19} /></button>
+        {/* These three are hidden on desktop (>=860px) because the side panel
+            below already shows the same like/share/font-size actions there —
+            keeping both visible was creating duplicate buttons. */}
+        <button
+          className={`aivy-lyrics-fbtn aivy-lyrics-fbtn-dup ${isLiked ? "active" : ""}`}
+          onClick={() => currentTrack && toggleLike(currentTrack)}
+          disabled={!currentTrack}
+          aria-label={t("like")}
+        >
+          <Star size={16} fill={isLiked ? "currentColor" : "none"} />
+        </button>
+        <button className="aivy-lyrics-fbtn aivy-lyrics-fbtn-dup" onClick={() => setShareOpen((v) => !v)} disabled={!currentTrack} aria-label={t("share")}>
+          <Share2 size={16} />
+        </button>
+        <button className="aivy-lyrics-fbtn aivy-lyrics-fbtn-dup aivy-fontsize-btn" onClick={cycleFontSize} disabled={!currentTrack} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}>
+          <Type size={16} />
+          <span className="aivy-fontsize-tag">{fontSize}</span>
+        </button>
+      </div>
+
+      {currentTrack && (
         <div className="aivy-lyrics-main">
-          <div className="aivy-lyrics-top">
+          <div className="aivy-lyrics-side">
             <div className="aivy-lyrics-track">
               <div className="cover">
-                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={88} radius={6} style={{ width: "100%", height: "100%" }} />
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }} />
               </div>
               <div className="meta">
-                <div className="t">{currentTrack.title}</div>
+                <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
                 <div className="a">{currentTrack.artist?.name}</div>
               </div>
             </div>
-            <div className="aivy-lyrics-top-actions">
-              <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")}>
-                <Star size={19} fill={isLiked ? "currentColor" : "none"} />
+
+            <div className="aivy-lyrics-actions">
+              <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => currentTrack && toggleLike(currentTrack)} aria-label={t("like")}>
+                <Star size={17} fill={isLiked ? "currentColor" : "none"} />
               </button>
+              <button className="aivy-icon-btn" onClick={() => setShareOpen((v) => !v)} aria-label={t("share")}><Share2 size={17} /></button>
               <button className="aivy-icon-btn aivy-fontsize-btn" onClick={cycleFontSize} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}>
                 <Type size={17} />
                 <span className="aivy-fontsize-tag">{fontSize}</span>
               </button>
-              <button className="aivy-icon-btn" onClick={handleMore} aria-label={t("menuMore")}>
-                <MoreHorizontal size={19} />
-              </button>
             </div>
+
+            {shareOpen && (
+              <div className="aivy-lyrics-share">
+                <div className="cover-mini">
+                  <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={72} radius={8} style={{ width: "100%", height: "100%" }} />
+                </div>
+                <div className="line">{activeLineText || "\u266a"}</div>
+                <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
+                <button onClick={handleSaveImage}>{t("saveAsImage")}</button>
+              </div>
+            )}
+
+            {nextTrack && (
+              <div className="aivy-lyrics-next">
+                <span className="label">{t("upNextLabel")}</span>
+                <span className="name">{nextTrack.title} &middot; {nextTrack.artist?.name}</span>
+              </div>
+            )}
+
+            <div className={`aivy-lyrics-scrubwrap ${singMode ? "is-singing" : ""}`}>
+              <button
+                type="button"
+                className={`aivy-sing-btn ${singMode ? "active" : ""}`}
+                onClick={() => setSingMode((v) => !v)}
+                aria-pressed={singMode}
+                aria-label={t("singToggle", "Sing")}
+                title={t("singToggle", "Sing")}
+              >
+                <Mic size={14} />
+                <span>{t("singLabel", "Sing")}</span>
+              </button>
+              <div className="aivy-lyrics-scrubber-row">
+                <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
+                <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
+                <span className="aivy-time right font-mono">{formatTime(scrubDuration)}</span>
+              </div>
+            </div>
+
+            <TransportButtons big />
+
+            <VolumeControl />
+
+            <MobileNowPlayingIconRow lyricsActive onToggleLyrics={closeLyrics} lyricsDisabled={false} onOpenQueue={openMobileQueue} />
           </div>
 
-          <div className="aivy-lyrics-body-wrap">
+          <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
             <AppleLyricsPane
               track={currentTrack}
               currentTime={currentTime}
               onSeek={seekTo}
-              highlightColor="#f5f5f5"
+              highlightColor={highlightColor}
               fontSize={fontSize}
             />
           </div>
+        </div>
+      )}
 
-          <div className="aivy-lyrics-controls">
-            <button
-              type="button"
-              className={`aivy-sing-btn ${singMode ? "active" : ""}`}
-              onClick={() => setSingMode((v) => !v)}
-              aria-pressed={singMode}
-              aria-label={t("singToggle", "Sing")}
-              title={t("singToggle", "Sing")}
-            >
-              <Mic size={13} />
-              <span>{t("singLabel", "Sing")}</span>
-            </button>
-            <div className="aivy-lyrics-scrubber-row">
-              <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
-              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
-              <span className="aivy-time right font-mono">-{formatTime(remaining)}</span>
-            </div>
-            <TransportButtons big />
-            <AppleVolumeRow />
-            <MobileNowPlayingIconRow lyricsActive onToggleLyrics={closeLyrics} lyricsDisabled={false} onOpenQueue={openMobileQueue} />
-          </div>
-        </div>
-      ) : (
-        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}>
-          <LeafMark size={34} color="var(--ink-faint)" />
-          <div className="title">{t("nothingPlaying")}</div>
-        </div>
+      {!currentTrack && (
+        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>
       )}
     </div>
   );

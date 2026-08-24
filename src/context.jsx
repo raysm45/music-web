@@ -17,6 +17,29 @@ export const EQ_PRESETS = {
 };
 const DEFAULT_EQ = { enabled: false, preset: "flat", preamp: 0, bands: [...EQ_PRESETS.flat] };
 
+export const FONT_STACKS = {
+  default: null,
+  inter: "'Inter', -apple-system, sans-serif",
+  applemusic: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  plexmono: "'IBM Plex Mono', ui-monospace, monospace",
+  roboto: "'Roboto', -apple-system, sans-serif",
+  opensans: "'Open Sans', -apple-system, sans-serif",
+  lato: "'Lato', -apple-system, sans-serif",
+  montserrat: "'Montserrat', -apple-system, sans-serif",
+  poppins: "'Poppins', -apple-system, sans-serif",
+  systemui: "system-ui, -apple-system, 'Segoe UI', sans-serif",
+  mono: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+};
+const GOOGLE_FONT_QUERY = {
+  inter: "Inter:wght@400;500;600;700;800",
+  plexmono: "IBM+Plex+Mono:wght@400;500;600",
+  roboto: "Roboto:wght@400;500;700",
+  opensans: "Open+Sans:wght@400;500;600;700",
+  lato: "Lato:wght@400;500;700",
+  montserrat: "Montserrat:wght@400;500;600;700",
+  poppins: "Poppins:wght@400;500;600;700",
+};
+
 const UICtx = createContext(null);
 export function useUI() { return useContext(UICtx); }
 
@@ -99,12 +122,24 @@ export function UIProvider({ children }) {
   useEffect(() => {
     if (!authUser) return;
     Api.getSettings()
-      .then((s) => { setSettings(s); setTheme(s.theme === "light" ? "light" : "dark"); })
+      .then((s) => { setSettings(s); setTheme(typeof s.theme === "string" && s.theme ? s.theme : "dark"); })
       .catch(() => {});
   }, [authUser]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    if (theme !== "system") {
+      document.documentElement.dataset.theme = theme || "dark";
+      return undefined;
+    }
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const apply = () => { document.documentElement.dataset.theme = mq.matches ? "light" : "dark"; };
+    apply();
+    if (mq.addEventListener) {
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    }
+    mq.addListener(apply);
+    return () => mq.removeListener(apply);
   }, [theme]);
 
   useEffect(() => {
@@ -116,6 +151,46 @@ export function UIProvider({ children }) {
   useEffect(() => {
     document.documentElement.dataset.contrast = settings.highContrast ? "high" : "normal";
   }, [settings.highContrast]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const customUrl = (settings.fontUrl || "").trim();
+    let faceEl = document.getElementById("aivy-custom-font-face");
+    if (customUrl) {
+      if (!faceEl) { faceEl = document.createElement("style"); faceEl.id = "aivy-custom-font-face"; document.head.appendChild(faceEl); }
+      faceEl.textContent = `@font-face{font-family:"Aivy Custom";src:url("${customUrl}");font-display:swap;}`;
+    } else if (faceEl) faceEl.remove();
+    const stack = customUrl ? "'Aivy Custom', sans-serif" : (FONT_STACKS[settings.fontFamily] ?? FONT_STACKS.default);
+    if (stack) {
+      root.style.setProperty("--font-display", stack);
+      root.style.setProperty("--font-body", stack);
+    } else {
+      root.style.removeProperty("--font-display");
+      root.style.removeProperty("--font-body");
+    }
+    const gq = GOOGLE_FONT_QUERY[settings.fontFamily];
+    let link = document.getElementById("aivy-gfont");
+    if (gq) {
+      if (!link) { link = document.createElement("link"); link.id = "aivy-gfont"; link.rel = "stylesheet"; document.head.appendChild(link); }
+      link.href = `https://fonts.googleapis.com/css2?family=${gq}&display=swap`;
+    } else if (link) link.remove();
+  }, [settings.fontFamily, settings.fontUrl]);
+
+  useEffect(() => {
+    const scale = Number(settings.fontScale) || 100;
+    const el = () => document.getElementById("aivy-content-scroll");
+    el()?.style.setProperty("zoom", scale === 100 ? "" : String(scale / 100));
+    return () => { el()?.style.removeProperty("zoom"); };
+  }, [settings.fontScale]);
+
+  useEffect(() => {
+    const css = settings.customThemeCss || "";
+    let el = document.getElementById("aivy-custom-theme-css");
+    if (!css.trim()) { el?.remove(); return; }
+    if (!el) { el = document.createElement("style"); el.id = "aivy-custom-theme-css"; document.head.appendChild(el); }
+    el.textContent = css;
+    return () => { document.getElementById("aivy-custom-theme-css")?.remove(); };
+  }, [settings.customThemeCss]);
 
   const t = useCallback((key, fallback) => makeT(settings.language)(key, fallback), [settings.language]);
 
@@ -157,7 +232,7 @@ export function UIProvider({ children }) {
 
   const updateSettings = useCallback((patch) => {
     setSettings((s) => ({ ...s, ...patch }));
-    if (patch.theme) setTheme(patch.theme === "light" ? "light" : "dark");
+    if (patch.theme) setTheme(patch.theme);
     pendingSettingsPatchRef.current = { ...pendingSettingsPatchRef.current, ...patch };
     flushSettingsRef.current(() => pushToast(t("toastSettingsSaveFailed")));
   }, [pushToast, t]);
