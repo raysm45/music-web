@@ -568,8 +568,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet .aivy-scrubber .fill{ background: var(--sheet-ink); }
 .aivy-sheet .aivy-scrubber .thumb{ background: var(--sheet-ink); }
 .aivy-sheet .aivy-time{ color: var(--sheet-ink-faint); }
-/* Transport ala Apple Music: glyph putih polos, play tanpa lingkaran,
-   shuffle/repeat redup saat off, prev/next lebih besar dari shuffle/repeat */
 .aivy-sheet .aivy-transport-btns, .aivy-lyrics-controls .aivy-transport-btns{ display: flex; align-items: center; justify-content: center; gap: clamp(20px, 7vw, 34px); padding: 6px 0 2px; }
 .aivy-sheet .aivy-transport-btns .aivy-icon-btn, .aivy-lyrics-controls .aivy-transport-btns .aivy-icon-btn{ width: 42px; height: 42px; color: rgba(255,255,255,.55); }
 .aivy-sheet .aivy-transport-btns .aivy-icon-btn:hover, .aivy-lyrics-controls .aivy-transport-btns .aivy-icon-btn:hover{ color: #fff; background: transparent; }
@@ -583,11 +581,20 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet .aivy-play-btn:hover, .aivy-lyrics-controls .aivy-play-btn:hover{ background: transparent; }
 .aivy-sheet .aivy-play-btn svg, .aivy-lyrics-controls .aivy-play-btn svg{ width: 44px; height: 44px; margin-left: 2px; }
 .aivy-sheet .aivy-play-btn:disabled, .aivy-lyrics-controls .aivy-play-btn:disabled{ opacity: .4; background: transparent; }
-/* Volume ala iPhone: ikon speaker kiri-kanan, bar panjang di tengah */
-.aivy-apple-vol{ width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 2px 0; color: rgba(255,255,255,.55); }
-.aivy-apple-vol > svg{ flex-shrink: 0; }
-.aivy-apple-vol .track{ position: relative; flex: 1; height: 4px; border-radius: 999px; background: rgba(255,255,255,.25); cursor: pointer; touch-action: none; }
+.aivy-apple-vol{
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px 1fr 34px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 0 0;
+  color: rgba(255,255,255,.55);
+}
+.aivy-apple-vol > svg{ justify-self: center; }
+.aivy-apple-vol .track{ position: relative; height: 4px; border-radius: 999px; background: rgba(255,255,255,.25); cursor: pointer; touch-action: none; }
 .aivy-apple-vol .fill{ position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: rgba(255,255,255,.92); }
+.aivy-sheet .aivy-scrubber-row{ width: calc(100% + 16px); margin: 0 -8px 4px; }
+.aivy-sheet .aivy-apple-vol{ width: calc(100% + 16px); margin: 10px -8px 0; padding: 0; }
 .aivy-sheet-icon-row{ width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 12px 4px 26px; }
 .aivy-sheet-icon-row .aivy-icon-btn{ color: rgba(255,255,255,.8); }
 .aivy-sheet-icon-row .aivy-icon-btn:hover{ color: #fff; background: var(--sheet-elev); }
@@ -1143,8 +1150,6 @@ body.aivy-resizing *{ user-select: none !important; }
   --hover-background-color: var(--sheet-elev); --lyrics-scroll-padding-top: 34%;
   color: var(--sheet-ink-faint);
 }
-
-/* Kontrol bawah ala iPhone */
 .aivy-lyrics-controls{ position: relative; z-index: 1; flex-shrink: 0; padding: 0 22px calc(14px + var(--safe-b)); }
 .aivy-sing-btn{
   position: absolute; top: -20px; right: 20px; z-index: 2;
@@ -1155,13 +1160,13 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 .aivy-sing-btn:hover{ background: rgba(255,255,255,.22); color: var(--sheet-ink); }
 .aivy-sing-btn.active{ background: var(--sheet-ink); color: #16180f; }
-.aivy-lyrics-scrubber-row{ display: flex; align-items: center; gap: 9px; width: 100%; }
+.aivy-lyrics-scrubber-row{ display: flex; align-items: center; gap: 9px; width: calc(100% + 16px); margin: 0 -8px; }
 .aivy-lyrics-scrubber-row .aivy-time{ font-size: 11px; color: var(--sheet-ink-faint); width: 34px; flex-shrink: 0; }
 .aivy-lyrics-scrubber-row .aivy-time.right{ text-align: right; }
 .aivy-lyrics-scrubber-row .aivy-scrubber .track{ background: rgba(255,255,255,.25); }
 .aivy-lyrics-scrubber-row .aivy-scrubber .fill{ background: var(--sheet-ink); }
 .aivy-lyrics-scrubber-row .aivy-scrubber .thumb{ background: var(--sheet-ink); }
-.aivy-lyrics-controls .aivy-apple-vol{ padding: 10px 2px 0; }
+.aivy-lyrics-controls .aivy-apple-vol{ width: calc(100% + 16px); margin: 10px -8px 0; padding: 0; }
 .aivy-lyrics-controls .aivy-sheet-icon-row{ padding: 12px 0 4px; }
 
 .aivy-sq-subtabs{ display: flex; gap: 4px; padding: 8px 8px 10px; flex-shrink: 0; }

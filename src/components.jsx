@@ -762,7 +762,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   const menuItems = useTrackMenuItems(currentTrack || {});
   const handleMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, menuItems); };
-  // iPhone menampilkan sisa waktu sebagai angka negatif, mis. "-4:56"
   const remaining = Math.max(0, Math.round((duration || 0) - (currentTime || 0)));
 
   return (
@@ -811,10 +810,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             <TransportButtons big />
             <AppleVolumeRow />
             <MobileNowPlayingIconRow lyricsActive={false} onToggleLyrics={toggleLyrics} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
-
-            <AboutArtistSection track={currentTrack} onNavigate={onClose} />
-            <CreditsCard track={currentTrack} />
-            <NextUpPreview />
           </div>
         )}
       </div>
