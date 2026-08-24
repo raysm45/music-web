@@ -324,7 +324,7 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 .aivy-scrubber:hover .thumb, .aivy-scrubber.dragging .thumb{ opacity: 1; transform: translate(-50%,-50%) scale(1); }
 .aivy-scrubber.is-loading{ cursor: default; }
-.aivy-scrubber.is-loading .track{ background: var(--bg-elev-3); }
+.aivy-scrubber.is-loading .track{ background: var(--bg-elev-3); overflow: hidden; }
 
 @keyframes aivy-shine{ 0%{ transform: translateX(-100%); } 100%{ transform: translateX(100%); } }
 .skeleton-shine{ position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg-elev-3); }
