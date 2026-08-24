@@ -764,9 +764,9 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               </div>
             </div>
             <div className="aivy-scrubber-row">
-              <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
+              <span className="aivy-time">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
               <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
-              <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : `-${formatTime(Math.max(0, (duration || 0) - (currentTime || 0)))}`}</span>
+              <span className="aivy-time right">{loadingAudio ? "\u2013\u2013" : `-${formatTime(Math.max(0, (duration || 0) - (currentTime || 0)))}`}</span>
             </div>
             <TransportButtons big minimal />
             <VolumeControl showEndIcon />
@@ -1997,7 +1997,7 @@ export function LyricsOverlay() {
             <div className="aivy-lyr2-controls">
               <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
               <div className="aivy-lyr2-times">
-                <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
+                <span className="aivy-time">{formatTime(scrubTime)}</span>
                 <button
                   type="button"
                   className={`aivy-lyr2-sing ${singMode ? "active" : ""}`}
@@ -2006,7 +2006,7 @@ export function LyricsOverlay() {
                 >
                   Sing
                 </button>
-                <span className="aivy-time right font-mono">-{formatTime(remaining)}</span>
+                <span className="aivy-time right">-{formatTime(remaining)}</span>
               </div>
               <TransportButtons big minimal />
               <VolumeControl showEndIcon />
