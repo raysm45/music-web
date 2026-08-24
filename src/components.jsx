@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
-  PanelLeft, PanelRight, Type,
+  PanelLeft, PanelRight, Type, Star, Airplay, Mic,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -704,24 +704,50 @@ export function MiniPlayer({ onExpand }) {
   );
 }
 
+export function MobileNowPlayingIconRow({ lyricsActive, onToggleLyrics, lyricsDisabled, onOpenQueue }) {
+  const { t, pushToast } = useUI();
+  const handleAirplay = () => pushToast(t("airplayUnavailable", "Output perangkat tidak tersedia di browser"));
+  return (
+    <div className="aivy-sheet-icon-row">
+      <button
+        className={`aivy-icon-btn ${lyricsActive ? "active" : ""}`}
+        onClick={onToggleLyrics}
+        disabled={lyricsDisabled}
+        aria-label={t("lyrics")}
+        title={lyricsDisabled ? t("lyricsUnavailable") : t("lyrics")}
+      >
+        <Mic2 size={18} />
+      </button>
+      <button className="aivy-icon-btn" onClick={handleAirplay} aria-label="AirPlay"><Airplay size={18} /></button>
+      <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={18} /></button>
+    </div>
+  );
+}
+
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
-  const { t, toggleLyrics } = useUI();
+  const { t, toggleLyrics, openContextMenu } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
+  const menuItems = useTrackMenuItems(currentTrack || {});
+  const handleMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, menuItems); };
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
       <div className={`aivy-sheet ${open ? "open" : ""}`} aria-hidden={!open}>
+        {currentTrack && (
+          <div
+            className="aivy-sheet-bg"
+            style={{ backgroundImage: `url(${currentTrack.cover})` }}
+            aria-hidden="true"
+          />
+        )}
         <div className="aivy-sheet-head">
           <button className="aivy-icon-btn" onClick={onClose} aria-label={t("close")}><ChevronDown size={22} /></button>
           {isPreviewClip ? <span className="eyebrow">{t("preview30")}</span> : <span />}
-          <div className="aivy-sheet-head-actions">
-            <button className="aivy-icon-btn" onClick={toggleLyrics} disabled={lyricsDisabled} aria-label={t("lyrics")} title={lyricsDisabled && currentTrack ? t("lyricsUnavailable") : t("lyrics")}><Mic2 size={19} /></button>
-            <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={19} /></button>
-          </div>
+          <span style={{ width: 38, flexShrink: 0 }} />
         </div>
         {currentTrack && (
           <div className="aivy-sheet-body aivy-scroll">
@@ -732,7 +758,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                 <div className="t">{currentTrack.title}</div>
                 <div className="a" onClick={() => { currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}>{currentTrack.artist?.name}</div>
               </div>
-              <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")} style={{ flexShrink: 0 }}><Heart size={22} fill={isLiked ? "currentColor" : "none"} /></button>
+              <div className="aivy-sheet-meta-actions">
+                <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")}><Star size={21} fill={isLiked ? "currentColor" : "none"} /></button>
+                <button className="aivy-icon-btn" onClick={handleMore} aria-label={t("menuMore")}><MoreHorizontal size={21} /></button>
+              </div>
             </div>
             <div className="aivy-scrubber-row">
               <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
@@ -740,6 +769,8 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(duration)}</span>
             </div>
             <TransportButtons big />
+            <VolumeControl />
+            <MobileNowPlayingIconRow lyricsActive={false} onToggleLyrics={toggleLyrics} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
             <AboutArtistSection track={currentTrack} onNavigate={onClose} />
             <CreditsCard track={currentTrack} />
             <NextUpPreview />
@@ -1816,10 +1847,11 @@ function SidebarQueuePanel() {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, theme } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, theme, openMobileQueue } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
+  const [singMode, setSingMode] = useState(false);
   // Fixed, theme-matched highlight color for the active lyric line — not
   // derived from the track artwork, so it stays legible (white on dark,
   // black on light) no matter how bright/dark the cover art is.
@@ -1905,7 +1937,7 @@ export function LyricsOverlay() {
           disabled={!currentTrack}
           aria-label={t("like")}
         >
-          <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
+          <Star size={16} fill={isLiked ? "currentColor" : "none"} />
         </button>
         <button className="aivy-lyrics-fbtn aivy-lyrics-fbtn-dup" onClick={() => setShareOpen((v) => !v)} disabled={!currentTrack} aria-label={t("share")}>
           <Share2 size={16} />
@@ -1931,7 +1963,7 @@ export function LyricsOverlay() {
 
             <div className="aivy-lyrics-actions">
               <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => currentTrack && toggleLike(currentTrack)} aria-label={t("like")}>
-                <Heart size={17} fill={isLiked ? "currentColor" : "none"} />
+                <Star size={17} fill={isLiked ? "currentColor" : "none"} />
               </button>
               <button className="aivy-icon-btn" onClick={() => setShareOpen((v) => !v)} aria-label={t("share")}><Share2 size={17} /></button>
               <button className="aivy-icon-btn aivy-fontsize-btn" onClick={cycleFontSize} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}>
@@ -1958,15 +1990,30 @@ export function LyricsOverlay() {
               </div>
             )}
 
-            <div className="aivy-lyrics-scrubber-row">
-              <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
-              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
-              <span className="aivy-time right font-mono">{formatTime(scrubDuration)}</span>
+            <div className={`aivy-lyrics-scrubwrap ${singMode ? "is-singing" : ""}`}>
+              <button
+                type="button"
+                className={`aivy-sing-btn ${singMode ? "active" : ""}`}
+                onClick={() => setSingMode((v) => !v)}
+                aria-pressed={singMode}
+                aria-label={t("singToggle", "Sing")}
+                title={t("singToggle", "Sing")}
+              >
+                <Mic size={14} />
+                <span>{t("singLabel", "Sing")}</span>
+              </button>
+              <div className="aivy-lyrics-scrubber-row">
+                <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
+                <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
+                <span className="aivy-time right font-mono">{formatTime(scrubDuration)}</span>
+              </div>
             </div>
 
             <TransportButtons big />
 
             <VolumeControl />
+
+            <MobileNowPlayingIconRow lyricsActive onToggleLyrics={closeLyrics} lyricsDisabled={false} onOpenQueue={openMobileQueue} />
           </div>
 
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
