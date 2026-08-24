@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
-  PanelLeft, PanelRight, Type, Star, Airplay, Mic,
+  PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, ArrowDownToLine,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -106,7 +106,7 @@ export function Scrubber({ getRatio, onSeekRatio, registerFill, registerThumb, c
   );
 }
 
-export function VolumeControl() {
+export function VolumeControl({ showEndIcon = false }) {
   const { volume, muted, setVolume, toggleMute } = usePlayer();
   const { t } = useUI();
   const trackRef = useRef(null);
@@ -147,6 +147,7 @@ export function VolumeControl() {
       >
         <div className="fill" style={{ width: `${effective * 100}%` }} />
       </div>
+      {showEndIcon && <span className="vol-end"><Volume2 size={17} /></span>}
     </div>
   );
 }
@@ -621,7 +622,7 @@ export function SkeletonHeroPage({ round = false, rows = 6 }) {
   );
 }
 
-export function TransportButtons({ big = false }) {
+export function TransportButtons({ big = false, minimal = false }) {
   const { isPlaying, togglePlay, next, prev, shuffle, toggleShuffle, repeat, cycleRepeat, currentTrack, room } = usePlayer();
   const { authUser, t } = useUI();
   const RepeatIcon = repeat === "one" ? Repeat1 : Repeat;
@@ -629,13 +630,13 @@ export function TransportButtons({ big = false }) {
   const controlLocked = room && room.hostOnlyControl && !isHost;
   return (
     <div className="aivy-transport-btns">
-      <button className={`aivy-icon-btn ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} disabled={!!room}><Shuffle size={big ? 18 : 16} /></button>
+      {!minimal && <button className={`aivy-icon-btn ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} disabled={!!room}><Shuffle size={big ? 18 : 16} /></button>}
       <button className="aivy-icon-btn" onClick={prev} disabled={!currentTrack || controlLocked} aria-label={t("previous")}><SkipBack size={big ? 22 : 18} fill="currentColor" /></button>
       <button className="aivy-play-btn" onClick={togglePlay} disabled={!currentTrack || controlLocked} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={big ? 24 : 16} fill="currentColor" /> : <Play size={big ? 24 : 16} fill="currentColor" />}
       </button>
       <button className="aivy-icon-btn" onClick={() => next(false)} disabled={!currentTrack || controlLocked} aria-label={t("next")}><SkipForward size={big ? 22 : 18} fill="currentColor" /></button>
-      <button className={`aivy-icon-btn ${repeat !== "off" ? "active" : ""}`} onClick={cycleRepeat} aria-label={t("repeat")} aria-pressed={repeat !== "off"} disabled={!!room}><RepeatIcon size={big ? 18 : 16} /></button>
+      {!minimal && <button className={`aivy-icon-btn ${repeat !== "off" ? "active" : ""}`} onClick={cycleRepeat} aria-label={t("repeat")} aria-pressed={repeat !== "off"} disabled={!!room}><RepeatIcon size={big ? 18 : 16} /></button>}
     </div>
   );
 }
@@ -718,7 +719,7 @@ export function MobileNowPlayingIconRow({ lyricsActive, onToggleLyrics, lyricsDi
         aria-label={t("lyrics")}
         title={lyricsDisabled ? t("lyricsUnavailable") : t("lyrics")}
       >
-        <Mic2 size={18} />
+        <MessageSquareQuote size={18} />
       </button>
       <button className="aivy-icon-btn" onClick={handleAirplay} aria-label="AirPlay"><Airplay size={18} /></button>
       <button className="aivy-icon-btn" onClick={onOpenQueue} aria-label={t("openQueue")}><ListMusic size={18} /></button>
@@ -727,7 +728,7 @@ export function MobileNowPlayingIconRow({ lyricsActive, onToggleLyrics, lyricsDi
 }
 
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
-  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
+  const { currentTrack, liked, toggleLike, loadingAudio, currentTrackHasLyrics } = usePlayer();
   const { navigate } = useRouter();
   const { t, toggleLyrics, openContextMenu } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
@@ -746,15 +747,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             aria-hidden="true"
           />
         )}
-        <div className="aivy-sheet-head">
-          <button className="aivy-icon-btn" onClick={onClose} aria-label={t("close")}><ChevronDown size={22} /></button>
-          {isPreviewClip ? <span className="eyebrow">{t("preview30")}</span> : <span />}
-          <span style={{ width: 38, flexShrink: 0 }} />
+        <div className="aivy-sheet-grabber-row">
+          <button className="aivy-sheet-grabber" onClick={onClose} aria-label={t("close")} />
         </div>
         {currentTrack && (
           <div className="aivy-sheet-body aivy-scroll">
-            <PlayingFromLabel />
-            <div className="aivy-sheet-art"><SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={20} style={{ width: "100%", height: "100%" }} /></div>
+            <div className="aivy-sheet-art"><SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }} /></div>
             <div className="aivy-sheet-meta">
               <div>
                 <div className="t">{currentTrack.title}</div>
@@ -768,14 +766,11 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             <div className="aivy-scrubber-row">
               <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
               <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
-              <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(duration)}</span>
+              <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : `-${formatTime(Math.max(0, (duration || 0) - (currentTime || 0)))}`}</span>
             </div>
-            <TransportButtons big />
-            <VolumeControl />
+            <TransportButtons big minimal />
+            <VolumeControl showEndIcon />
             <MobileNowPlayingIconRow lyricsActive={false} onToggleLyrics={toggleLyrics} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
-            <AboutArtistSection track={currentTrack} onNavigate={onClose} />
-            <CreditsCard track={currentTrack} />
-            <NextUpPreview />
           </div>
         )}
       </div>
@@ -1691,7 +1686,7 @@ const AM_LYRICS_FONT_SIZES = {
 // Genius as a last resort) whenever it's given song-title/song-artist — so
 // we don't fetch or pre-build anything ourselves; we just feed it clean
 // metadata and let it do the searching, matching, and syncing natively.
-function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize }) {
+function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize, id }) {
   const elRef = useRef(null);
 
   useEffect(() => {
@@ -1792,6 +1787,7 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize 
     <am-lyrics
       ref={elRef}
       class="aivy-am-lyrics"
+      id={id || undefined}
       style={AM_LYRICS_FONT_SIZES[fontSize] || AM_LYRICS_FONT_SIZES.md}
     />
   );
@@ -1852,8 +1848,19 @@ function SidebarQueuePanel() {
   );
 }
 
+function useIsMobile(breakpoint = 860) {
+  const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(`(max-width:${breakpoint}px)`).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width:${breakpoint}px)`);
+    const onChange = (e) => setM(e.matches);
+    mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange);
+    return () => (mq.removeEventListener ? mq.removeEventListener("change", onChange) : mq.removeListener(onChange));
+  }, [breakpoint]);
+  return m;
+}
+
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, theme, openMobileQueue } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, theme, openMobileQueue, openContextMenu } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
@@ -1925,8 +1932,95 @@ export function LyricsOverlay() {
 
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime: scrubTime, duration: scrubDuration } = useScrubberBinding();
   const cycleFontSize = () => setFontSize((s) => (s === "sm" ? "md" : s === "md" ? "lg" : "sm"));
+  const isMobile = useIsMobile();
+  const lyricsMenuItems = useTrackMenuItems(currentTrack || {});
+  const handleLyricsMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, lyricsMenuItems); };
+
+  const scrollToActiveLyric = () => {
+    const el = document.getElementById("aivy-am-lyrics-mobile");
+    if (!el) return;
+    el.autoScroll = false;
+    requestAnimationFrame(() => {
+      el.autoScroll = true;
+      const ct = el.currentTime;
+      el.currentTime = Math.max(0, (ct || 0) - 1);
+      requestAnimationFrame(() => { el.currentTime = ct; });
+    });
+  };
 
   if (!lyricsOpen) return null;
+
+  if (isMobile) {
+    const remaining = Math.max(0, (scrubDuration || 0) - (scrubTime || 0));
+    return (
+      <div className={`aivy-lyrics-overlay open`}>
+        {currentTrack && (
+          <div className="aivy-lyrics-bg" style={{ backgroundImage: `url(${currentTrack.cover})` }} aria-hidden="true" />
+        )}
+        {currentTrack && (
+          <div className="aivy-lyr2">
+            <header className="aivy-lyr2-head">
+              <div className="thumb">
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={88} radius={6} style={{ width: "100%", height: "100%" }} />
+              </div>
+              <div className="meta">
+                <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
+                <div className="a">{currentTrack.artist?.name}</div>
+              </div>
+              <button
+                className={`aivy-icon-btn ${isLiked ? "active" : ""}`}
+                onClick={() => currentTrack && toggleLike(currentTrack)}
+                disabled={!currentTrack}
+                aria-label={t("like")}
+              >
+                <Star size={18} fill={isLiked ? "currentColor" : "none"} />
+              </button>
+              <button className="aivy-icon-btn" onClick={handleLyricsMore} disabled={!currentTrack} aria-label={t("menuMore")}>
+                <MoreHorizontal size={18} />
+              </button>
+            </header>
+
+            <div className="aivy-lyr2-body">
+              <AppleLyricsPane
+                id="aivy-am-lyrics-mobile"
+                track={currentTrack}
+                currentTime={currentTime}
+                onSeek={seekTo}
+                highlightColor={highlightColor}
+                fontSize={fontSize}
+              />
+              <button className="aivy-lyr2-pill" onClick={scrollToActiveLyric} aria-label={t("lyrics")}>
+                <ArrowDownToLine size={15} />
+              </button>
+            </div>
+
+            <div className="aivy-lyr2-controls">
+              <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
+              <div className="aivy-lyr2-times">
+                <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
+                <button
+                  type="button"
+                  className={`aivy-lyr2-sing ${singMode ? "active" : ""}`}
+                  onClick={() => setSingMode((v) => !v)}
+                  aria-pressed={singMode}
+                >
+                  Sing
+                </button>
+                <span className="aivy-time right font-mono">-{formatTime(remaining)}</span>
+              </div>
+              <TransportButtons big minimal />
+              <VolumeControl showEndIcon />
+              <MobileNowPlayingIconRow lyricsActive onToggleLyrics={closeLyrics} lyricsDisabled={false} onOpenQueue={openMobileQueue} />
+            </div>
+          </div>
+        )}
+
+        {!currentTrack && (
+          <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`aivy-lyrics-overlay ${lyricsOpen ? "open" : ""}`}>
