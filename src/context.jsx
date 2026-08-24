@@ -82,6 +82,7 @@ export function UIProvider({ children }) {
   const [creditsTrack, setCreditsTrack] = useState(null);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [sidebarQueueOpen, setSidebarQueueOpen] = useState(false);
+  const [mobileQueueOpen, setMobileQueueOpen] = useState(false);
   const [panelPrefs, setPanelPrefs] = useState(loadPanelPrefs);
 
   useEffect(() => {
@@ -185,6 +186,8 @@ export function UIProvider({ children }) {
   const toggleLyrics = useCallback(() => setLyricsOpen((o) => !o), []);
   const toggleSidebarQueue = useCallback(() => setSidebarQueueOpen((o) => !o), []);
   const closeSidebarQueue = useCallback(() => setSidebarQueueOpen(false), []);
+  const openMobileQueue = useCallback(() => { setLyricsOpen(false); setMobileQueueOpen(true); }, []);
+  const closeMobileQueue = useCallback(() => setMobileQueueOpen(false), []);
 
   const setSidebarWidth = useCallback((w) => {
     setPanelPrefs((p) => ({ ...p, sidebarWidth: clamp(Math.round(w), SIDEBAR_MIN_W, SIDEBAR_MAX_W) }));
@@ -210,6 +213,7 @@ export function UIProvider({ children }) {
     creditsTrack, openCredits, closeCredits,
     lyricsOpen, openLyrics, closeLyrics, toggleLyrics,
     sidebarQueueOpen, toggleSidebarQueue, closeSidebarQueue,
+    mobileQueueOpen, openMobileQueue, closeMobileQueue,
     sidebarWidth: panelPrefs.sidebarWidth,
     sidebarCollapsed: panelPrefs.sidebarCollapsed,
     setSidebarWidth,

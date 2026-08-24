@@ -46,12 +46,11 @@ const PAGE_BY_ROUTE = {
 
 function AppInner() {
   const { name, params } = useRouter();
-  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek } = useUI();
+  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek, mobileQueueOpen, openMobileQueue, closeMobileQueue } = useUI();
   const { currentTrack } = usePlayer();
   const isMobile = useIsMobile(860);
   const isPanelCompact = useIsMobile(1240);
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
-  const [queueOpen, setQueueOpen] = useState(false);
 
   if (!authChecked) return <div className="aivy-boot"><ViewLoading /></div>;
   if (name === "landing") return <LandingPage />;
@@ -88,8 +87,8 @@ function AppInner() {
 
       {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
       {isMobile && !isImmersiveShorts && <MobileTabBar />}
-      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); setQueueOpen(true); }} />}
-      {isMobile && <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} />}
+      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} />}
+      {isMobile && <QueueSheet open={mobileQueueOpen} onClose={closeMobileQueue} />}
 
       <AddToPlaylistModal />
       <CreditsModal />
