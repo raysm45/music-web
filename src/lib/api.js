@@ -26,6 +26,9 @@ async function apiSend(path, method, body) {
   return text ? JSON.parse(text) : null;
 }
 
+const streamTicketCache = new Map();
+const TICKET_MARGIN_S = 30;
+
 export const Api = {
   discover: (seed, cursor, limit, type) =>
     apiGet(`/api/discover?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 20}${type ? `&type=${encodeURIComponent(type)}` : ""}`),
@@ -46,7 +49,19 @@ export const Api = {
     return apiGet(`/api/lyrics?${qs.toString()}`);
   },
 
-  streamUrl: (videoId) => `${API_BASE}/api/stream/${encodeURIComponent(videoId)}`,
+  async getStreamUrl(videoId) {
+    if (!videoId) return null;
+    const streamPath = `/api/stream/${encodeURIComponent(videoId)}`;
+    const nowS = Math.floor(Date.now() / 1000);
+    const cached = streamTicketCache.get(videoId);
+    if (cached && cached.expiresAt - TICKET_MARGIN_S > nowS) {
+      return `${API_BASE}${streamPath}?t=${encodeURIComponent(cached.token)}`;
+    }
+    const ticket = await apiGet(`/api/stream-ticket/${streamPath.split("/").pop()}`);
+    if (!ticket?.token) throw new Error("tiket stream kosong");
+    streamTicketCache.set(videoId, ticket);
+    return `${API_BASE}${streamPath}?t=${encodeURIComponent(ticket.token)}`;
+  },
 
   me: () => apiGet("/auth/me"),
   logout: () => apiSend("/auth/logout", "POST"),

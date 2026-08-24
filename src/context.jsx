@@ -466,6 +466,11 @@ export function PlayerProvider({ children }) {
   const resolveAudioSrc = useCallback(async (track) => {
     if (!track) return null;
     const wantFull = settings.audioQuality === "full";
+    const fullSrcFor = async (videoId) => {
+      try {
+        return { src: await Api.getStreamUrl(videoId), preview: false };
+      } catch { return null; }
+    };
 
     if (wantFull) {
       let videoId = track.videoId;
@@ -481,12 +486,17 @@ export function PlayerProvider({ children }) {
           } catch { videoId = null; }
         }
       }
-      if (videoId) return { src: Api.streamUrl(videoId), preview: false };
-
+      if (videoId) {
+        const full = await fullSrcFor(videoId);
+        if (full) return full;
+      }
     }
 
     if (track.preview) return { src: track.preview, preview: true };
-    if (track.videoId) return { src: Api.streamUrl(track.videoId), preview: false };
+    if (track.videoId) {
+      const full = await fullSrcFor(track.videoId);
+      if (full) return full;
+    }
     return null;
   }, [settings.audioQuality]);
 
