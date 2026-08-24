@@ -599,6 +599,26 @@ export function SkeletonList({ count = 8 }) {
   return <div>{Array.from({ length: count }).map((_, i) => <SkeletonTrackRow key={i} />)}</div>;
 }
 
+export function SkeletonHeroPage({ round = false, rows = 6 }) {
+  return (
+    <div className="aivy-view-enter aivy-skel-hero-page">
+      <div className="aivy-hero">
+        <div className={`aivy-skel-hero-art aivy-skeleton ${round ? "round" : ""}`} />
+        <div className="aivy-hero-meta" style={{ flex: 1, minWidth: 0 }}>
+          <div className="aivy-skel-line w35 aivy-skeleton" style={{ height: 12, marginBottom: 14 }} />
+          <div className="aivy-skel-line aivy-skeleton" style={{ height: 30, width: "70%", marginBottom: 10 }} />
+          <div className="aivy-skel-line w35 aivy-skeleton" style={{ height: 12 }} />
+        </div>
+      </div>
+      <div className="aivy-hero-actions">
+        <div className="aivy-skeleton" style={{ width: 52, height: 52, borderRadius: "50%" }} />
+        <div className="aivy-skeleton" style={{ width: 90, height: 36, borderRadius: "var(--radius-pill, 999px)" }} />
+      </div>
+      <SkeletonList count={rows} />
+    </div>
+  );
+}
+
 export function TransportButtons({ big = false }) {
   const { isPlaying, togglePlay, next, prev, shuffle, toggleShuffle, repeat, cycleRepeat, currentTrack, room } = usePlayer();
   const { authUser, t } = useUI();

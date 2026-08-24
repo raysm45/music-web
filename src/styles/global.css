@@ -342,6 +342,8 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-vol:hover .fill{ background: var(--moss-strong); }
 .aivy-vol.is-bumping .track{ background: var(--bg-elev-2); }
 .aivy-vol.is-bumping .fill{ background: var(--moss-strong); }
+@media (max-width: 640px){ .aivy-vol .track{ width: 84px; max-width: 26vw; } }
+@media (max-width: 480px){ .aivy-vol .track{ width: 64px; max-width: 22vw; } }
 
 .aivy-rightpanel{ grid-area: right; background: var(--bg-elev); border-left: none; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
 .aivy-rightpanel-rail{
@@ -914,6 +916,12 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-select{ background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; color: var(--ink); }
 .aivy-range{ accent-color: var(--moss); width: 110px; }
 
+@media (max-width: 480px){
+  .aivy-settings-row{ flex-wrap: wrap; }
+  .aivy-settings-row .aivy-slider-wrap{ flex: 1 1 100%; width: 100%; }
+  .aivy-settings-row .aivy-range{ width: 100%; }
+}
+
 .aivy-cselect{ position: relative; display: inline-block; min-width: 0; }
 .aivy-settings-select{ flex-shrink: 0; min-width: 150px; }
 .aivy-full-select{ display: block; width: 100%; }
@@ -1039,6 +1047,10 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-skel-line{ height: 11px; border-radius: 4px; }
 .aivy-skel-line.w60{ width: 60%; }
 .aivy-skel-line.w35{ width: 35%; }
+
+.aivy-skel-hero-art{ flex-shrink: 0; width: 176px; height: 176px; border-radius: var(--radius-md); }
+.aivy-skel-hero-art.round{ border-radius: 50%; }
+@media (max-width: 640px){ .aivy-skel-hero-art{ width: 128px; height: 128px; } }
 
 .aivy-confirm-modal{ text-align: center; }
 .aivy-confirm-icon{ width: 44px; height: 44px; border-radius: 50%; background: color-mix(in srgb, var(--berry) 16%, transparent); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
@@ -1172,16 +1184,22 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-side .aivy-play-btn:hover{ background: #e6e6e6; }
 
 .aivy-lyrics-side .aivy-vol{ display: grid; grid-template-columns: 30px 1fr 30px; align-items: center; gap: 8px; padding: 4px 22px 8px; }
-.aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); width: auto; }
+.aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); width: 100%; }
 .aivy-lyrics-side .aivy-vol .fill{ background: var(--lyr-ink); }
-.aivy-lyrics-side .aivy-vol .aivy-icon-btn{ color: var(--lyr-ink-dim); }
+.aivy-lyrics-side .aivy-vol .aivy-icon-btn{ width: 30px; height: 30px; color: var(--lyr-ink-dim); }
+
+/* Keep the volume bar the exact same length as the duration/scrubber bar
+   at every width (they share the same 30px / 1fr / 30px grid), instead of
+   the generic, shorter mobile volume-track sizing used elsewhere. */
+@media (max-width: 640px){ .aivy-lyrics-side .aivy-vol .track{ width: 100%; max-width: none; } }
+@media (max-width: 480px){ .aivy-lyrics-side .aivy-vol .track{ width: 100%; max-width: none; } }
 
 /* On mobile the artwork can eat most of the screen once controls are also
    visible, so keep it a bit more compact there. */
 @media (max-width: 859px){
   .aivy-lyrics-track{ padding: 0 22px 10px; }
   .aivy-lyrics-track .cover{ max-width: 190px; margin: 0 auto 16px; }
-  .aivy-lyrics-next{ margin: 0 22px 10px; }
+  .aivy-lyrics-next{ display: none; }
 }
 
 .aivy-lyrics-body-wrap{ position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }

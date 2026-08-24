@@ -3,7 +3,7 @@ import { Play, Shuffle, Check } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { TrackRow, CardAlbum, CardArtist, ViewLoading, ViewNotFound, filterExplicit } from "../components.jsx";
+import { TrackRow, CardAlbum, CardArtist, ViewNotFound, SkeletonHeroPage, filterExplicit } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
 export function ArtistPage() {
@@ -25,7 +25,7 @@ export function ArtistPage() {
 
   const topTracks = useMemo(() => filterExplicit(artist?.topTracks, settings) || [], [artist, settings]);
 
-  if (loading) return <ViewLoading />;
+  if (loading) return <SkeletonHeroPage round rows={5} />;
   if (!artist) return <ViewNotFound label={t("artistLabel")} />;
 
   const tracks = showAllTracks ? topTracks : topTracks.slice(0, 5);
@@ -91,7 +91,7 @@ export function AlbumPage() {
   const albumTracks = useMemo(() => filterExplicit(album?.tracks, settings) || [], [album, settings]);
   const totalMin = Math.round(albumTracks.reduce((s, tr) => s + (tr.duration || 0), 0) / 60);
 
-  if (loading) return <ViewLoading />;
+  if (loading) return <SkeletonHeroPage rows={7} />;
   if (!album) return <ViewNotFound label={t("albumLabel")} />;
 
   return (
