@@ -1760,7 +1760,24 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize,
     }
     watchForFailureAndRetryOnce();
 
-    return () => { cancelled = true; if (pollId) clearInterval(pollId); };
+    // Sembunyikan tombol "Download Lyrics" bawaan am-lyrics (shadow DOM).
+    let hideDlTimer = null;
+    let hideDlTries = 0;
+    const injectHideDownload = () => {
+      const el = elRef.current;
+      if (!el || !el.shadowRoot) {
+        if (hideDlTries++ < 25) hideDlTimer = setTimeout(injectHideDownload, 200);
+        return;
+      }
+      if (el.shadowRoot.querySelector("style[data-hide-download]")) return;
+      const st = document.createElement("style");
+      st.setAttribute("data-hide-download", "");
+      st.textContent = '.download-button[title="Download Lyrics"]{display:none!important}';
+      el.shadowRoot.appendChild(st);
+    };
+    injectHideDownload();
+
+    return () => { cancelled = true; if (pollId) clearInterval(pollId); clearTimeout(hideDlTimer); };
   }, [track?.id]);
 
   useEffect(() => {
