@@ -1634,17 +1634,27 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-room2-head .acts .aivy-btn-ghost.sm{ padding: 6px 12px; font-size: 12px; }
 }
 
-/* ===== Lobby room: kartu create/join ===== */
-.aivy-room-grid{ max-width: 860px; }
-.aivy-room-card{ gap: 2px; transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
-.aivy-room-card:hover{ border-color: var(--ink-faint); }
-.aivy-room-card .card-icon{ width: 38px; height: 38px; border-radius: 12px; background: color-mix(in srgb, var(--moss) 16%, transparent); color: var(--moss-strong); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-.aivy-room-card .card-icon.alt{ background: color-mix(in srgb, var(--gold) 15%, transparent); color: var(--gold); }
-.aivy-room-card .field-label{ font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); margin: 12px 0 6px; }
-.aivy-room-card .aivy-input{ margin-bottom: 0; }
-.aivy-room-card .btnrow{ margin-top: 18px; justify-content: center; }
-.aivy-room-card .code-input{ text-align: center; letter-spacing: .4em; font-family: var(--font-mono); font-size: 17px; font-weight: 600; padding: 12px; }
-.aivy-room-card .code-input::placeholder{ letter-spacing: .4em; }
+/* ===== Lobby room: tile create/join (accordion) ===== */
+.aivy-room-actions{ display: flex; flex-direction: column; gap: 12px; max-width: 680px; }
+.aivy-room-tile{ border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-elev); overflow: hidden; transition: border-color var(--dur-fast) var(--ease); }
+.aivy-room-tile.open{ border-color: var(--moss-strong); }
+.aivy-room-tile .tile-head{ display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px 18px; text-align: left; }
+.aivy-room-tile .tile-icon{ width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--moss) 15%, transparent); color: var(--moss-strong); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.aivy-room-tile .tile-icon.alt{ background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--gold); }
+.aivy-room-tile .tile-label{ flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.aivy-room-tile .tile-label .t{ font-family: var(--font-display); font-weight: 700; font-size: 15.5px; color: var(--ink); }
+.aivy-room-tile .tile-label .s{ font-size: 12.5px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aivy-room-tile .chev{ color: var(--ink-faint); transition: transform var(--dur-base) var(--ease), color var(--dur-fast) var(--ease); }
+.aivy-room-tile.open .chev{ transform: rotate(180deg); color: var(--ink-dim); }
+.aivy-room-tile .tile-body{ display: flex; flex-direction: column; gap: 10px; padding: 4px 18px 18px; animation: tile-in var(--dur-base) var(--ease); }
+@keyframes tile-in{ from{ opacity: 0; transform: translateY(-6px); } to{ opacity: 1; transform: none; } }
+.aivy-room-tile .chip-row{ display: flex; gap: 8px; flex-wrap: wrap; }
+.aivy-room-tile .chip{ display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-pill); border: 1px solid var(--line); font-size: 12.5px; font-weight: 600; color: var(--ink-dim); background: var(--bg-elev-2); transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.aivy-room-tile .chip.on{ background: var(--moss); border-color: var(--moss); color: var(--moss-ink); }
+.aivy-room-tile .aivy-input{ margin-bottom: 0; }
+.aivy-room-tile .code-input{ text-align: center; letter-spacing: .4em; font-family: var(--font-mono); font-size: 17px; font-weight: 600; padding: 12px; }
+.aivy-room-tile .code-input::placeholder{ letter-spacing: .4em; }
+.aivy-room-tile .aivy-btn-primary{ justify-content: center; margin-top: 4px; }
 
 /* ===== Chat room: full & rapi ===== */
 .aivy-room2-tabbody.chat{ display: flex; flex-direction: column; }

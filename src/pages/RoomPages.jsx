@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Users, Lock, Globe, Plus, LogIn, Play, Search as SearchIcon, Copy, Share2, Pause, SkipForward } from "lucide-react";
+import { Users, Lock, Globe, Plus, LogIn, Play, Search as SearchIcon, Copy, Share2, Pause, SkipForward, Hash, ChevronDown } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
-import { TrackRow, ViewLoading, Checkbox, RoomChat } from "../components.jsx";
+import { TrackRow, ViewLoading, RoomChat } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 import { relativeTime } from "../lib/utils.js";
 import { Api } from "../lib/api.js";
@@ -12,6 +12,7 @@ export function RoomLobbyPage() {
   const { publicRooms, refreshPublicRooms, createRoom, joinRoom } = usePlayer();
   const { navigate } = useRouter();
 
+  const [openPanel, setOpenPanel] = useState(null);
   const [name, setName] = useState("");
   const [isPublic, setIsPublic] = useState(settings.roomVisibilityDefault !== "private");
   const [password, setPassword] = useState("");
@@ -60,29 +61,52 @@ export function RoomLobbyPage() {
         <p>{t("listenTogetherSub")}</p>
       </div>
 
-      <div className="aivy-room-grid" style={{ marginTop: 18 }}>
-        <div className="aivy-room-card">
-          <div className="card-icon"><Plus size={18} /></div>
-          <h3>{t("createRoom")}</h3>
-          <p>{t("listenTogetherSub")}</p>
-          <div className="field-label">{t("roomNamePlaceholder")}</div>
-          <input className="aivy-input" placeholder={t("roomNameDefault")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
-          <div className="field-label">{t("passwordOptional")}</div>
-          <input className="aivy-input" type="password" placeholder="••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <div className="field-label">{t("public")}</div>
-          <Checkbox checked={isPublic} onChange={setIsPublic} label={t("publicRoomHint")} />
-          <Checkbox checked={hostOnlyControl} onChange={setHostOnlyControl} label={t("hostOnlyHint")} />
-          <button className="aivy-btn-primary btnrow" disabled={creating} onClick={handleCreate}>{creating ? t("creatingRoom") : t("createRoomBtn")}</button>
+      <div className="aivy-room-actions" style={{ marginTop: 18 }}>
+        <div className={`aivy-room-tile ${openPanel === "create" ? "open" : ""}`}>
+          <button type="button" className="tile-head" onClick={() => setOpenPanel(openPanel === "create" ? null : "create")}>
+            <span className="tile-icon"><Plus size={18} /></span>
+            <span className="tile-label">
+              <span className="t">{t("createRoom")}</span>
+              <span className="s">{t("publicRoomHint")}</span>
+            </span>
+            <ChevronDown size={18} className="chev" />
+          </button>
+          {openPanel === "create" && (
+            <div className="tile-body">
+              <input className="aivy-input" placeholder={t("roomNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+              <input className="aivy-input" type="password" placeholder={t("passwordOptional")} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <div className="chip-row">
+                <button type="button" className={`chip ${isPublic ? "on" : ""}`} onClick={() => setIsPublic(!isPublic)}>{isPublic ? <Globe size={13} /> : <Lock size={13} />} {isPublic ? t("public") : t("private")}</button>
+                <button type="button" className={`chip ${hostOnlyControl ? "on" : ""}`} onClick={() => setHostOnlyControl(!hostOnlyControl)}>{t("hostOnlyShort")}</button>
+              </div>
+              <button className="aivy-btn-primary" disabled={creating} onClick={handleCreate}>{creating ? t("creatingRoom") : t("createRoomBtn")}</button>
+            </div>
+          )}
         </div>
-        <div className="aivy-room-card join">
-          <div className="card-icon alt"><LogIn size={18} /></div>
-          <h3>{t("joinRoom")}</h3>
-          <p>{t("joinRoomSub")}</p>
-          <div className="field-label">{t("roomCodePlaceholder")}</div>
-          <input className="aivy-input code-input" placeholder="ABC123" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} maxLength={8} />
-          <div className="field-label">{t("passwordIfAny")}</div>
-          <input className="aivy-input" type="password" placeholder="••••••" value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} />
-          <button className="aivy-btn-primary btnrow" disabled={joining || !joinCode.trim()} onClick={() => handleJoin(joinCode.trim(), true)}><LogIn size={15} /> {t("join")}</button>
+
+        <div className={`aivy-room-tile ${openPanel === "join" ? "open" : ""}`}>
+          <button type="button" className="tile-head" onClick={() => setOpenPanel(openPanel === "join" ? null : "join")}>
+            <span className="tile-icon alt"><Hash size={18} /></span>
+            <span className="tile-label">
+              <span className="t">{t("joinRoom")}</span>
+              <span className="s">{t("joinRoomSub")}</span>
+            </span>
+            <ChevronDown size={18} className="chev" />
+          </button>
+          {openPanel === "join" && (
+            <div className="tile-body">
+              <input
+                className="aivy-input code-input"
+                placeholder="ABC123"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                maxLength={8}
+                onKeyDown={(e) => { if (e.key === "Enter" && joinCode.trim()) handleJoin(joinCode.trim(), true); }}
+              />
+              <input className="aivy-input" type="password" placeholder={t("passwordIfAny")} value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} />
+              <button className="aivy-btn-primary" disabled={joining || !joinCode.trim()} onClick={() => handleJoin(joinCode.trim(), true)}><LogIn size={15} /> {t("join")}</button>
+            </div>
+          )}
         </div>
       </div>
 

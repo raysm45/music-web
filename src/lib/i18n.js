@@ -326,6 +326,7 @@ const dict = {
     confirmAddQueueTitle: "Tambahkan lagu ini ke antrean room?",
     yesAdd: "Tambahkan",
     alreadyQueued: "Lagu ini udah ada di antrean",
+    hostOnlyShort: "Khusus host",
 
     artistLabel: "Artist",
     following: "Mengikuti",
@@ -666,6 +667,7 @@ const dict = {
     confirmAddQueueTitle: "Add this song to the room queue?",
     yesAdd: "Add",
     alreadyQueued: "This song is already in the queue",
+    hostOnlyShort: "Host only",
 
     artistLabel: "Artist",
     following: "Following",
