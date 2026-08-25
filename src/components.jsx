@@ -455,7 +455,7 @@ export function CardTrack({ track, list }) {
   return (
     <div className="aivy-card" onContextMenu={(e) => { e.preventDefault(); openContextMenu(e.clientX, e.clientY, items); }}>
       <div className="art-wrap">
-        <SmartCover src={track.cover} seed={track.id + track.title} size={140} radius={10} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+        <SmartCover src={track.cover} seed={track.id + track.title} size={140} radius={8} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
         <button className="aivy-card-play" onClick={handlePlay} aria-label="Putar">{isCurrent && isPlaying ? <Pause size={16} /> : <Play size={16} />}</button>
       </div>
       <div className="title">{track.title}</div>
@@ -476,7 +476,7 @@ export function CardAlbum({ album }) {
   return (
     <div className="aivy-card" onClick={() => navigate("album", { params: { id: album.id } })} style={{ cursor: "pointer" }}>
       <div className="art-wrap">
-        <SmartCover src={album.cover} seed={"album" + album.id + album.title} size={140} radius={10} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+        <SmartCover src={album.cover} seed={"album" + album.id + album.title} size={140} radius={8} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
         <button className="aivy-card-play" onClick={handlePlay} aria-label="Putar album"><Play size={16} /></button>
       </div>
       <div className="title">{album.title}</div>

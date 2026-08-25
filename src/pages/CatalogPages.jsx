@@ -61,12 +61,12 @@ export function ArtistPage() {
       )}
       {artist.albums?.length > 0 && (
         <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{t("albumsLabel")}</h2></div>
-          <div className="aivy-hrow aivy-scroll">{artist.albums.map((a) => <CardAlbum key={a.id} album={a} />)}</div>
+          <div className="aivy-grid">{artist.albums.map((a) => <CardAlbum key={a.id} album={a} />)}</div>
         </section>
       )}
       {artist.relatedArtists?.length > 0 && (
         <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{t("similarTo")} {artist.name}</h2></div>
-          <div className="aivy-hrow aivy-scroll">{artist.relatedArtists.map((a) => <CardArtist key={a.id} artist={a} />)}</div>
+          <div className="aivy-grid">{artist.relatedArtists.map((a) => <CardArtist key={a.id} artist={a} />)}</div>
         </section>
       )}
     </div>
