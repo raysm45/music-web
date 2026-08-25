@@ -1665,20 +1665,30 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 .aivy-room-chat-standalone.tall .aivy-chat-messages{ flex: 1; min-height: 0; max-height: none; }
 
-/* Bubble lagu: kartu netral, konsisten utk own/other */
+/* Bubble lagu: kartu horizontal netral, konsisten utk own/other */
 .aivy-chat-msg .bubble.song-bubble{
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
   border-radius: 14px;
   background: var(--bg-elev-2);
   border: 1px solid var(--line);
-  padding: 8px 14px 8px 8px;
-  gap: 0;
+  padding: 8px 12px 8px 8px;
 }
 .aivy-chat-msg.own .bubble.song-bubble{ background: var(--bg-elev-2); border-color: var(--line); }
-.aivy-chat-msg.own .bubble.song-bubble .meta .who{ color: var(--ink-faint); }
 .aivy-chat-msg.own .bubble.song-bubble .meta .a{ color: var(--ink-dim); }
+.bubble.song-bubble .cover{ width: 48px; height: 48px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: var(--bg-elev-3); }
+.bubble.song-bubble .meta{ display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; text-align: left; }
+.bubble.song-bubble .meta .t{ font-size: 13.5px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bubble.song-bubble .meta .a{ font-size: 12px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bubble.song-bubble .meta .hint{ font-size: 10.5px; font-weight: 700; color: var(--moss-strong); margin-top: 2px; }
 .bubble.song-bubble .song-play{
   width: 30px; height: 30px; border-radius: 50%;
   background: var(--moss); color: var(--moss-ink);
-  padding: 7px; flex-shrink: 0; margin-left: 4px;
+  padding: 8px; flex-shrink: 0; margin-left: 2px;
 }
+.bubble.song-bubble:hover .song-play{ background: var(--moss-strong); }
+.bubble.song-bubble.queued{ opacity: .55; }
 .bubble.song-bubble.queued .song-play{ background: var(--bg-elev-3); color: var(--ink-faint); }
+.bubble.song-bubble.queued:hover{ filter: none; }

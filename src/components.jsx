@@ -1471,21 +1471,22 @@ export function RoomChat() {
               );
             }
             if (m.type === "song") {
+              const queued = inQueue(m.song?.videoId);
+              const sender = m.username ? ` · @${m.username}` : "";
               return (
                 <div key={m.id} className={`aivy-chat-msg ${own ? "own" : ""}`}>
                   {!own && <span className="aivy-avatar">{m.username?.slice(0, 1).toUpperCase()}</span>}
                   <div className="song-wrap">
-                    <button type="button" className={`bubble song-bubble ${inQueue(m.song?.videoId) ? "queued" : ""}`} onClick={() => handleSongTap(m)}>
+                    <button type="button" className={`bubble song-bubble ${queued ? "queued" : ""}`} onClick={() => handleSongTap(m)}>
                       <span className="cover">
-                        <SmartCover src={m.song?.cover} seed={m.song?.videoId || m.id} size={80} radius={6} style={{ width: "100%", height: "100%" }} />
+                        <SmartCover src={m.song?.cover} seed={m.song?.videoId || m.id} size={96} radius={8} style={{ width: "100%", height: "100%" }} />
                       </span>
                       <span className="meta">
-                        <span className="who">{m.username}</span>
                         <span className="t">{m.song?.title}</span>
-                        {m.song?.artist && <span className="a">{m.song.artist}</span>}
-                        <span className="hint">{inQueue(m.song?.videoId) ? `✓ ${t("alreadyQueued")}` : t("confirmAddQueueTitle")}</span>
+                        <span className="a">{m.song?.artist || "\u2014"}{sender}</span>
+                        {queued && <span className="hint">✓ {t("queuedShort")}</span>}
                       </span>
-                      <Play size={16} className="song-play" />
+                      <Play size={13} className="song-play" />
                     </button>
                     {confirmSongId === m.id && (
                       <div className="song-confirm">

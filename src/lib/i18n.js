@@ -327,6 +327,7 @@ const dict = {
     yesAdd: "Tambahkan",
     alreadyQueued: "Lagu ini udah ada di antrean",
     hostOnlyShort: "Khusus host",
+    queuedShort: "Sudah di antrean",
 
     artistLabel: "Artist",
     following: "Mengikuti",
@@ -668,6 +669,7 @@ const dict = {
     yesAdd: "Add",
     alreadyQueued: "This song is already in the queue",
     hostOnlyShort: "Host only",
+    queuedShort: "Already queued",
 
     artistLabel: "Artist",
     following: "Following",
