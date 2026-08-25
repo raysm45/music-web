@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Play } from "lucide-react";
+import { Play, RefreshCw } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { CardTrack, CardAlbum, CardArtist, filterExplicit } from "../components.jsx";
+import { CardAlbum, CardArtist, filterExplicit, useTrackMenuItems } from "../components.jsx";
+import { SmartCover } from "../lib/brand.jsx";
 import { IvyFallLoader } from "../lib/brand.jsx";
-import { uid } from "../lib/utils.js";
+import { uid, formatDuration } from "../lib/utils.js";
 
 function greetingSubKey() {
   const h = new Date().getHours();
@@ -50,8 +51,36 @@ function mapHistoryRow(row) {
   };
 }
 
+function SongListRow({ track, list }) {
+  const { currentTrack, isPlaying, togglePlay, playList } = usePlayer();
+  const { openContextMenu } = useUI();
+  const isCurrent = currentTrack && currentTrack.id === track.id;
+  const items = useTrackMenuItems(track);
+  const handlePlay = () => {
+    if (isCurrent) { togglePlay(); return; }
+    const idx = list.findIndex((x) => x.id === track.id);
+    playList(list, idx === -1 ? 0 : idx);
+  };
+  return (
+    <div
+      className={`aivy-songlist-row ${isCurrent ? "current" : ""}`}
+      onClick={handlePlay}
+      onContextMenu={(e) => { e.preventDefault(); openContextMenu(e.clientX, e.clientY, items); }}
+    >
+      <span className="cover">
+        <SmartCover src={track.cover} seed={track.id + track.title} size={80} radius={6} style={{ width: "100%", height: "100%" }} />
+      </span>
+      <span className="meta">
+        <span className="t">{track.title}</span>
+        <span className="a">{track.artist?.name || "\u2014"}</span>
+      </span>
+      <span className="dur font-mono">{formatDuration(track.duration)}</span>
+    </div>
+  );
+}
+
 export function HomePage() {
-  const { t, settings, authUser } = useUI();
+  const { t, settings, authUser, pushToast } = useUI();
   const subKey = useMemo(greetingSubKey, []);
   const { liked, history: sessionHistory, playRadio, currentTrack } = usePlayer();
   const { navigate } = useRouter();
@@ -67,8 +96,10 @@ export function HomePage() {
   const playedHistory = authUser ? savedHistory : sessionHistory;
   const nothingPlayed = !playedHistory || playedHistory.length === 0;
 
-  const trending = useDiscoverRow("trending-" + new Date().toDateString(), 12, "track");
-  const fresh = useDiscoverRow("fresh-" + Math.floor(Date.now() / 3600000), 12, "album");
+  const [trendingSeed, setTrendingSeed] = useState("trending-" + new Date().toDateString());
+  const [albumSeed, setAlbumSeed] = useState("fresh-" + Math.floor(Date.now() / 3600000));
+  const trending = useDiscoverRow(trendingSeed, 12, "track");
+  const fresh = useDiscoverRow(albumSeed, 12, "album");
   const moodCalm = useDiscoverRow("mood-santai", 12, "artist");
   const trendingTracks = useMemo(() => filterExplicit(trending || [], settings).slice(0, 12), [trending, settings]);
   const freshAlbums = useMemo(() => (fresh || []).slice(0, 12), [fresh]);
@@ -115,26 +146,55 @@ export function HomePage() {
   const visibleItems = useMemo(() => items.filter((i) => i.type !== "track" || settings.explicitContent !== false || !i.explicit), [items, settings.explicitContent]);
   const exploreTracks = useMemo(() => visibleItems.filter((i) => i.type === "track"), [visibleItems]);
 
+  const startRadio = () => {
+    if (!trendingTracks.length) return;
+    playRadio(trendingTracks[0]);
+    pushToast(t("toastPlayingFullSong"));
+  };
+
   return (
     <div className="aivy-view-enter aivy-home">
       {bgCover && <div className="aivy-home-bg" style={{ backgroundImage: `url(${bgCover})` }} aria-hidden="true" />}
       <div className="aivy-home-inner">
-        <div className="aivy-home-welcome">
-          <h1 className="font-display">{t("homeWelcome")}</h1>
-          <p>{nothingPlayed ? t("homeWelcomeEmpty") : t(subKey)}</p>
-        </div>
+        {nothingPlayed && (
+          <div className="aivy-home-welcome">
+            <h1 className="font-display">{t("homeWelcome")}</h1>
+            <p>{t("homeWelcomeEmpty")}</p>
+          </div>
+        )}
+
+        <section className="aivy-section" style={{ marginTop: 0 }}>
+          <div className="aivy-section-head">
+            <div className="aivy-home-head-left">
+              <h2 className="aivy-section-title">{t("recoSongs")}</h2>
+              {trendingTracks.length > 0 && (
+                <button className="aivy-chip" onClick={startRadio}>
+                  <Play size={11} /> {t("startInfiniteRadio")}
+                </button>
+              )}
+            </div>
+            <button className="aivy-icon-btn bare" onClick={() => setTrendingSeed("trending-" + Date.now())} aria-label="Refresh" title="Refresh">
+              <RefreshCw size={15} />
+            </button>
+          </div>
+          <div className="aivy-songlist-grid">
+            {trending === null
+              ? <div className="aivy-songlist-loading"><IvyFallLoader size={26} /></div>
+              : trendingTracks.map((tr) => <SongListRow key={tr.id} track={tr} list={trendingTracks} />)}
+          </div>
+        </section>
 
         <Row
-          title={t("recoSongs")}
-          items={trending === null ? null : trendingTracks}
-          action={trendingTracks.length > 0 ? (
-            <button className="aivy-chip" onClick={() => playRadio(trendingTracks[0])}>
-              <Play size={12} /> {t("startInfiniteRadio")}
+          title={t("recoAlbums")}
+          items={fresh === null ? null : freshAlbums}
+          action={
+            <button className="aivy-icon-btn bare" onClick={() => setAlbumSeed("fresh-" + Date.now())} aria-label="Refresh" title="Refresh">
+              <RefreshCw size={15} />
             </button>
-          ) : null}
-          render={(tr) => <CardTrack key={tr.id} track={tr} list={trendingTracks} />}
+          }
+          render={(a) => <CardAlbum key={a.id} album={a} />}
         />
-        <Row title={t("recoAlbums")} items={fresh === null ? null : freshAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
+
         <Row title={t("recoArtists")} items={moodCalm === null ? null : artists} render={(a) => <CardArtist key={a.id} artist={a} />} />
 
         {playedHistory === null || playedHistory.length > 0 ? (

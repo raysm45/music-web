@@ -1749,18 +1749,33 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-home{ position: relative; }
 .aivy-home-bg{
-  position: absolute; top: 0; left: 0; right: 0; height: 60vh; min-height: 400px; z-index: 0;
+  position: absolute; top: -40px; left: -60px; right: -60px; height: 60vh; min-height: 400px; z-index: 0;
   background-size: cover; background-position: center 20%; background-repeat: no-repeat;
   opacity: 0; animation: aivy-home-bg-in .5s ease forwards;
-  -webkit-mask-image: linear-gradient(to bottom, #000, #000c 40%, transparent);
-  mask-image: linear-gradient(to bottom, #000, #000c 40%, transparent);
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 0%, #000 30%, transparent 92%);
+  mask-image: radial-gradient(120% 100% at 50% 0%, #000 30%, transparent 92%);
   filter: var(--cover-filter); pointer-events: none;
 }
-@keyframes aivy-home-bg-in{ to{ opacity: 1; } }
+@keyframes aivy-home-bg-in{ to{ opacity: .8; } }
 .aivy-home-inner{ position: relative; z-index: 1; }
 .aivy-home-welcome{ padding: 6px 2px 26px; }
 .aivy-home-welcome h1{ font-family: var(--font-display); font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; margin: 0 0 8px; }
 .aivy-home-welcome p{ margin: 0; color: var(--ink-dim); font-size: 14.5px; }
+.aivy-home-head-left{ display: flex; align-items: center; gap: 10px; min-width: 0; }
+.aivy-home-head-left .aivy-section-title{ margin-bottom: 0; }
+
+/* Daftar lagu rekomendasi — baris kecil 3 kolom ala monochrome */
+.aivy-songlist-grid{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 18px; }
+@media (max-width: 1400px){ .aivy-songlist-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px){ .aivy-songlist-grid{ grid-template-columns: 1fr; } }
+.aivy-songlist-loading{ display: flex; justify-content: center; padding: 20px 0; }
+.aivy-songlist-row{ display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; min-width: 0; transition: background var(--dur-fast) var(--ease); }
+.aivy-songlist-row:hover, .aivy-songlist-row.current{ background: var(--bg-elev-2); }
+.aivy-songlist-row .cover{ width: 40px; height: 40px; border-radius: 6px; overflow: hidden; flex-shrink: 0; background: var(--bg-elev-2); }
+.aivy-songlist-row .meta{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.aivy-songlist-row .t{ font-size: 13.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aivy-songlist-row .a{ font-size: 12px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aivy-songlist-row .dur{ font-size: 12px; color: var(--ink-faint); flex-shrink: 0; }
 
 .aivy-parties-cta{ border: 1px solid var(--line); border-radius: 8px; background: var(--bg-elev); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 .aivy-parties-cta p{ margin: 0; color: var(--ink-dim); font-size: 13.5px; }
