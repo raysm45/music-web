@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Play, RefreshCw } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
 import { CardTrack, CardAlbum, CardArtist, filterExplicit, useTrackMenuItems } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
-import { IvyFallLoader } from "../lib/brand.jsx";
+
 import { uid, formatDuration } from "../lib/utils.js";
 
 function greetingSubKey() {
@@ -29,11 +29,41 @@ function useDiscoverRow(seed, limit = 12, type = null, enabled = true) {
   return items;
 }
 
-function Row({ title, items, render, scroll = false, action = null }) {
+function SkeletonCard() {
+  return (
+    <div className="aivy-card" style={{ pointerEvents: "none" }}>
+      <div className="art-wrap"><div className="aivy-skeleton" style={{ width: "100%", height: "100%" }} /></div>
+      <div className="aivy-skeleton" style={{ height: 12, width: "68%", borderRadius: 6 }} />
+      <div className="aivy-skeleton" style={{ height: 10, width: "44%", borderRadius: 6, marginTop: 7 }} />
+    </div>
+  );
+}
+
+function SkeletonCardGrid({ count = 8 }) {
+  return <>{Array.from({ length: count }).map((_, i) => <SkeletonCard key={i} />)}</>;
+}
+
+function SkeletonSongRow() {
+  return (
+    <div className="aivy-songlist-row" style={{ pointerEvents: "none" }}>
+      <span className="cover"><div className="aivy-skeleton" style={{ width: "100%", height: "100%" }} /></span>
+      <span className="meta">
+        <span className="aivy-skeleton" style={{ height: 12, width: "62%", borderRadius: 6 }} />
+        <span className="aivy-skeleton" style={{ height: 10, width: "40%", borderRadius: 6, marginTop: 5 }} />
+      </span>
+    </div>
+  );
+}
+
+function SkeletonSongGrid({ count = 6 }) {
+  return <>{Array.from({ length: count }).map((_, i) => <SkeletonSongRow key={i} />)}</>;
+}
+
+function Row({ title, items, render, scroll = false, action = null, skeleton = 8 }) {
   const wrapClass = scroll ? "aivy-hrow aivy-scroll" : "aivy-grid";
   if (items === null) return (
     <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{title}</h2>{action}</div>
-      <div className={wrapClass}><IvyFallLoader size={26} /></div>
+      <div className={wrapClass}><SkeletonCardGrid count={scroll ? 6 : skeleton} /></div>
     </section>
   );
   if (!items.length) return null;
@@ -165,7 +195,7 @@ export function HomePage() {
       {bgCover && <div className="aivy-home-bg" style={{ backgroundImage: `url(${bgCover})` }} aria-hidden="true" />}
       <div className="aivy-home-inner">
         <div className="aivy-home-tabs">
-          {[["home", t("tabHome")], ["hot", t("tabHotNew")], ["picks", t("tabEditorsPicks")], ["aoty", "AOTY"]].map(([id, label]) => (
+          {[["home", t("tabHome")], ["hot", t("tabHotNew")], ["picks", t("tabEditorsPicks")], ["aoty", t("tabAoty")]].map(([id, label]) => (
             <button key={id} className={homeTab === id ? "active" : ""} onClick={() => setHomeTab(id)}>{label}</button>
           ))}
         </div>
@@ -195,7 +225,7 @@ export function HomePage() {
               </div>
               <div className="aivy-songlist-grid">
                 {trending === null
-                  ? <div className="aivy-songlist-loading"><IvyFallLoader size={26} /></div>
+                  ? <SkeletonSongGrid count={6} />
                   : trendingTracks.map((tr) => <SongListRow key={tr.id} track={tr} list={trendingTracks} />)}
               </div>
             </section>
@@ -237,10 +267,10 @@ export function HomePage() {
                   return <CardArtist key={`ar-${item.id}-${i}`} artist={item} />;
                 })}
               </div>
-              <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", padding: "26px 0" }}>
-                {loading && <IvyFallLoader size={28} />}
-                {done && items.length > 0 && <span className="eyebrow">{t("exploreEnd")}</span>}
-              </div>
+          <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", padding: "26px 0" }}>
+            {loading && <SkeletonCardGrid count={4} />}
+            {done && items.length > 0 && <span className="eyebrow">{t("exploreEnd")}</span>}
+          </div>
             </section>
           </>
         )}
@@ -251,7 +281,7 @@ export function HomePage() {
               <div className="aivy-section-head"><h2 className="aivy-section-title">{t("tabHotNew")}</h2></div>
               <div className="aivy-songlist-grid">
                 {hotTracks === null
-                  ? <div className="aivy-songlist-loading"><IvyFallLoader size={26} /></div>
+                  ? <SkeletonSongGrid count={6} />
                   : (hotTracks || []).map((tr) => <SongListRow key={tr.id} track={tr} list={hotTracks} />)}
               </div>
             </section>
@@ -264,9 +294,10 @@ export function HomePage() {
         )}
 
         {homeTab === "aoty" && (
-          <Row title="AOTY" items={aotyAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
+          <Row title={t("tabAoty")} items={aotyAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
         )}
       </div>
     </div>
   );
 }
+
