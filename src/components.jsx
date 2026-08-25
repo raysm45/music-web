@@ -1004,34 +1004,41 @@ const creditsFetchCache = new Map();
 function useCreditsData(track) {
   const trackId = track?.id;
   const hasOwnCredits = !!track?.credits;
+  const isDeezerId = /^\d+$/.test(String(trackId));
+  const titleKey = (track?.title || "").toLowerCase();
+  const artistKey = (track?.artist?.name || "").toLowerCase();
   const [fetchedCredits, setFetchedCredits] = useState(null);
 
   useEffect(() => {
     setFetchedCredits(null);
-    if (hasOwnCredits || !trackId || !/^\d+$/.test(String(trackId))) return;
+    if (hasOwnCredits || !trackId) return;
+
+    const canFetch = isDeezerId || !!track?.title;
+    if (!canFetch) return;
 
     let alive = true;
     const applyResult = (credits) => { if (alive) setFetchedCredits(credits); };
 
-    const cached = creditsFetchCache.get(trackId);
+    const cacheKey = isDeezerId ? trackId : `t:${titleKey}|${artistKey}`;
+    const cached = creditsFetchCache.get(cacheKey);
     if (cached !== undefined) {
       if (cached && typeof cached.then === "function") cached.then(applyResult);
       else applyResult(cached);
       return () => { alive = false; };
     }
 
-    const promise = import("./lib/api.js")
-      .then(({ Api }) => Api.track(trackId))
-      .then((full) => full?.credits || null)
-      .catch(() => null);
-    creditsFetchCache.set(trackId, promise);
+    const promise = (isDeezerId
+      ? import("./lib/api.js").then(({ Api }) => Api.track(trackId)).then((full) => full?.credits || null)
+      : import("./lib/api.js").then(({ Api }) => Api.trackCredits({ title: track?.title, artist: track?.artist?.name })).then((r) => r?.credits || null)
+    ).catch(() => null);
+    creditsFetchCache.set(cacheKey, promise);
     promise.then((credits) => {
-      creditsFetchCache.set(trackId, credits);
+      creditsFetchCache.set(cacheKey, credits);
       applyResult(credits);
     });
 
     return () => { alive = false; };
-  }, [trackId, hasOwnCredits]);
+  }, [trackId, hasOwnCredits, isDeezerId, titleKey, artistKey]);
 
   return useMemo(() => {
     const mainArtistName = track?.artist?.name || null;

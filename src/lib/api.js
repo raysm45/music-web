@@ -37,6 +37,8 @@ export const Api = {
   artistQuick: (q) => apiGet(`/api/artist/quick?q=${encodeURIComponent(q)}`),
   album: (id) => apiGet(`/api/album/${id}`),
   track: (id) => apiGet(`/api/track/${id}`),
+  trackCredits: ({ title, artist }) =>
+    apiGet(`/api/track/credits?title=${encodeURIComponent(title || "")}&artist=${encodeURIComponent(artist || "")}`),
   similar: (args) =>
     apiGet(`/api/similar?${args.trackId ? `trackId=${encodeURIComponent(args.trackId)}` : `title=${encodeURIComponent(args.title)}&artist=${encodeURIComponent(args.artist || "")}`}`),
 
