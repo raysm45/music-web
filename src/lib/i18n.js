@@ -336,6 +336,9 @@ const dict = {
     startInfiniteRadio: "Mulai Radio Tanpa Batas",
     listeningParties: "Listening Parties",
     partiesSub: "Dengerin musik bareng temen secara real-time — host yang kontrol lagunya, semua menikmati.",
+    tabHome: "Home",
+    tabHotNew: "Hot & New",
+    tabEditorsPicks: "Editor's Picks",
 
     artistLabel: "Artist",
     following: "Mengikuti",
@@ -685,7 +688,10 @@ const dict = {
     recoArtists: "Recommended Artists",
     startInfiniteRadio: "Start Infinite Radio",
     listeningParties: "Listening Parties",
-    partiesSub: "Listen to music together with your friends in real-time � the host controls the music, everyone enjoys.",
+    partiesSub: "Listen to music together with your friends in real-time — the host controls the music, everyone enjoys.",
+    tabHome: "Home",
+    tabHotNew: "Hot & New",
+    tabEditorsPicks: "Editor's Picks",
 
     artistLabel: "Artist",
     following: "Following",

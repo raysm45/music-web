@@ -77,7 +77,7 @@ function AppInner() {
       {!isMobile && <Sidebar />}
       <main className="aivy-main">
         {!isImmersiveShorts && <TopBar isMobile={isMobile} />}
-        <div id="aivy-content-scroll" className={`aivy-content aivy-scroll ${isMobile ? "is-mobile" : ""} ${name === "shorts" ? "no-pad" : ""}`}
+        <div id="aivy-content-scroll" className={`aivy-content aivy-scroll ${isMobile ? "is-mobile" : ""} ${name === "shorts" ? "no-pad" : ""} ${name === "home" ? "home-full" : ""}`}
           style={{ paddingBottom: name === "shorts" ? 0 : (isMobile ? (currentTrack ? 150 : 84) : (currentTrack ? 118 : 24)) }}>
           <ErrorBoundary key={name + JSON.stringify(params)}><Page /></ErrorBoundary>
         </div>

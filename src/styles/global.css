@@ -1780,3 +1780,14 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-parties-cta{ border: 1px solid var(--line); border-radius: 8px; background: var(--bg-elev); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 .aivy-parties-cta p{ margin: 0; color: var(--ink-dim); font-size: 13.5px; }
 .aivy-parties-cta .acts{ display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Home full-bleed: hapus padding samping konten */
+.aivy-content.home-full{ padding: 0 0 40px; }
+.aivy-home-inner{ padding: 10px 24px 40px; }
+.aivy-home-bg{ top: 0; left: 0; right: 0; }
+
+/* Tab discover ala monochrome */
+.aivy-home-tabs{ display: flex; gap: 26px; padding: 4px 2px 0; border-bottom: 1px solid var(--line-soft); margin-bottom: 22px; }
+.aivy-home-tabs button{ padding: 10px 2px 12px; font-size: 15px; font-weight: 600; color: var(--ink-faint); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.aivy-home-tabs button:hover{ color: var(--ink-dim); }
+.aivy-home-tabs button.active{ color: var(--ink); border-bottom-color: var(--moss-strong); }
