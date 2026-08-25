@@ -1482,22 +1482,24 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet .aivy-sheet-meta{ align-items: center; margin-bottom: 16px; }
 .aivy-sheet .aivy-sheet-meta .t{ font-size: 21px; letter-spacing: -.01em; }
 .aivy-sheet .aivy-sheet-meta .a{ font-size: 15px; margin-top: 3px; }
-.aivy-sheet .aivy-scrubber-row{ margin-bottom: 10px; }
+.aivy-sheet .aivy-scrubber-row{ margin-bottom: 14px; }
 .aivy-sheet .aivy-time{ font-size: 11px; width: 36px; }
 .aivy-sheet .aivy-scrubber .track{ height: 6px; }
 .aivy-sheet .aivy-scrubber:hover .track, .aivy-sheet .aivy-scrubber.dragging .track{ height: 8px; }
-.aivy-sheet .aivy-transport-btns{ justify-content: center; gap: 36px; margin-top: auto; margin-bottom: auto; }
+.aivy-sheet .aivy-transport-btns{ justify-content: center; gap: 36px; margin: 0 0 14px; }
+.aivy-sheet-gap{ flex: 1 1 0; max-height: 44px; min-height: 6px; }
+.aivy-sheet-gap.grow{ flex: 2 1 0; max-height: none; }
 .aivy-sheet .aivy-transport-btns .aivy-icon-btn{ width: 44px; height: 44px; }
 .aivy-sheet .aivy-transport-btns .aivy-icon-btn svg{ width: 28px; height: 28px; }
 .aivy-sheet .aivy-play-btn{ width: 64px; height: 64px; background: transparent; color: var(--sheet-ink); }
 .aivy-sheet .aivy-play-btn:hover{ transform: scale(1.04); }
 .aivy-sheet .aivy-play-btn svg{ width: 46px; height: 46px; margin-left: 3px; }
-.aivy-sheet .aivy-vol{ display: grid; grid-template-columns: 36px 1fr 36px; gap: 9px; width: 100%; margin-bottom: 0; }
+.aivy-sheet .aivy-vol{ display: grid; grid-template-columns: 36px 1fr 36px; gap: 9px; width: 100%; margin-bottom: 14px; }
 .aivy-sheet .aivy-vol .track{ width: 100%; max-width: none; height: 6px; }
 .aivy-sheet .aivy-vol:hover .track, .aivy-sheet .aivy-vol.dragging .track{ height: 8px; }
 .aivy-vol .vol-end{ flex-shrink: 0; display: flex; color: var(--sheet-ink-faint); justify-self: end; align-items: center; }
 .aivy-sheet .aivy-vol .aivy-icon-btn{ width: 36px; height: 36px; }
-.aivy-sheet .aivy-sheet-icon-row{ margin-top: auto; padding: 8px 8px 6px; }
+.aivy-sheet .aivy-sheet-icon-row{ padding: 8px 8px 6px; }
 .aivy-sheet-icon-row .aivy-icon-btn{ width: 42px; height: 42px; }
 .aivy-sheet-icon-row .aivy-icon-btn svg{ width: 22px; height: 22px; }
 

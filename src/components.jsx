@@ -769,8 +769,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
               <span className="aivy-time right">{loadingAudio ? "\u2013\u2013" : `-${formatTime(Math.max(0, (duration || 0) - (currentTime || 0)))}`}</span>
             </div>
+            <div className="aivy-sheet-gap" />
             <TransportButtons big minimal />
             <VolumeControl showEndIcon />
+            <div className="aivy-sheet-gap grow" />
             <MobileNowPlayingIconRow lyricsActive={false} onToggleLyrics={toggleLyrics} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
           </div>
         )}
