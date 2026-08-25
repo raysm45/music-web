@@ -24,17 +24,18 @@ function useDiscoverRow(seed, limit = 12, type = null) {
   return items;
 }
 
-function Row({ title, items, render }) {
+function Row({ title, items, render, scroll = false }) {
+  const wrapClass = scroll ? "aivy-hrow aivy-scroll" : "aivy-grid";
   if (items === null) return (
     <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{title}</h2></div>
-      <div className="aivy-grid"><IvyFallLoader size={26} /></div>
+      <div className={wrapClass}><IvyFallLoader size={26} /></div>
     </section>
   );
   if (!items.length) return null;
   return (
     <section className="aivy-section">
       <div className="aivy-section-head"><h2 className="aivy-section-title">{title}</h2></div>
-      <div className="aivy-grid">{items.map(render)}</div>
+      <div className={wrapClass}>{items.map(render)}</div>
     </section>
   );
 }
@@ -121,7 +122,7 @@ export function HomePage() {
       <div className="aivy-greet"><h1 className="font-display">{t(greetKey1)}</h1><p>{t(greetKey2)}</p></div>
 
       {playedHistory === null || playedHistory.length > 0 ? (
-        <Row title={t("rowContinueListening")} items={playedHistory === null ? null : playedHistory.slice(0, 12)} render={(tr) => <CardTrack key={tr.id} track={tr} list={playedHistory} />} />
+        <Row scroll title={t("rowContinueListening")} items={playedHistory === null ? null : playedHistory.slice(0, 12)} render={(tr) => <CardTrack key={tr.id} track={tr} list={playedHistory} />} />
       ) : null}
       <Row title={t("rowTrending")} items={trending === null ? null : trendingTracks} render={(tr) => <CardTrack key={tr.id} track={tr} list={trendingTracks} />} />
       {similarItems && similarItems.length > 0 && (
