@@ -1712,3 +1712,20 @@ body.aivy-resizing *{ user-select: none !important; }
       #000;
   }
 }
+
+/* ===== Mobile: Now Playing & Lyrics bebas tema =====
+   Tema apapun (light/white/latte/system), layar ini + menu/toast/modal
+   yang muncul darinya selalu memakai palet gelap yang sama. */
+@media (max-width: 860px){
+  .aivy-sheet,
+  .aivy-lyrics-overlay,
+  .aivy-ctxmenu,
+  .aivy-modal,
+  .aivy-toast{
+    --bg: #12140F; --bg-elev: #191C14; --bg-elev-2: #21251A; --bg-elev-3: #282C1F;
+    --line: #2A2E20; --line-soft: #21241A;
+    --ink: #ECE8D9; --ink-dim: #9BA08A; --ink-faint: #676B57;
+    --moss: #8CA37C; --moss-strong: #ADC79C; --moss-ink: #10130D;
+    --berry: #C97B6B; --berry-strong: #DE9686; --gold: #D3B673;
+  }
+}
