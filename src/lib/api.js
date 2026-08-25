@@ -58,7 +58,7 @@ export const Api = {
     if (cached && cached.expiresAt - TICKET_MARGIN_S > nowS) {
       return `${API_BASE}/api/s/${encodeURIComponent(cached.sid)}`;
     }
-    const ticket = await apiGet(`/api/stream-ticket/${encodeURIComponent(videoId)}`);
+    const ticket = await apiSend("/api/stream-ticket", "POST", { videoId });
     if (!ticket?.sid) throw new Error("tiket stream kosong");
     streamTicketCache.set(videoId, ticket);
     return `${API_BASE}/api/s/${encodeURIComponent(ticket.sid)}`;
