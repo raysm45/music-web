@@ -1473,13 +1473,13 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet .aivy-time{ font-size: 11px; width: 36px; }
 .aivy-sheet .aivy-scrubber .track{ height: 6px; }
 .aivy-sheet .aivy-scrubber:hover .track, .aivy-sheet .aivy-scrubber.dragging .track{ height: 8px; }
-.aivy-sheet .aivy-transport-btns{ justify-content: center; gap: 36px; margin-top: auto; margin-bottom: 18px; }
+.aivy-sheet .aivy-transport-btns{ justify-content: center; gap: 36px; margin-top: auto; margin-bottom: auto; }
 .aivy-sheet .aivy-transport-btns .aivy-icon-btn{ width: 44px; height: 44px; }
 .aivy-sheet .aivy-transport-btns .aivy-icon-btn svg{ width: 28px; height: 28px; }
 .aivy-sheet .aivy-play-btn{ width: 64px; height: 64px; background: transparent; color: var(--sheet-ink); }
 .aivy-sheet .aivy-play-btn:hover{ transform: scale(1.04); }
 .aivy-sheet .aivy-play-btn svg{ width: 46px; height: 46px; margin-left: 3px; }
-.aivy-sheet .aivy-vol{ display: grid; grid-template-columns: 36px 1fr 36px; gap: 9px; width: 100%; margin-bottom: 18px; }
+.aivy-sheet .aivy-vol{ display: grid; grid-template-columns: 36px 1fr 36px; gap: 9px; width: 100%; margin-bottom: 0; }
 .aivy-sheet .aivy-vol .track{ width: 100%; max-width: none; height: 6px; }
 .aivy-sheet .aivy-vol:hover .track, .aivy-sheet .aivy-vol.dragging .track{ height: 8px; }
 .aivy-vol .vol-end{ flex-shrink: 0; display: flex; color: var(--sheet-ink-faint); justify-self: end; align-items: center; }
