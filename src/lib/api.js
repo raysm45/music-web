@@ -53,16 +53,15 @@ export const Api = {
 
   async getStreamUrl(videoId) {
     if (!videoId) return null;
-    const streamPath = `/api/stream/${encodeURIComponent(videoId)}`;
     const nowS = Math.floor(Date.now() / 1000);
     const cached = streamTicketCache.get(videoId);
     if (cached && cached.expiresAt - TICKET_MARGIN_S > nowS) {
-      return `${API_BASE}${streamPath}?t=${encodeURIComponent(cached.token)}`;
+      return `${API_BASE}/api/s/${encodeURIComponent(cached.sid)}`;
     }
-    const ticket = await apiGet(`/api/stream-ticket/${streamPath.split("/").pop()}`);
-    if (!ticket?.token) throw new Error("tiket stream kosong");
+    const ticket = await apiGet(`/api/stream-ticket/${encodeURIComponent(videoId)}`);
+    if (!ticket?.sid) throw new Error("tiket stream kosong");
     streamTicketCache.set(videoId, ticket);
-    return `${API_BASE}${streamPath}?t=${encodeURIComponent(ticket.token)}`;
+    return `${API_BASE}/api/s/${encodeURIComponent(ticket.sid)}`;
   },
 
   me: () => apiGet("/auth/me"),
