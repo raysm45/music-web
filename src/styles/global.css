@@ -334,7 +334,7 @@ body.aivy-resizing *{ user-select: none !important; }
    the Control Center / Now Playing volume bar. */
 .aivy-vol{ display: flex; align-items: center; gap: 9px; }
 .aivy-vol .track{
-  position: relative; width: 130px; max-width: 40vw; height: 4px; border-radius: 999px; background: var(--bg-elev-3);
+  position: relative; width: 92px; max-width: 40vw; height: 4px; border-radius: 999px; background: var(--bg-elev-3);
   cursor: pointer; touch-action: none; transition: height .16s cubic-bezier(.22,.9,.32,1);
 }
 .aivy-vol:hover .track, .aivy-vol.dragging .track{ height: 7px; }
@@ -1697,7 +1697,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .bubble.song-bubble.queued .song-play{ background: var(--bg-elev-3); color: var(--ink-faint); }
 .bubble.song-bubble.queued:hover{ filter: none; }
 
-/* Di mobile, lyrics overlay memakai background blur sampul (gelap) —
+/* Di mobile, lyrics overlay memakai background blur sampul (gelap) ï¿½
    paksa variabel lirik tetap terang walau tema aplikasi terang. */
 @media (max-width: 860px){
   .aivy-lyrics-overlay{

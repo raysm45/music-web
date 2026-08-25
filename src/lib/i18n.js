@@ -670,6 +670,7 @@ const dict = {
     alreadyQueued: "This song is already in the queue",
     hostOnlyShort: "Host only",
     queuedShort: "Already queued",
+    queuedShort: "Already queued",
 
     artistLabel: "Artist",
     following: "Following",
