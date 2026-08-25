@@ -3,7 +3,7 @@ import { Play, RefreshCw } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { CardAlbum, CardArtist, filterExplicit, useTrackMenuItems } from "../components.jsx";
+import { CardTrack, CardAlbum, CardArtist, filterExplicit, useTrackMenuItems } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 import { IvyFallLoader } from "../lib/brand.jsx";
 import { uid, formatDuration } from "../lib/utils.js";
