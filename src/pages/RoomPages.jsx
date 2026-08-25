@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Users, Lock, Globe, Plus, LogIn, Play, Search as SearchIcon } from "lucide-react";
+import { Users, Lock, Globe, Plus, LogIn, Play, Search as SearchIcon, Copy, Share2, Pause, SkipForward } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
 import { TrackRow, ViewLoading, Checkbox, RoomChat } from "../components.jsx";
+import { SmartCover } from "../lib/brand.jsx";
 import { relativeTime } from "../lib/utils.js";
 import { Api } from "../lib/api.js";
 
@@ -104,11 +105,13 @@ export function RoomLobbyPage() {
 
 export function RoomPage() {
   const { params, navigate } = useRouter();
-  const { room, joinRoom, addToQueueEnd } = usePlayer();
-  const { authUser, t } = useUI();
+  const { room, joinRoom, addToQueueEnd, togglePlay, next, isPlaying, voteSkip } = usePlayer();
+  const { authUser, t, pushToast } = useUI();
   const [checked, setChecked] = useState(false);
+  const [tab, setTab] = useState("queue");
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
+  const [voted, setVoted] = useState(false);
 
   useEffect(() => {
     if (!authUser) return;
@@ -122,52 +125,149 @@ export function RoomPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const currentIndex = room?.currentIndex;
+  useEffect(() => { setVoted(false); }, [currentIndex, params.id]);
+
   if (!authUser) { navigate("roomLobby", { replace: true }); return null; }
   if (!checked || !room) return <ViewLoading />;
 
+  const roomTrack = room.currentIndex >= 0 ? room.queue?.[room.currentIndex] || null : null;
+  const isHost = authUser && room.hostId === authUser.id;
+  const controlLocked = !!room.hostOnlyControl && !isHost;
+  const skipVote = room.skipVote || { count: 0, total: room.members?.length || 1, needed: 1 };
+  const members = room.members || [];
+
+  const copyCode = () => {
+    navigator.clipboard?.writeText(room.id);
+    pushToast(t("roomCodeCopied"));
+  };
+  const shareRoom = async () => {
+    const text = `${t("shareRoomText")} ${room.id}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: room.name, text, url: window.location.href }); return; } catch { /* dibatalkan user */ }
+    }
+    navigator.clipboard?.writeText(`${text} — ${window.location.href}`);
+    pushToast(t("roomCodeCopied"));
+  };
+  const handleSkip = async () => {
+    if (!controlLocked) { next(false); return; }
+    if (voted) return;
+    const res = await voteSkip();
+    if (res?.ok) { setVoted(true); pushToast(t("skipVotedToast")); }
+  };
+
   return (
-    <div className="aivy-view-enter">
-      <div className="aivy-greet" style={{ paddingBottom: 10 }}>
-        <h1 className="font-display" style={{ fontSize: "clamp(22px,3vw,28px)" }}>{room.name}</h1>
-        <p>{room.members?.length || 0} {t("membersListening")}</p>
+    <div className="aivy-view-enter aivy-room2">
+      <header className="aivy-room2-head">
+        <div className="row1">
+          <div className="min">
+            <div className="name font-display">{room.name}</div>
+            <button className="code-chip font-mono" onClick={copyCode} title={t("copyRoomCode")} aria-label={t("copyRoomCode")}>
+              {room.id} <Copy size={11} />
+            </button>
+          </div>
+          <div className="acts">
+            <button className="aivy-icon-btn" onClick={shareRoom} aria-label={t("shareRoom")} title={t("shareRoom")}><Share2 size={16} /></button>
+            <button className="aivy-btn-ghost sm" onClick={() => navigate("roomLobby")}><LogIn size={14} style={{ transform: "rotate(180deg)" }} /> {t("leave")}</button>
+          </div>
+        </div>
+        <div className="members-row">
+          <span className="stack">
+            {members.slice(0, 5).map((m) => (
+              <span className="aivy-avatar" key={m.id} title={m.username}>{m.username?.slice(0, 1).toUpperCase()}</span>
+            ))}
+            {members.length > 5 && <span className="aivy-avatar more">+{members.length - 5}</span>}
+          </span>
+          <span className="count">{members.length} {t("membersCount")}{room.isPublic ? "" : " · 🔒"}</span>
+        </div>
+      </header>
+
+      <section className={`aivy-room2-now ${roomTrack ? "has-track" : ""}`}>
+        {roomTrack ? (
+          <>
+            <div className="cover">
+              <SmartCover src={roomTrack.cover} seed={roomTrack.id + roomTrack.title} size={160} radius={10} style={{ width: "100%", height: "100%" }} />
+            </div>
+            <div className="meta">
+              <span className="eyebrow">{t("nowPlaying")}</span>
+              <div className="t">{roomTrack.title}</div>
+              <div className="a">
+                {roomTrack.artist?.name || roomTrack.artist || "\u2014"}
+                {roomTrack.addedBy?.username ? ` · ${t("by")} ${roomTrack.addedBy.username}` : ""}
+              </div>
+            </div>
+            <div className="side">
+              <span className={`eq2 ${isPlaying ? "on" : ""}`} aria-hidden="true"><i /><i /><i /></span>
+              <div className="ctrl">
+                <button className="aivy-icon-btn" onClick={togglePlay} aria-label={isPlaying ? t("pause") : t("play")}>
+                  {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                </button>
+                <button className={`aivy-icon-btn skip ${voted ? "voted" : ""}`} onClick={handleSkip}
+                  aria-label={controlLocked ? t("voteSkipLabel") : t("next")}
+                  title={controlLocked ? `${t("voteSkipLabel")} (${skipVote.count}/${skipVote.total || skipVote.needed})` : t("next")}>
+                  <SkipForward size={17} fill="currentColor" />
+                  {controlLocked && <span className="vote-badge">{skipVote.count}/{skipVote.total}</span>}
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="empty">{t("nothingPlaying")}</div>
+        )}
+      </section>
+
+      <div className="aivy-room2-tabs">
+        <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>{t("tabQueue")}</button>
+        <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}>{t("tabChat")}</button>
       </div>
 
-      <section className="aivy-section">
-        <div className="aivy-section-head"><h2 className="aivy-section-title">{t("addToRoomQueue")}</h2></div>
-        <div className="aivy-search-box" style={{ maxWidth: 420 }}>
-          <SearchIcon size={16} />
-          <input className="aivy-input" placeholder={t("searchToAdd")} value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        {results.length > 0 && (
-          <div style={{ marginTop: 10 }}>
-            {results.slice(0, 6).map((r) => (
-              <div key={r.videoId} className="aivy-row">
-                <div className="meta">
-                  <span className="t">{r.title}</span>
-                  {r.artist && <span className="a">{r.artist}</span>}
-                </div>
-                <button className="aivy-icon-btn sm" onClick={() => { addToQueueEnd({ id: r.videoId, videoId: r.videoId, title: r.title, artist: r.artist ? { name: r.artist } : null, cover: r.thumbnail, duration: r.duration }); setSearch(""); setResults([]); }} aria-label={t("menuAddQueue")}><Plus size={16} /></button>
-              </div>
-            ))}
+      {tab === "queue" ? (
+        <div className="aivy-room2-tabbody">
+          <div className="aivy-search-box" style={{ maxWidth: 460 }}>
+            <SearchIcon size={16} />
+            <input className="aivy-input" placeholder={t("searchToAdd")} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-        )}
-      </section>
-
-      <section className="aivy-section">
-        <div className="aivy-section-head"><h2 className="aivy-section-title">{t("roomQueue")}</h2></div>
-        {room.queue?.length > 0 ? (
-          <div>{room.queue.map((track, i) => <TrackRow key={track.id + i} track={track} index={i} list={room.queue} showIndex queueMode="queue" />)}</div>
-        ) : (
-          <div className="aivy-empty"><div className="sub">{t("roomQueueEmpty")}</div></div>
-        )}
-      </section>
-
-      <section className="aivy-section">
-        <div className="aivy-section-head"><h2 className="aivy-section-title">{t("roomChat")}</h2></div>
-        <div className="aivy-room-chat-standalone">
-          <RoomChat />
+          {results.length > 0 && (
+            <div className="aivy-room2-results">
+              {results.slice(0, 6).map((r) => (
+                <div key={r.videoId} className="aivy-row">
+                  <div className="meta">
+                    <span className="t">{r.title}</span>
+                    {r.artist && <span className="a">{r.artist}</span>}
+                  </div>
+                  <button className="aivy-icon-btn sm" onClick={() => { addToQueueEnd({ id: r.videoId, videoId: r.videoId, title: r.title, artist: r.artist ? { name: r.artist } : null, cover: r.thumbnail, duration: r.duration }); setSearch(""); setResults([]); }} aria-label={t("menuAddQueue")}><Plus size={16} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+          <section className="aivy-section" style={{ marginTop: 18 }}>
+            <div className="aivy-section-head"><h2 className="aivy-section-title">{t("roomQueue")}</h2></div>
+            {room.queue?.length > 0 ? (
+              <div>
+                {room.queue.map((track, i) => (
+                  <TrackRow
+                    key={track.id + i}
+                    track={track}
+                    index={i}
+                    list={room.queue}
+                    showIndex
+                    queueMode="queue"
+                    note={track.addedBy?.username ? `${t("by")} ${track.addedBy.username}` : null}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="aivy-empty"><div className="sub">{t("roomQueueEmpty")}</div></div>
+            )}
+          </section>
         </div>
-      </section>
+      ) : (
+        <div className="aivy-room2-tabbody chat">
+          <div className="aivy-room-chat-standalone tall">
+            <RoomChat />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

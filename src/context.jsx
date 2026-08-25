@@ -1126,6 +1126,9 @@ export function PlayerProvider({ children }) {
       setPosInOrder(currentIndex >= 0 ? currentIndex : 0);
     });
     socket.on("playback-sync", (fullRoom) => { applyRoomState(fullRoom, fullRoom.action); });
+    socket.on("skip-vote-updated", ({ count, total, needed }) => {
+      setRoom((r) => (r ? { ...r, skipVote: { count, total, needed } } : r));
+    });
     socket.on("chat-message", (msg) => {
       setChatMessages((prev) => {
         const next = [...prev, msg];
@@ -1170,11 +1173,18 @@ export function PlayerProvider({ children }) {
     setChatMessages([]);
   }, []);
 
-  const sendChatMessage = useCallback((text) => {
+  const sendChatMessage = useCallback((text, extra = {}) => {
+    if (!room || !authUser) return;
+    const payload = { roomId: room.id, ...extra };
     const trimmed = (text || "").trim();
-    if (!trimmed || !room || !authUser) return;
-    socketRef.current?.emit("chat-message", { roomId: room.id, text: trimmed.slice(0, 500) });
+    if (trimmed) payload.text = trimmed.slice(0, 500);
+    socketRef.current?.emit("chat-message", payload);
   }, [room, authUser]);
+
+  const voteSkip = useCallback(() => new Promise((resolve) => {
+    if (!room || !authUser) { resolve(null); return; }
+    socketRef.current?.emit("skip-vote", { roomId: room.id }, (res) => resolve(res || null));
+  }), [room, authUser]);
 
   useEffect(() => () => { socketRef.current?.disconnect(); }, []);
 
@@ -1193,7 +1203,7 @@ export function PlayerProvider({ children }) {
     registerProgressEl,
     suggestedQueue, promoteSuggestion,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
-    chatMessages, sendChatMessage,
+    chatMessages, sendChatMessage, voteSkip,
   };
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;
 }

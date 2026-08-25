@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
-  PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, ArrowDownToLine,
+  PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, ArrowDownToLine, Smile,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -376,7 +376,7 @@ export function filterExplicit(tracks, settings) {
   return tracks.filter((tr) => !tr?.explicit);
 }
 
-export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single", source = null }) {
+export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single", source = null, note = null }) {
   const { currentTrack, isPlaying, togglePlay, playSingle, playList, playRadio, selectQueuePosition, liked, toggleLike } = usePlayer();
   const { openContextMenu, t } = useUI();
   const { navigate } = useRouter();
@@ -410,6 +410,7 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
         <span className="a" onClick={(e) => { e.stopPropagation(); track.artist?.id && navigate("artist", { params: { id: track.artist.id } }); }}>
           {track.artist?.name || "\u2014"}
         </span>
+        {note && <span className="row-note">{note}</span>}
       </div>
       {showAlbum && (
         <div className="col-album">
@@ -1393,22 +1394,64 @@ function NowPlayingPane() {
   );
 }
 
+const CHAT_EMOJIS = ["👍", "❤️", "🔥", "😂", "🎉"];
+
 export function RoomChat() {
-  const { room, chatMessages, sendChatMessage } = usePlayer();
-  const { authUser, t } = useUI();
+  const { room, chatMessages, sendChatMessage, addToQueueEnd } = usePlayer();
+  const { authUser, t, pushToast } = useUI();
   const [draft, setDraft] = useState("");
+  const [songPanelOpen, setSongPanelOpen] = useState(false);
+  const [songQuery, setSongQuery] = useState("");
+  const [songResults, setSongResults] = useState([]);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [confirmSongId, setConfirmSongId] = useState(null);
   const listRef = useRef(null);
 
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [chatMessages.length]);
+  }, [chatMessages.length, songPanelOpen]);
+
+  useEffect(() => {
+    if (!songPanelOpen) return undefined;
+    if (!songQuery.trim()) { setSongResults([]); return undefined; }
+    const timer = setTimeout(() => {
+      import("./lib/api.js")
+        .then(({ Api }) => Api.search(songQuery))
+        .then((r) => setSongResults((r || []).slice(0, 5)))
+        .catch(() => setSongResults([]));
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [songQuery, songPanelOpen]);
 
   const handleSend = () => {
     const text = draft.trim();
     if (!text || !room) return;
     sendChatMessage(text);
     setDraft("");
+  };
+
+  const sendSong = (r) => {
+    sendChatMessage("", {
+      song: { videoId: r.videoId, title: r.title, artist: r.artist || null, cover: r.thumbnail || null, duration: r.duration || null },
+    });
+    setSongQuery("");
+    setSongResults([]);
+    setSongPanelOpen(false);
+  };
+
+  const inQueue = (videoId) => !!(room?.queue || []).some((s) => (s.videoId || s.id) === videoId);
+
+  const handleSongTap = (m) => {
+    if (!m.song?.videoId) return;
+    if (inQueue(m.song.videoId)) { pushToast(t("alreadyQueued")); return; }
+    setConfirmSongId(confirmSongId === m.id ? null : m.id);
+  };
+
+  const confirmAdd = (m) => {
+    const s = m.song;
+    addToQueueEnd({ id: s.videoId, videoId: s.videoId, title: s.title, artist: s.artist ? { name: s.artist } : null, cover: s.cover, duration: s.duration });
+    setConfirmSongId(null);
   };
 
   return (
@@ -1419,6 +1462,41 @@ export function RoomChat() {
         ) : (
           chatMessages.map((m) => {
             const own = authUser && m.userId === authUser.id;
+            if (m.type === "emoji") {
+              return (
+                <div key={m.id} className={`aivy-chat-msg ${own ? "own" : ""}`}>
+                  {!own && <span className="aivy-avatar">{m.username?.slice(0, 1).toUpperCase()}</span>}
+                  <div className="bubble emoji-bubble"><span className="emoji">{m.emoji}</span></div>
+                </div>
+              );
+            }
+            if (m.type === "song") {
+              return (
+                <div key={m.id} className={`aivy-chat-msg ${own ? "own" : ""}`}>
+                  {!own && <span className="aivy-avatar">{m.username?.slice(0, 1).toUpperCase()}</span>}
+                  <div className="song-wrap">
+                    <button type="button" className={`bubble song-bubble ${inQueue(m.song?.videoId) ? "queued" : ""}`} onClick={() => handleSongTap(m)}>
+                      <span className="cover">
+                        <SmartCover src={m.song?.cover} seed={m.song?.videoId || m.id} size={80} radius={6} style={{ width: "100%", height: "100%" }} />
+                      </span>
+                      <span className="meta">
+                        <span className="who">{m.username}</span>
+                        <span className="t">{m.song?.title}</span>
+                        {m.song?.artist && <span className="a">{m.song.artist}</span>}
+                        <span className="hint">{inQueue(m.song?.videoId) ? `✓ ${t("alreadyQueued")}` : t("confirmAddQueueTitle")}</span>
+                      </span>
+                      <Play size={16} className="song-play" />
+                    </button>
+                    {confirmSongId === m.id && (
+                      <div className="song-confirm">
+                        <button className="yes" onClick={() => confirmAdd(m)}>{t("yesAdd")}</button>
+                        <button className="no" onClick={() => setConfirmSongId(null)}>{t("cancel")}</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={m.id} className={`aivy-chat-msg ${own ? "own" : ""}`}>
                 {!own && <span className="aivy-avatar">{m.username?.slice(0, 1).toUpperCase()}</span>}
@@ -1432,7 +1510,53 @@ export function RoomChat() {
           })
         )}
       </div>
+
+      {songPanelOpen && (
+        <div className="aivy-song-panel">
+          <div className="aivy-song-panel-search">
+            <Search size={15} />
+            <input
+              autoFocus
+              placeholder={t("searchSongChat")}
+              value={songQuery}
+              onChange={(e) => setSongQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") setSongPanelOpen(false); }}
+            />
+          </div>
+          {songResults.map((r) => (
+            <button key={r.videoId} type="button" className="aivy-song-panel-row" onClick={() => sendSong(r)}>
+              <SmartCover src={r.thumbnail} seed={r.videoId} size={72} radius={5} style={{ width: 36, height: 36 }} />
+              <span className="meta"><span className="t">{r.title}</span><span className="a">{r.artist}</span></span>
+              <Plus size={15} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {emojiOpen && (
+        <div className="aivy-emoji-pop">
+          {CHAT_EMOJIS.map((e) => (
+            <button key={e} type="button" onClick={() => { sendChatMessage("", { emoji: e }); setEmojiOpen(false); }}>{e}</button>
+          ))}
+        </div>
+      )}
+
       <div className="aivy-chat-input-row">
+        <button
+          className={`aivy-icon-btn ${songPanelOpen ? "active" : ""}`}
+          onClick={() => { setSongPanelOpen((v) => !v); setEmojiOpen(false); }}
+          aria-label={t("sendSong")}
+          title={t("sendSong")}
+        >
+          <Music2 size={16} />
+        </button>
+        <button
+          className={`aivy-icon-btn ${emojiOpen ? "active" : ""}`}
+          onClick={() => { setEmojiOpen((v) => !v); setSongPanelOpen(false); }}
+          aria-label="Emoji"
+        >
+          <Smile size={16} />
+        </button>
         <input
           className="aivy-input aivy-chat-input"
           placeholder={t("chatPlaceholder")}
