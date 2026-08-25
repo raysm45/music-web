@@ -62,19 +62,27 @@ export function RoomLobbyPage() {
 
       <div className="aivy-room-grid" style={{ marginTop: 18 }}>
         <div className="aivy-room-card">
+          <div className="card-icon"><Plus size={18} /></div>
           <h3>{t("createRoom")}</h3>
-          <input className="aivy-input" placeholder={t("roomNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
-          <input className="aivy-input" type="password" placeholder={t("passwordOptional")} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <p>{t("listenTogetherSub")}</p>
+          <div className="field-label">{t("roomNamePlaceholder")}</div>
+          <input className="aivy-input" placeholder={t("roomNameDefault")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+          <div className="field-label">{t("passwordOptional")}</div>
+          <input className="aivy-input" type="password" placeholder="••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div className="field-label">{t("public")}</div>
           <Checkbox checked={isPublic} onChange={setIsPublic} label={t("publicRoomHint")} />
           <Checkbox checked={hostOnlyControl} onChange={setHostOnlyControl} label={t("hostOnlyHint")} />
-          <button className="aivy-btn-primary" disabled={creating} onClick={handleCreate}>{creating ? t("creatingRoom") : t("createRoomBtn")}</button>
+          <button className="aivy-btn-primary btnrow" disabled={creating} onClick={handleCreate}>{creating ? t("creatingRoom") : t("createRoomBtn")}</button>
         </div>
-        <div className="aivy-room-card">
+        <div className="aivy-room-card join">
+          <div className="card-icon alt"><LogIn size={18} /></div>
           <h3>{t("joinRoom")}</h3>
           <p>{t("joinRoomSub")}</p>
-          <input className="aivy-input" placeholder={t("roomCodePlaceholder")} value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} maxLength={8} style={{ textAlign: "center", letterSpacing: ".08em" }} />
-          <input className="aivy-input" type="password" placeholder={t("passwordIfAny")} value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} />
-          <button className="aivy-btn-ghost" disabled={joining || !joinCode.trim()} onClick={() => handleJoin(joinCode.trim(), true)}><LogIn size={15} /> {t("join")}</button>
+          <div className="field-label">{t("roomCodePlaceholder")}</div>
+          <input className="aivy-input code-input" placeholder="ABC123" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} maxLength={8} />
+          <div className="field-label">{t("passwordIfAny")}</div>
+          <input className="aivy-input" type="password" placeholder="••••••" value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} />
+          <button className="aivy-btn-primary btnrow" disabled={joining || !joinCode.trim()} onClick={() => handleJoin(joinCode.trim(), true)}><LogIn size={15} /> {t("join")}</button>
         </div>
       </div>
 

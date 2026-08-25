@@ -1633,3 +1633,42 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-room2-now .meta .t{ font-size: 15px; }
   .aivy-room2-head .acts .aivy-btn-ghost.sm{ padding: 6px 12px; font-size: 12px; }
 }
+
+/* ===== Lobby room: kartu create/join ===== */
+.aivy-room-grid{ max-width: 860px; }
+.aivy-room-card{ gap: 2px; transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
+.aivy-room-card:hover{ border-color: var(--ink-faint); }
+.aivy-room-card .card-icon{ width: 38px; height: 38px; border-radius: 12px; background: color-mix(in srgb, var(--moss) 16%, transparent); color: var(--moss-strong); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+.aivy-room-card .card-icon.alt{ background: color-mix(in srgb, var(--gold) 15%, transparent); color: var(--gold); }
+.aivy-room-card .field-label{ font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); margin: 12px 0 6px; }
+.aivy-room-card .aivy-input{ margin-bottom: 0; }
+.aivy-room-card .btnrow{ margin-top: 18px; justify-content: center; }
+.aivy-room-card .code-input{ text-align: center; letter-spacing: .4em; font-family: var(--font-mono); font-size: 17px; font-weight: 600; padding: 12px; }
+.aivy-room-card .code-input::placeholder{ letter-spacing: .4em; }
+
+/* ===== Chat room: full & rapi ===== */
+.aivy-room2-tabbody.chat{ display: flex; flex-direction: column; }
+.aivy-room-chat-standalone.tall{
+  flex: 1; width: 100%;
+  height: clamp(440px, calc(100dvh - 330px), 760px);
+  max-height: none; padding: 14px;
+}
+.aivy-room-chat-standalone.tall .aivy-chat-messages{ flex: 1; min-height: 0; max-height: none; }
+
+/* Bubble lagu: kartu netral, konsisten utk own/other */
+.aivy-chat-msg .bubble.song-bubble{
+  border-radius: 14px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  padding: 8px 14px 8px 8px;
+  gap: 0;
+}
+.aivy-chat-msg.own .bubble.song-bubble{ background: var(--bg-elev-2); border-color: var(--line); }
+.aivy-chat-msg.own .bubble.song-bubble .meta .who{ color: var(--ink-faint); }
+.aivy-chat-msg.own .bubble.song-bubble .meta .a{ color: var(--ink-dim); }
+.bubble.song-bubble .song-play{
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--moss); color: var(--moss-ink);
+  padding: 7px; flex-shrink: 0; margin-left: 4px;
+}
+.bubble.song-bubble.queued .song-play{ background: var(--bg-elev-3); color: var(--ink-faint); }
