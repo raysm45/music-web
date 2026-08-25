@@ -2002,15 +2002,16 @@ function useIsMobile(breakpoint = 860) {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, theme, openMobileQueue, openContextMenu } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
-  // Fixed, theme-matched highlight color for the active lyric line — not
-  // derived from the track artwork, so it stays legible (white on dark,
-  // black on light) no matter how bright/dark the cover art is.
-  const highlightColor = theme === "light" ? "#14150f" : "#f5f5f5";
+  // Warna highlight mengikuti tema TER-RESOLVE (light/white/latte = terang),
+  // bukan cuma setting "light" — dan di mobile selalu putih karena
+  // background-nya blur sampul yang gelap.
+  const resolvedTheme = (typeof document !== "undefined" && document.documentElement?.dataset?.theme) || "dark";
+  const isLightResolved = ["light", "white", "latte"].includes(resolvedTheme);
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
@@ -2075,6 +2076,7 @@ export function LyricsOverlay() {
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime: scrubTime, duration: scrubDuration } = useScrubberBinding();
   const cycleFontSize = () => setFontSize((s) => (s === "sm" ? "md" : s === "md" ? "lg" : "sm"));
   const isMobile = useIsMobile();
+  const highlightColor = isMobile || !isLightResolved ? "#f5f5f5" : "#14150f";
   const lyricsMenuItems = useTrackMenuItems(currentTrack || {});
   const handleLyricsMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, lyricsMenuItems); };
 
