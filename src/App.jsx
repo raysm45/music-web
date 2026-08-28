@@ -99,7 +99,7 @@ function AppInner() {
   );
 }
 
-const MAINTENANCE_MODE = false;
+const MAINTENANCE_MODE = true;
 
 export default function App() {
   if (MAINTENANCE_MODE) {
