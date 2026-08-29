@@ -770,7 +770,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               <span className="aivy-time right">{loadingAudio ? "\u2013\u2013" : `-${formatTime(Math.max(0, (duration || 0) - (currentTime || 0)))}`}</span>
             </div>
             <div className="aivy-sheet-gap" />
-            <TransportButtons big minimal />
+            <TransportButtons big />
             <VolumeControl showEndIcon />
             <div className="aivy-sheet-gap grow" />
             <MobileNowPlayingIconRow lyricsActive={false} onToggleLyrics={toggleLyrics} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
