@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, Component } from "react";
 import { createPortal } from "react-dom";
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume2, Volume1,
@@ -728,28 +728,100 @@ export function MobileNowPlayingIconRow({ lyricsActive, onToggleLyrics, lyricsDi
   );
 }
 
+// ---- Shared-element (FLIP) transition for the cover + title/artist block ----
+// First / Last / Invert / Play: we measure the cover & title-block's rendered
+// rect right before the mode flips (First), let React re-render into the new
+// layout (Last), then apply an inverse transform so the element still *looks*
+// like it's in its old spot/size, and finally clear that transform so the
+// browser's own transition animates it smoothly back to identity. Because
+// this operates on live rendered rects, it works no matter how different the
+// "player" and "lyrics" CSS layouts are (column vs row, 320px vs 44px, etc.)
+// without us having to hand-author matching keyframes for every breakpoint.
+const HERO_FLIP_MS = 520;
+
+function useHeroFlip(mode, coverRef, metaRef) {
+  const firstRects = useRef(null);
+  const cleanupTimer = useRef(null);
+
+  const capture = () => {
+    const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) { firstRects.current = null; return; }
+    firstRects.current = {
+      cover: coverRef.current ? coverRef.current.getBoundingClientRect() : null,
+      meta: metaRef.current ? metaRef.current.getBoundingClientRect() : null,
+    };
+  };
+
+  useLayoutEffect(() => {
+    const first = firstRects.current;
+    firstRects.current = null;
+    if (!first) return;
+
+    const play = (el, firstRect) => {
+      if (!el || !firstRect || !firstRect.width || !firstRect.height) return;
+      const last = el.getBoundingClientRect();
+      if (!last.width || !last.height) return;
+      const dx = firstRect.left - last.left;
+      const dy = firstRect.top - last.top;
+      const sx = firstRect.width / last.width;
+      const sy = firstRect.height / last.height;
+      el.style.transition = "none";
+      el.style.transformOrigin = "top left";
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+      void el.offsetWidth; // force reflow so the "invert" paints before we play
+      el.style.transition = `transform ${HERO_FLIP_MS}ms cubic-bezier(.22,.85,.32,1)`;
+      el.style.transform = "translate(0px, 0px) scale(1, 1)";
+    };
+
+    play(coverRef.current, first.cover);
+    play(metaRef.current, first.meta);
+
+    clearTimeout(cleanupTimer.current);
+    cleanupTimer.current = setTimeout(() => {
+      [coverRef.current, metaRef.current].forEach((el) => {
+        if (!el) return;
+        el.style.transition = "";
+        el.style.transform = "";
+        el.style.transformOrigin = "";
+      });
+    }, HERO_FLIP_MS + 40);
+
+    return () => clearTimeout(cleanupTimer.current);
+  }, [mode]);
+
+  return capture;
+}
+
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
-  const { currentTrack, currentTime, duration, seekTo, liked, toggleLike, loadingAudio, currentTrackHasLyrics, isPreviewClip } = usePlayer();
+  const {
+    currentTrack, currentTime: playerTime, seekTo, isPreviewClip,
+    liked, toggleLike, loadingAudio, currentTrackHasLyrics,
+  } = usePlayer();
   const { navigate } = useRouter();
   const { t, lyricsOpen, toggleLyrics, closeLyrics, openContextMenu } = useUI();
-  // Two independent scrubber bindings: the "now playing" panel and the
-  // "lyrics" panel both keep their own DOM elements mounted at the same
-  // time (they're just slid off-screen), so each needs its own registerFill
-  // / registerThumb refs rather than sharing one.
-  const nowScrub = useScrubberBinding();
-  const lyrScrub = useScrubberBinding();
+  const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   const menuItems = useTrackMenuItems(currentTrack || {});
   const handleMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, menuItems); };
-  const [fontSize] = useState("md");
-  const [singMode, setSingMode] = useState(false);
-  const remaining = Math.max(0, (duration || 0) - (currentTime || 0));
 
-  // Tapping the grabber steps back one level at a time: from lyrics it
-  // returns to the now-playing panel first, then a second tap closes the
-  // whole sheet — matching how the slide-in panel behaves everywhere else.
-  const handleGrabberTap = () => { if (lyricsOpen) closeLyrics(); else onClose(); };
+  const lyricsMode = !!(open && lyricsOpen);
+  const [singMode, setSingMode] = useState(false);
+  const [lyricsMounted, setLyricsMounted] = useState(false);
+
+  const coverRef = useRef(null);
+  const metaRef = useRef(null);
+  const captureHeroFlip = useHeroFlip(lyricsMode, coverRef, metaRef);
+
+  const trackKey = currentTrack?.id;
+  useEffect(() => { setSingMode(false); setLyricsMounted(false); }, [trackKey]);
+  useEffect(() => { if (lyricsOpen) setLyricsMounted(true); }, [lyricsOpen]);
+
+  const handleLyricsToggle = () => { captureHeroFlip(); toggleLyrics(); };
+  const handleGrabberTap = () => {
+    if (lyricsMode) { captureHeroFlip(); closeLyrics(); }
+    else onClose();
+  };
 
   const scrollToActiveLyric = () => {
     const el = document.getElementById("aivy-am-lyrics-mobile");
@@ -763,10 +835,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     });
   };
 
+  const remaining = Math.max(0, (duration || 0) - (currentTime || 0));
+
   return (
     <>
-      <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
-      <div className={`aivy-sheet ${open ? "open" : ""} ${lyricsOpen ? "showing-lyrics" : ""}`} aria-hidden={!open}>
+      <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={handleGrabberTap} />
+      <div className={`aivy-sheet ${open ? "open" : ""} ${lyricsMode ? "mode-lyrics" : ""}`} aria-hidden={!open}>
         {currentTrack && (
           <div
             className="aivy-sheet-bg"
@@ -775,89 +849,72 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
           />
         )}
         <div className="aivy-sheet-grabber-row">
-          <button className="aivy-sheet-grabber" onClick={handleGrabberTap} aria-label={lyricsOpen ? t("nowPlaying") : t("close")} />
+          <button className="aivy-sheet-grabber" onClick={handleGrabberTap} aria-label={t("close")} />
         </div>
         {currentTrack && (
-          <div className="aivy-sheet-panels">
-            {/* Panel 1: now playing */}
-            <div className="aivy-sheet-panel aivy-sheet-panel-now aivy-sheet-body aivy-scroll" aria-hidden={lyricsOpen}>
-              <div className="aivy-sheet-art"><SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }} /></div>
-              <div className="aivy-sheet-meta">
-                <div>
-                  <div className="t">{currentTrack.title}</div>
-                  <div className="a" onClick={() => { currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}>{currentTrack.artist?.name}</div>
+          <div className="aivy-sheet-body aivy-scroll">
+            <div className={`npx-hero ${lyricsMode ? "is-compact" : ""}`}>
+              <div className="npx-cover" ref={coverRef}>
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }} />
+              </div>
+              <div className="npx-metarow">
+                <div className="npx-titles" ref={metaRef}>
+                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
+                  <div
+                    className="a"
+                    onClick={() => { if (lyricsMode) return; currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}
+                  >
+                    {currentTrack.artist?.name}
+                  </div>
                 </div>
-                <div className="aivy-sheet-meta-actions">
-                  <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")}><Star size={21} fill={isLiked ? "currentColor" : "none"} /></button>
-                  <button className="aivy-icon-btn" onClick={handleMore} aria-label={t("menuMore")}><MoreHorizontal size={21} /></button>
+                <div className="npx-actions">
+                  <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")}><Star size={20} fill={isLiked ? "currentColor" : "none"} /></button>
+                  <button className="aivy-icon-btn" onClick={handleMore} aria-label={t("menuMore")}><MoreHorizontal size={20} /></button>
                 </div>
               </div>
+            </div>
+
+            <div className={`npx-lyrics-wrap ${lyricsMode ? "is-active" : ""}`}>
+              {lyricsMounted && (
+                <>
+                  <AppleLyricsPane
+                    id="aivy-am-lyrics-mobile"
+                    track={currentTrack}
+                    currentTime={playerTime}
+                    onSeek={seekTo}
+                    highlightColor="#f5f5f5"
+                    fontSize="md"
+                  />
+                  <button className="aivy-lyr2-pill" onClick={scrollToActiveLyric} aria-label={t("lyrics")}>
+                    <ArrowDownToLine size={15} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="npx-controls">
               <div className="aivy-scrubber-row">
                 <span className="aivy-time">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
-                <Scrubber getRatio={nowScrub.getRatio} onSeekRatio={nowScrub.onSeekRatio} registerFill={nowScrub.registerFill} registerThumb={nowScrub.registerThumb} loading={loadingAudio} />
+                <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
                 <span className="aivy-time right">{loadingAudio ? "\u2013\u2013" : `-${formatTime(remaining)}`}</span>
               </div>
+
+              <div className={`npx-sing-row ${lyricsMode ? "is-active" : ""}`}>
+                <button
+                  type="button"
+                  className={`aivy-lyr2-sing ${singMode ? "active" : ""}`}
+                  onClick={() => setSingMode((v) => !v)}
+                  aria-pressed={singMode}
+                >
+                  Sing
+                </button>
+              </div>
+
               <div className="aivy-sheet-gap" />
               <TransportButtons big />
               <VolumeControl showEndIcon />
               <div className="aivy-sheet-gap grow" />
-              <MobileNowPlayingIconRow lyricsActive={false} onToggleLyrics={toggleLyrics} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
-            </div>
-
-            {/* Panel 2: lyrics — same layer, slid into view instead of stacked on top */}
-            <div className="aivy-sheet-panel aivy-sheet-panel-lyrics" aria-hidden={!lyricsOpen}>
-              <div className="aivy-lyr2">
-                <header className="aivy-lyr2-head">
-                  <div className="thumb">
-                    <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={88} radius={6} style={{ width: "100%", height: "100%" }} />
-                  </div>
-                  <div className="meta">
-                    <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
-                    <div className="a">{currentTrack.artist?.name}</div>
-                  </div>
-                  <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => toggleLike(currentTrack)} aria-label={t("like")}>
-                    <Star size={18} fill={isLiked ? "currentColor" : "none"} />
-                  </button>
-                  <button className="aivy-icon-btn" onClick={handleMore} aria-label={t("menuMore")}>
-                    <MoreHorizontal size={18} />
-                  </button>
-                </header>
-
-                <div className="aivy-lyr2-body">
-                  {open && (
-                    <AppleLyricsPane
-                      id="aivy-am-lyrics-mobile"
-                      track={currentTrack}
-                      currentTime={currentTime}
-                      onSeek={seekTo}
-                      highlightColor="#f5f5f5"
-                      fontSize={fontSize}
-                    />
-                  )}
-                  <button className="aivy-lyr2-pill" onClick={scrollToActiveLyric} aria-label={t("lyrics")}>
-                    <ArrowDownToLine size={15} />
-                  </button>
-                </div>
-
-                <div className="aivy-lyr2-controls">
-                  <Scrubber getRatio={lyrScrub.getRatio} onSeekRatio={lyrScrub.onSeekRatio} registerFill={lyrScrub.registerFill} registerThumb={lyrScrub.registerThumb} />
-                  <div className="aivy-lyr2-times">
-                    <span className="aivy-time">{formatTime(currentTime)}</span>
-                    <button
-                      type="button"
-                      className={`aivy-lyr2-sing ${singMode ? "active" : ""}`}
-                      onClick={() => setSingMode((v) => !v)}
-                      aria-pressed={singMode}
-                    >
-                      Sing
-                    </button>
-                    <span className="aivy-time right">-{formatTime(remaining)}</span>
-                  </div>
-                  <TransportButtons big minimal />
-                  <VolumeControl showEndIcon />
-                  <MobileNowPlayingIconRow lyricsActive onToggleLyrics={closeLyrics} lyricsDisabled={false} onOpenQueue={onOpenQueue} />
-                </div>
-              </div>
+              <MobileNowPlayingIconRow lyricsActive={lyricsMode} onToggleLyrics={handleLyricsToggle} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
             </div>
           </div>
         )}
@@ -2096,7 +2153,7 @@ function useIsMobile(breakpoint = 860) {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu } = useUI();
   const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
@@ -2171,12 +2228,14 @@ export function LyricsOverlay() {
   const cycleFontSize = () => setFontSize((s) => (s === "sm" ? "md" : s === "md" ? "lg" : "sm"));
   const isMobile = useIsMobile();
   const highlightColor = isMobile || !isLightResolved ? "#f5f5f5" : "#14150f";
+  const lyricsMenuItems = useTrackMenuItems(currentTrack || {});
+  const handleLyricsMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, lyricsMenuItems); };
 
   if (!lyricsOpen) return null;
 
-  // On mobile, lyrics are no longer a separate stacked layer — they live
-  // inside NowPlayingSheet as a sliding panel of the same sheet, so there's
-  // nothing for this overlay to render there.
+  // Mobile now renders its now-playing <-> lyrics transition as a single
+  // morphing sheet — see NowPlayingSheet. This component only handles the
+  // desktop side-panel layout from here on.
   if (isMobile) return null;
 
   return (
