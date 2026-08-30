@@ -693,6 +693,37 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-recent-chip .x:hover{ background: var(--bg-elev-3); }
 .aivy-genre-chips{ display: flex; flex-wrap: wrap; gap: 8px; }
 
+.aivy-search-head-v2{ position: sticky; top: 0; z-index: 2; background: var(--bg); display: flex; align-items: center; gap: 10px; padding: 10px 2px 16px; }
+.aivy-search-box-v2{ position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 44px; border-radius: var(--radius-pill); background: var(--bg-elev-2); color: var(--ink-faint); }
+.aivy-search-box-v2 input{ flex: 1; min-width: 0; height: 100%; padding: 0; margin: 0; background: none; border: none; color: var(--ink); font-size: 14.5px; }
+.aivy-search-box-v2 input::placeholder{ color: var(--ink-faint); }
+.aivy-waveform-btn{ width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-elev-2); color: var(--ink-dim); transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
+.aivy-waveform-btn:hover{ color: var(--ink); background: var(--bg-elev-3); }
+
+.aivy-search-subtitle{ font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ink-dim); margin: 4px 2px 6px; }
+.aivy-search-recent-v2{ margin-bottom: 6px; }
+.aivy-recent-thumbs{ display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 12px; margin: 0 -2px; }
+.aivy-recent-thumb-card{ position: relative; flex: 0 0 110px; width: 110px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.aivy-recent-thumb-card .cap{ font-size: 11.5px; color: var(--ink-dim); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.aivy-recent-thumb-card .rm{ position: absolute; top: 5px; right: 5px; z-index: 1; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity var(--dur-fast) var(--ease); }
+.aivy-recent-thumb-card:hover .rm{ opacity: 1; }
+@media (max-width: 480px){ .aivy-recent-thumb-card{ flex-basis: 96px; width: 96px; } .aivy-recent-thumb-card .rm{ opacity: 1; } }
+.aivy-recent-row-v2{ display: flex; align-items: center; gap: 16px; padding: 10px 4px; cursor: pointer; border-radius: var(--radius-sm); }
+.aivy-recent-row-v2:hover{ background: var(--bg-elev-2); }
+.aivy-recent-row-v2 .ic{ flex-shrink: 0; display: flex; color: var(--ink-faint); }
+.aivy-recent-row-v2 .txt{ flex: 1; min-width: 0; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-recent-row-v2 .fill{ flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--ink-faint); }
+.aivy-recent-row-v2 .fill:hover{ color: var(--ink); background: var(--bg-elev-3); }
+.aivy-search-clearall{ margin: 6px 4px 0; font-size: 12.5px; color: var(--ink-faint); font-weight: 600; }
+.aivy-search-clearall:hover{ color: var(--moss-strong); }
+
+.aivy-search-shortcuts{ display: flex; gap: 10px; margin: 10px 0 6px; }
+.aivy-shortcut-card{ flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding: 14px; border-radius: var(--radius-md); background: var(--bg-elev-2); text-align: left; }
+.aivy-shortcut-card:hover{ background: var(--bg-elev-3); }
+.aivy-shortcut-card .ic{ display: flex; color: var(--ink-dim); }
+.aivy-shortcut-card .lbl{ font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.25; }
+@media (max-width: 480px){ .aivy-shortcut-card{ padding: 12px; gap: 16px; } .aivy-shortcut-card .lbl{ font-size: 12.5px; } }
+
 .aivy-hero{ display: flex; align-items: flex-end; gap: 22px; padding: 22px 2px 26px; min-width: 0; }
 .aivy-hero .art{ flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; }
 .aivy-hero-meta{ min-width: 0; }
