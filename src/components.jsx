@@ -948,7 +948,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               )}
             </div>
 
-            <div className="npx-controls">
+            <div className="npx-top-controls">
               <div className="aivy-scrubber-row">
                 <span className="aivy-time">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
                 <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
@@ -969,9 +969,9 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               <div className="aivy-sheet-gap" />
               <TransportButtons big />
               <VolumeControl showEndIcon />
-              <div className="aivy-sheet-gap grow" />
-              <MobileNowPlayingIconRow lyricsActive={lyricsMode} onToggleLyrics={handleLyricsToggle} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
             </div>
+
+            <MobileNowPlayingIconRow lyricsActive={lyricsMode} onToggleLyrics={handleLyricsToggle} lyricsDisabled={lyricsDisabled} onOpenQueue={onOpenQueue} />
           </div>
         )}
       </div>
