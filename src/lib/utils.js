@@ -135,6 +135,62 @@ export function cleanTrackTitleForLyrics(rawTitle, artistName) {
   return t || rawTitle;
 }
 
+const OFFICIAL_AUDIO_RE = /\bofficial\s*audio\b/i;
+const OFFICIAL_VIDEO_RE = /\b(official\s*(music\s*)?video|\bmv\b)\b/i;
+const AVOID_HINT_RE = /\b(cover|remix|remake|live|reaction|lyric[s]?\s*video|8d|slowed|reverb|sped\s*up|nightcore|instrumental|karaoke|tribute|type\s*beat|piano\s*version|acoustic|parody|reversed|mashup|bootleg|fan\s*made)\b/i;
+
+// Dipakai saat sebuah track (mis. dari halaman artist) tidak punya videoId
+// sendiri dan harus dicari lewat judul+nama artis. Hasil pencarian teratas
+// tidak selalu cocok — bisa cover/remix/live/lyric-video buatan fan.
+// PENTING: upload "Official Video/MV" itu justru SERING punya intro logo
+// label/animasi beberapa detik sebelum lagunya mulai, sedangkan lirik
+// synced di-timing ke versi bersih tanpa intro (biasanya "Official Audio").
+// Jadi kita tidak asal kasih skor tinggi ke segala sesuatu yang mengandung
+// kata "official" — "official audio" lebih diutamakan daripada
+// "official video/MV" karena kecil kemungkinan punya intro tambahan.
+// Kedekatan durasi ke metadata track juga jadi sinyal kuat: makin jauh
+// durasinya dari yang diharapkan, makin besar kemungkinan ada intro/outro
+// tambahan yang bikin lirik jadi telat.
+export function pickBestAudioMatch(results, track) {
+  if (!Array.isArray(results) || !results.length) return null;
+  const artistName = track?.artist?.name || "";
+  const wantedDuration = track?.duration || null;
+
+  const scored = results.map((r, index) => {
+    let score = 0;
+    if (artistName && isRelevantArtistMatch(r.artist || "", artistName)) score += 5;
+    if (OFFICIAL_AUDIO_RE.test(r.title || "")) score += 4;
+    else if (OFFICIAL_VIDEO_RE.test(r.title || "")) score += 1; // tetap official, tapi rawan intro
+    if (AVOID_HINT_RE.test(r.title || "")) score -= 4;
+    if (wantedDuration && r.duration) {
+      const diff = Math.abs(r.duration - wantedDuration);
+      if (diff <= 2) score += 3;
+      else if (diff <= 6) score += 1;
+      else if (diff <= 12) score += 0;
+      else if (diff <= 25) score -= 2; // kemungkinan ada intro/opening
+      else score -= 4;
+    }
+    score -= index * 0.25; // tetap sedikit condong ke urutan asli sbg tiebreaker
+    return { r, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0].r;
+}
+
+// Kalau kandidat yang dipilih durasinya lebih panjang dari metadata track
+// (yang biasanya durasi lagu "bersih" tanpa intro), asumsikan selisihnya
+// adalah opening/intro di depan video, dan kembalikan itu sebagai perkiraan
+// offset (detik) supaya highlight lirik bisa digeser mengikuti keterlambatan
+// mulainya lagu. Dibatasi supaya tidak menggeser gila-gilaan kalau selisih
+// besar justru karena outro panjang / metadata durasi yang tidak akurat.
+export function estimateIntroOffsetSeconds(candidateDuration, trackDuration) {
+  if (!candidateDuration || !trackDuration) return 0;
+  const diff = candidateDuration - trackDuration;
+  if (diff <= 1.5) return 0;
+  return Math.min(diff, 20);
+}
+
 export function debounce(fn, ms) {
   let t;
   return (...args) => {
