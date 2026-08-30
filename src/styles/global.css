@@ -1503,6 +1503,24 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet-icon-row .aivy-icon-btn{ width: 42px; height: 42px; }
 .aivy-sheet-icon-row .aivy-icon-btn svg{ width: 22px; height: 22px; }
 
+/* Now playing <-> Lyrics: one sheet, two panels that slide sideways
+   instead of a second overlay stacking on top. */
+.aivy-sheet-panels{
+  position: relative; z-index: 2; flex: 1; min-height: 0;
+  display: flex; width: 200%;
+  transition: transform var(--dur-slow) var(--ease);
+  will-change: transform;
+}
+.aivy-sheet.showing-lyrics .aivy-sheet-panels{ transform: translateX(-50%); }
+.aivy-sheet-panel{ flex: 0 0 50%; width: 50%; min-width: 0; min-height: 0; }
+.aivy-sheet-panel-lyrics{
+  display: flex; flex-direction: column; overflow: hidden;
+  --lyr-ink: var(--sheet-ink); --lyr-ink-dim: var(--sheet-ink-dim); --lyr-ink-faint: var(--sheet-ink-faint);
+  --lyr-line: var(--sheet-line); --lyr-elev: var(--sheet-elev); --lyr-elev-2: rgba(255,255,255,.12);
+}
+.aivy-sheet-panel-lyrics .aivy-lyr2{ height: 100%; }
+.aivy-sheet-panel-lyrics .aivy-lyr2-head{ padding-top: 6px; }
+
 /* Lyrics � compact mobile layout */
 .aivy-lyrics-bg{
   position: absolute; inset: -12%; z-index: 0; background-size: cover; background-position: center;
