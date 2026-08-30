@@ -1,26 +1,33 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Search, X, Clock, TrendingUp } from "lucide-react";
+import { Search, X, Clock, TrendingUp, ArrowLeft, ArrowUpLeft, Mic, AudioLines, Music2, Smile } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
 import { TrackRow, SkeletonList } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
-import { debounce, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "../lib/utils.js";
+import { usePlayer } from "../context.jsx";
+import {
+  debounce, isRelevantArtistMatch, cleanTrackTitleForLyrics,
+  getRecentSearchThumbs, saveRecentSearchThumb, removeRecentSearchThumb, clearRecentSearchThumbs,
+} from "../lib/utils.js";
 
 const GENRE_SHORTCUTS = ["Pop", "Hip-Hop", "R&B", "Indie", "Rock", "Electronic", "Jazz", "Dangdut", "K-Pop", "Reggae", "Klasik", "Akustik"];
 
 export function SearchPage() {
   const { authUser, settings, t } = useUI();
-  const { navigate } = useRouter();
+  const { navigate, back } = useRouter();
+  const { playRadio } = usePlayer();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState([]);
+  const [recentThumbs, setRecentThumbs] = useState(() => getRecentSearchThumbs());
   const [suggestions, setSuggestions] = useState([]);
   const [lyricsMap, setLyricsMap] = useState({});
   const [artistHit, setArtistHit] = useState(null);
+  const [genresOpen, setGenresOpen] = useState(false);
   const inputRef = useRef(null);
 
   const debouncedSuggest = useRef(debounce((q) => {
@@ -80,6 +87,10 @@ export function SearchPage() {
       if (seq !== requestSeqRef.current)
         return;
       setResults(res || []);
+      if (res && res[0] && res[0].videoId) {
+        saveRecentSearchThumb(trimmed, res[0]);
+        setRecentThumbs(getRecentSearchThumbs());
+      }
     } catch {
       if (seq !== requestSeqRef.current) return;
       setResults([]);
@@ -109,6 +120,40 @@ export function SearchPage() {
     e.stopPropagation();
     setRecent((r) => r.filter((x) => x.query !== q));
     Api.deleteSearch(q).catch(() => {});
+  };
+
+  const removeRecentThumb = (q, e) => {
+    e.stopPropagation();
+    removeRecentSearchThumb(q);
+    setRecentThumbs(getRecentSearchThumbs());
+  };
+
+  const playRecentThumb = (thumb) => {
+    playRadio(
+      { id: thumb.videoId, videoId: thumb.videoId, title: thumb.title, cover: thumb.thumbnail, artist: thumb.artist ? { name: thumb.artist } : null },
+      { type: "search" }
+    );
+  };
+
+  const fillQuery = (q, e) => {
+    e?.stopPropagation();
+    setQuery(q);
+    onChangeQuery(q);
+    inputRef.current?.focus();
+  };
+
+  const handleVoiceSearch = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = "id-ID";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e) => {
+      const heard = e.results?.[0]?.[0]?.transcript;
+      if (heard && heard.trim()) runSearch(heard.trim());
+    };
+    try { rec.start(); } catch { /* ignore */ }
   };
 
   const showBrowse = !query.trim() && !hasSearched;
@@ -146,8 +191,10 @@ export function SearchPage() {
 
   return (
     <div className="aivy-view-enter">
-      <div className="aivy-search-head">
-        <div className="aivy-search-box">
+      <div className="aivy-search-head-v2">
+        <button className="aivy-icon-btn" onClick={() => back()} aria-label={t("previous")}><ArrowLeft size={18} /></button>
+
+        <div className="aivy-search-box-v2">
           <Search size={16} />
           <input
             ref={inputRef} className="aivy-input" placeholder={t("searchPlaceholder")}
@@ -155,8 +202,14 @@ export function SearchPage() {
             onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)}
             onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) runSearch(query.trim()); }}
           />
-          {query && <button className="aivy-icon-btn sm aivy-search-clear" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={14} /></button>}
+          {query ? (
+            <button className="aivy-icon-btn sm" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={15} /></button>
+          ) : (
+            <button className="aivy-icon-btn sm" onClick={handleVoiceSearch} aria-label="Cari dengan suara"><Mic size={16} /></button>
+          )}
         </div>
+
+        <button className="aivy-waveform-btn" onClick={handleVoiceSearch} aria-label="Telusuri dengan suara"><AudioLines size={17} /></button>
 
         {focused && query.trim() && suggestions.length > 0 && (
           <div className="aivy-suggest-drop">
@@ -171,27 +224,49 @@ export function SearchPage() {
 
       {showBrowse && (
         <>
-          {recent.length > 0 && (
-            <section className="aivy-section" style={{ marginTop: 0 }}>
-              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("recentSearches")}</h2>
-                <button className="aivy-section-link" onClick={() => { Api.clearSearchHistory().catch(() => {}); setRecent([]); }}>{t("clearAll")}</button>
-              </div>
-              <div className="aivy-recent-list">
+          {(recent.length > 0 || recentThumbs.length > 0) && (
+            <section className="aivy-search-recent-v2">
+              <h2 className="aivy-search-subtitle">{t("recentSearches")}</h2>
+
+              {recentThumbs.length > 0 && (
+                <div className="aivy-recent-thumbs aivy-scroll">
+                  {recentThumbs.map((th) => (
+                    <button key={th.query} className="aivy-recent-thumb-card" onClick={() => playRecentThumb(th)} title={th.title}>
+                      <span className="rm" onClick={(e) => removeRecentThumb(th.query, e)} aria-label={t("clear")}><X size={12} /></span>
+                      <SmartCover src={th.thumbnail} seed={th.videoId + th.title} size={140} radius={10} style={{ width: "100%", aspectRatio: "1 / 1" }} />
+                      <span className="cap">{th.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div>
                 {recent.map((r) => (
-                  <button key={r.query} className="aivy-recent-chip" onClick={() => runSearch(r.query)}>
-                    <Clock size={13} /><span>{r.query}</span>
-                    <span className="x" onClick={(e) => removeRecent(r.query, e)}><X size={12} /></span>
-                  </button>
+                  <div key={r.query} className="aivy-recent-row-v2" onClick={() => runSearch(r.query)}>
+                    <span className="ic"><Clock size={17} /></span>
+                    <span className="txt">{r.query}</span>
+                    <button className="fill" onClick={(e) => fillQuery(r.query, e)} aria-label="Isi ke kolom pencarian"><ArrowUpLeft size={16} /></button>
+                  </div>
                 ))}
+              </div>
+              <button className="aivy-search-clearall" onClick={() => { Api.clearSearchHistory().catch(() => {}); setRecent([]); clearRecentSearchThumbs(); setRecentThumbs([]); }}>{t("clearAll")}</button>
+            </section>
+          )}
+
+          <section className="aivy-search-shortcuts">
+            <button className="aivy-shortcut-card"><span className="ic"><Music2 size={18} /></span><span className="lbl">Rilis baru</span></button>
+            <button className="aivy-shortcut-card"><span className="ic"><TrendingUp size={18} /></span><span className="lbl">Tangga lagu</span></button>
+            <button className="aivy-shortcut-card" onClick={() => setGenresOpen((v) => !v)}><span className="ic"><Smile size={18} /></span><span className="lbl">Jenis musik &amp; suasana</span></button>
+          </section>
+
+          {genresOpen && (
+            <section className="aivy-section" style={{ marginTop: 4 }}>
+              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("exploreGenre")}</h2></div>
+              <div className="aivy-genre-chips">
+                {GENRE_SHORTCUTS.map((g) => <button key={g} className="aivy-chip" onClick={() => runSearch(g)}>{g}</button>)}
               </div>
             </section>
           )}
-          <section className="aivy-section" style={{ marginTop: 4 }}>
-            <div className="aivy-section-head"><h2 className="aivy-section-title">{t("exploreGenre")}</h2></div>
-            <div className="aivy-genre-chips">
-              {GENRE_SHORTCUTS.map((g) => <button key={g} className="aivy-chip" onClick={() => runSearch(g)}>{g}</button>)}
-            </div>
-          </section>
         </>
       )}
 
