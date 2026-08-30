@@ -158,3 +158,51 @@ export function isRelevantArtistMatch(name, q) {
   const matched = nameWords.filter((w) => queryWords.has(w)).length;
   return matched / nameWords.length >= 0.8;
 }
+
+// --- Recent search thumbnails (frontend-only cache) ---
+// The recent-searches API only stores the query text, not a cover/track.
+// To show thumbnail cards for past searches (like YT Music does) we cache
+// the top result of each search locally, keyed by the normalized query.
+const RECENT_SEARCH_THUMBS_KEY = "aivy_recent_search_thumbs";
+const RECENT_SEARCH_THUMBS_MAX = 12;
+
+function readRecentSearchThumbs() {
+  try {
+    const raw = localStorage.getItem(RECENT_SEARCH_THUMBS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+function writeRecentSearchThumbs(arr) {
+  try { localStorage.setItem(RECENT_SEARCH_THUMBS_KEY, JSON.stringify(arr)); } catch { /* ignore (storage full/blocked) */ }
+}
+
+export function getRecentSearchThumbs() {
+  return readRecentSearchThumbs();
+}
+
+export function saveRecentSearchThumb(query, track) {
+  const q = (query || "").trim();
+  if (!q || !track || !track.videoId) return;
+  const key = q.toLowerCase();
+  const entry = {
+    query: q,
+    videoId: track.videoId,
+    title: track.title || "",
+    artist: track.artist || "",
+    thumbnail: track.thumbnail || track.cover || "",
+    ts: Date.now(),
+  };
+  const rest = readRecentSearchThumbs().filter((x) => x.query.toLowerCase() !== key);
+  writeRecentSearchThumbs([entry, ...rest].slice(0, RECENT_SEARCH_THUMBS_MAX));
+}
+
+export function removeRecentSearchThumb(query) {
+  const key = (query || "").trim().toLowerCase();
+  writeRecentSearchThumbs(readRecentSearchThumbs().filter((x) => x.query.toLowerCase() !== key));
+}
+
+export function clearRecentSearchThumbs() {
+  writeRecentSearchThumbs([]);
+}
