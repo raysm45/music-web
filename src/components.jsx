@@ -739,23 +739,24 @@ export function MobileNowPlayingIconRow({ lyricsActive, onToggleLyrics, lyricsDi
 // without us having to hand-author matching keyframes for every breakpoint.
 const HERO_FLIP_MS = 520;
 
-function useHeroFlip(mode, coverRef, metaRef) {
+function useHeroFlip(mode, targets) {
+  // `targets` is a stable array of { ref, uniform? } — uniform locks x/y
+  // scaling together (for text/controls blocks where independent x/y
+  // scaling would stretch/squash content; only a plain cover image wants
+  // true non-uniform scaling).
   const firstRects = useRef(null);
   const cleanupTimer = useRef(null);
 
   const capture = () => {
     const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) { firstRects.current = null; return; }
-    firstRects.current = {
-      cover: coverRef.current ? coverRef.current.getBoundingClientRect() : null,
-      meta: metaRef.current ? metaRef.current.getBoundingClientRect() : null,
-    };
+    firstRects.current = targets.map(({ ref }) => (ref.current ? ref.current.getBoundingClientRect() : null));
   };
 
   useLayoutEffect(() => {
-    const first = firstRects.current;
+    const firstRectsList = firstRects.current;
     firstRects.current = null;
-    if (!first) return;
+    if (!firstRectsList) return undefined;
 
     const play = (el, firstRect, { uniform = false } = {}) => {
       if (!el || !firstRect || !firstRect.width || !firstRect.height) return;
@@ -766,10 +767,10 @@ function useHeroFlip(mode, coverRef, metaRef) {
       let sx = firstRect.width / last.width;
       let sy = firstRect.height / last.height;
       if (uniform) {
-        // Text blocks: scaling x/y independently stretches or squashes the
-        // letters (the container's aspect ratio changes a lot more than a
-        // font-size change should look like). Use one factor for both axes,
-        // driven by the height ratio since that tracks font-size directly.
+        // Text/control blocks: scaling x/y independently stretches or
+        // squashes the content (the container's aspect ratio can change a
+        // lot more than its "font-size-equivalent" should look like). Use
+        // one factor for both axes, driven by the height ratio.
         sx = sy;
       }
       el.style.willChange = "transform";
@@ -781,12 +782,12 @@ function useHeroFlip(mode, coverRef, metaRef) {
       el.style.transform = "translate(0px, 0px) scale(1, 1)";
     };
 
-    play(coverRef.current, first.cover);
-    play(metaRef.current, first.meta, { uniform: true });
+    targets.forEach(({ ref, uniform }, i) => play(ref.current, firstRectsList[i], { uniform }));
 
     clearTimeout(cleanupTimer.current);
     cleanupTimer.current = setTimeout(() => {
-      [coverRef.current, metaRef.current].forEach((el) => {
+      targets.forEach(({ ref }) => {
+        const el = ref.current;
         if (!el) return;
         el.style.transition = "";
         el.style.transform = "";
@@ -796,6 +797,7 @@ function useHeroFlip(mode, coverRef, metaRef) {
     }, HERO_FLIP_MS + 40);
 
     return () => clearTimeout(cleanupTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   return capture;
@@ -821,7 +823,13 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
 
   const coverRef = useRef(null);
   const metaRef = useRef(null);
-  const captureHeroFlip = useHeroFlip(lyricsMode, coverRef, metaRef);
+  const controlsRef = useRef(null);
+  const flipTargets = useRef([
+    { ref: coverRef },
+    { ref: metaRef, uniform: true },
+    { ref: controlsRef, uniform: true },
+  ]).current;
+  const captureHeroFlip = useHeroFlip(lyricsMode, flipTargets);
 
   const trackKey = currentTrack?.id;
   useEffect(() => { setSingMode(false); setLyricsMounted(false); setLyricsUnsynced(false); }, [trackKey]);
@@ -948,7 +956,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               )}
             </div>
 
-            <div className="npx-top-controls">
+            <div className="npx-top-controls" ref={controlsRef}>
               <div className="aivy-scrubber-row">
                 <span className="aivy-time">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
                 <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
