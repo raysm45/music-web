@@ -836,33 +836,56 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const scrollToActiveLyric = () => {
     const el = document.getElementById("aivy-am-lyrics-mobile");
     if (!el) return;
-    el.autoScroll = false;
-    requestAnimationFrame(() => {
-      el.autoScroll = true;
-      const ct = el.currentTime;
-      el.currentTime = Math.max(0, (ct || 0) - 1);
-      requestAnimationFrame(() => { el.currentTime = ct; });
-    });
+    // `isUserScrolling`/`userScrollTimeoutId`/`_handleActiveLineScroll` are
+    // marked `private` only in am-lyrics' TypeScript source — at runtime
+    // they're ordinary instance properties/methods we can reach from here.
+    // Just nudging `currentTime` (the old trick) isn't enough: the library
+    // gates its own auto-scroll on `!isUserScrolling`, so while that flag
+    // is still true (within its own 5s "let momentum settle" window) our
+    // time nudge gets silently ignored. Clear it directly, then force one
+    // immediate scroll to the active line.
+    if (el.userScrollTimeoutId) {
+      clearTimeout(el.userScrollTimeoutId);
+      el.userScrollTimeoutId = undefined;
+    }
+    el.isUserScrolling = false;
+    el.lyricsContainer?.classList.remove("user-scrolling", "not-focused");
+    el.autoScroll = true;
+    if (typeof el._handleActiveLineScroll === "function") {
+      el._handleActiveLineScroll([], true);
+    }
     setLyricsUnsynced(false);
   };
 
   // Sembunyikan pill "Sync" selama lirik masih auto-scroll mengikuti lagu.
-  // Begitu user menggeser lirik sendiri (scroll/drag manual), matikan
-  // autoScroll bawaan <am-lyrics> dan tampilkan pill supaya user bisa
-  // balik ke posisi yang pas kapan pun mereka mau.
+  // am-lyrics sudah mendeteksi scroll manual sendiri (lewat wheel/touchmove
+  // di dalam shadow DOM-nya) dan menambah class "user-scrolling" ke
+  // container-nya selama itu — kita cuma numpang lihat class itu lewat
+  // MutationObserver, tanpa ikut mematikan autoScroll bawaannya, supaya
+  // fitur auto-resume 5 detik miliknya tetap jalan seperti biasa.
   useEffect(() => {
     if (!lyricsMounted) return undefined;
-    const el = document.getElementById("aivy-am-lyrics-mobile");
-    if (!el) return undefined;
-    const handleManualScroll = () => {
-      el.autoScroll = false;
-      setLyricsUnsynced(true);
+    let observer;
+    let retryTimer;
+    let tries = 0;
+
+    const attach = () => {
+      const el = document.getElementById("aivy-am-lyrics-mobile");
+      const container = el?.lyricsContainer;
+      if (!container) {
+        if (tries++ < 25) retryTimer = setTimeout(attach, 200);
+        return;
+      }
+      const sync = () => setLyricsUnsynced(container.classList.contains("user-scrolling"));
+      sync();
+      observer = new MutationObserver(sync);
+      observer.observe(container, { attributes: true, attributeFilter: ["class"] });
     };
-    el.addEventListener("wheel", handleManualScroll, { passive: true });
-    el.addEventListener("touchmove", handleManualScroll, { passive: true });
+    attach();
+
     return () => {
-      el.removeEventListener("wheel", handleManualScroll);
-      el.removeEventListener("touchmove", handleManualScroll);
+      clearTimeout(retryTimer);
+      observer?.disconnect();
     };
   }, [lyricsMounted, trackKey]);
 
