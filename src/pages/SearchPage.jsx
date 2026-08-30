@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Search, X, Clock, TrendingUp, ArrowLeft, ArrowUpLeft, Mic, AudioLines, Music2, Smile } from "lucide-react";
+import { Search, X, Clock, TrendingUp, ArrowLeft, ArrowUpLeft, Mic, AudioLines, Music2, Smile, Globe } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
@@ -28,7 +28,14 @@ export function SearchPage() {
   const [lyricsMap, setLyricsMap] = useState({});
   const [artistHit, setArtistHit] = useState(null);
   const [genresOpen, setGenresOpen] = useState(false);
+  const [listening, setListening] = useState(false);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  const tt = useMemo(() => {
+    const en = settings.language === "en";
+    return (idText, enText) => (en ? enText : idText);
+  }, [settings.language]);
 
   const debouncedSuggest = useRef(debounce((q) => {
     if (!authUser || settings.searchHistoryEnabled === false) return;
@@ -38,6 +45,7 @@ export function SearchPage() {
   const requestSeqRef = useRef(0);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => () => { try { recognitionRef.current?.stop(); } catch { /* ignore */ } }, []);
   useEffect(() => {
     if (authUser && settings.searchHistoryEnabled !== false) Api.recentSearches(8).then(setRecent).catch(() => {});
   }, [authUser, settings.searchHistoryEnabled]);
@@ -146,14 +154,23 @@ export function SearchPage() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     const rec = new SR();
-    rec.lang = "id-ID";
+    rec.lang = settings.language === "en" ? "en-US" : "id-ID";
     rec.interimResults = false;
     rec.maxAlternatives = 1;
+    rec.onstart = () => setListening(true);
     rec.onresult = (e) => {
       const heard = e.results?.[0]?.[0]?.transcript;
       if (heard && heard.trim()) runSearch(heard.trim());
     };
-    try { rec.start(); } catch { /* ignore */ }
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    try { rec.start(); } catch { setListening(false); }
+  };
+
+  const stopVoiceSearch = () => {
+    try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    setListening(false);
   };
 
   const showBrowse = !query.trim() && !hasSearched;
@@ -302,6 +319,24 @@ export function SearchPage() {
             <div className="aivy-empty"><Search size={34} color="var(--ink-faint)" /><div className="title">{t("noResults")}</div><div className="sub">{t("noResultsSub")}</div></div>
           )
         )
+      )}
+
+      {listening && (
+        <div className="aivy-voice-overlay">
+          <div className="aivy-voice-backdrop" onClick={stopVoiceSearch} />
+          <div className="aivy-voice-sheet">
+            <div className="aivy-voice-handle" />
+            <div className="aivy-voice-lang"><Globe size={14} /><span>{settings.language === "en" ? "English (United States)" : "Bahasa Indonesia (Indonesia)"}</span></div>
+            <div className="aivy-voice-title">{tt("Dengerin, ya…", "Listening…")}</div>
+            <div className="aivy-voice-stage">
+              <span className="aivy-voice-ring r1" />
+              <span className="aivy-voice-ring r2" />
+              <span className="aivy-voice-ring r3" />
+              <button className="aivy-voice-mic" onClick={stopVoiceSearch} aria-label={tt("Batalkan", "Cancel")}><Mic size={24} /></button>
+            </div>
+            <span className="aivy-voice-hint">{tt("Ketuk mic buat berhenti", "Tap the mic to stop")}</span>
+          </div>
+        </div>
       )}
     </div>
   );
