@@ -592,24 +592,37 @@ body.aivy-resizing *{ user-select: none !important; }
 .npx-hero.is-compact .npx-actions .aivy-icon-btn{ width: 34px; height: 34px; }
 
 /* The lyrics pane fills the space vacated by the shrinking cover, fading
-   and sliding up into place from behind it. */
+   and sliding up into place from behind it. It doubles as an invisible
+   spacer even when inactive: it always grows to soak up leftover height,
+   pushing whatever comes after it in flex order down to the bottom. */
 .npx-lyrics-wrap{
   position: relative; z-index: 1; width: 100%; min-height: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   opacity: 0; transform: translateY(16px); pointer-events: none;
-  /* flex-grow tetap 1 walau non-aktif: div ini jadi "spacer" tak kasat
-     mata yang mendorong npx-controls (termasuk baris tombol
-     lirik/output/antrean) supaya selalu nempel di bawah layar, persis
-     seperti saat mode lirik aktif. */
   flex-grow: 1; flex-shrink: 1; flex-basis: 0%;
   transition: opacity .32s var(--ease), transform .42s var(--ease);
+  order: 2;
 }
 .npx-lyrics-wrap.is-active{
   opacity: 1; transform: translateY(0); pointer-events: auto; justify-content: flex-start;
 }
 .npx-lyrics-wrap .aivy-am-lyrics{ position: absolute; inset: 0; padding: 2px 8px 0; --lyrics-scroll-padding-top: 24%; }
 
-.npx-controls{ width: 100%; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+/* Flex order for the now-playing sheet's direct children (see
+   NowPlayingSheet): normal "player" mode keeps scrubber/transport/volume
+   right under the hero (order 1) with the lyrics-wrap spacer (order 2)
+   pushing the lyric/output/queue row (order 3) to the very bottom. Lyrics
+   mode instead lets the lyrics pane fill the middle (order 1) and groups
+   the playback controls together with the icon row at the bottom, exactly
+   like the pre-lyrics-mode layout used to. */
+.aivy-sheet .npx-hero{ order: 0; }
+.aivy-sheet .npx-top-controls{ order: 1; }
+.aivy-sheet .aivy-sheet-icon-row{ order: 3; }
+.aivy-sheet.mode-lyrics .npx-lyrics-wrap{ order: 1; }
+.aivy-sheet.mode-lyrics .npx-top-controls{ order: 2; }
+.aivy-sheet.mode-lyrics .aivy-sheet-icon-row{ order: 3; }
+
+.npx-top-controls{ width: 100%; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
 .npx-sing-row{ height: 0; overflow: hidden; opacity: 0; transition: opacity .25s var(--ease), height .3s var(--ease), margin .3s var(--ease); }
 .npx-sing-row.is-active{ height: 30px; opacity: 1; margin-bottom: 8px; }
 .aivy-sheet .aivy-scrubber-row{ width: 100%; margin-bottom: 18px; }
@@ -625,7 +638,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet .aivy-vol .fill{ background: var(--sheet-ink); }
 .aivy-sheet .aivy-vol .aivy-icon-btn{ color: var(--sheet-ink-faint); }
 
-.aivy-sheet-icon-row{ width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 6px 26px; margin-top: 4px; }
+.aivy-sheet-icon-row{ width: 100%; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 6px 26px; margin-top: 4px; }
 .aivy-sheet-icon-row .aivy-icon-btn{ color: var(--sheet-ink-dim); }
 .aivy-sheet-icon-row .aivy-icon-btn:hover{ color: var(--sheet-ink); background: var(--sheet-elev); }
 .aivy-sheet-icon-row .aivy-icon-btn.active{ color: var(--sheet-ink); }
