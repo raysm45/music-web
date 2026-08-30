@@ -832,7 +832,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const captureHeroFlip = useHeroFlip(lyricsMode, flipTargets);
 
   const trackKey = currentTrack?.id;
-  useEffect(() => { setSingMode(false); setLyricsMounted(false); setLyricsUnsynced(false); }, [trackKey]);
+  // NOTE: don't unmount AppleLyricsPane on track change — it already
+  // refreshes itself internally (its own effect is keyed on track?.id).
+  // Unmounting here previously left lyrics stuck blank after a skip,
+  // because this effect only remounts on `lyricsOpen` changing, not on
+  // `trackKey` changing, so `lyricsMounted` never flipped back to true.
+  useEffect(() => { setSingMode(false); setLyricsUnsynced(false); }, [trackKey]);
   useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
 
   const handleLyricsToggle = () => { captureHeroFlip(); toggleLyrics(); };
