@@ -3,7 +3,7 @@ import React, {
 } from "react";
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
-import { clamp, uid, debounce } from "./lib/utils.js";
+import { clamp, uid, debounce, pickBestAudioMatch, estimateIntroOffsetSeconds } from "./lib/utils.js";
 import { makeT } from "./lib/i18n.js";
 import { useDiscordActivity } from "./lib/discordActivity.js";
 
@@ -367,9 +367,18 @@ export function PlayerProvider({ children }) {
   })());
   const progressElsRef = useRef(new Map());
   const resolvedFullCache = useRef(new Map());
+  const resolvedOffsetCache = useRef(new Map());
   const recoveringRef = useRef(false);
   const retryCountRef = useRef(0);
   const isPlayingRef = useRef(false);
+  // Perkiraan durasi "opening"/intro (detik) dari video yang sedang diputar,
+  // per track id, dipakai buat menggeser highlight lirik synced supaya
+  // tidak telat kalau videonya punya intro logo/label. Diisi otomatis di
+  // resolveAudioSrc saat harus fallback cari video (lihat estimateIntroOffsetSeconds),
+  // dan bisa ditambah manual lewat adjustLyricsOffset (nudge +/-) kalau
+  // perkiraan otomatisnya masih kurang pas.
+  const [autoLyricsOffsets, setAutoLyricsOffsets] = useState({});
+  const [manualLyricsOffsets, setManualLyricsOffsets] = useState({});
 
   const ensureAudioGraph = useCallback(() => {
     if (audioGraphRef.current) return audioGraphRef.current;
@@ -479,6 +488,23 @@ export function PlayerProvider({ children }) {
   useEffect(() => { setVolumeState(settings.volumeDefault ?? 0.7); }, []);
   const currentTrackHasLyrics = true;
 
+  // Offset total (detik) buat menggeser highlight lirik synced pada track
+  // yang sedang diputar: perkiraan otomatis dari selisih durasi (lihat
+  // resolveAudioSrc/estimateIntroOffsetSeconds) ditambah koreksi manual dari
+  // tombol nudge, buat kasus videonya masih ada opening/intro yang bikin
+  // lirik kelihatan telat walau sudah dipilihkan kandidat terbaik.
+  const lyricsOffsetSeconds = currentKey != null
+    ? (autoLyricsOffsets[currentKey] || 0) + (manualLyricsOffsets[currentKey] || 0)
+    : 0;
+  const adjustLyricsOffset = useCallback((deltaSeconds) => {
+    if (currentKey == null) return;
+    setManualLyricsOffsets((m) => ({ ...m, [currentKey]: clamp((m[currentKey] || 0) + deltaSeconds, -20, 20) }));
+  }, [currentKey]);
+  const resetLyricsOffset = useCallback(() => {
+    if (currentKey == null) return;
+    setManualLyricsOffsets((m) => { const next = { ...m }; delete next[currentKey]; return next; });
+  }, [currentKey]);
+
   useEffect(() => {
     if (!authUser) { setLiked(new Set()); setPlaylists([]); return; }
     Api.likes().then((rows) => setLiked(new Set(rows.map((r) => String(r.video_id ?? r.videoId ?? r.id))))).catch(() => {});
@@ -517,12 +543,26 @@ export function PlayerProvider({ children }) {
       if (!videoId) {
         if (resolvedFullCache.current.has(track.id)) {
           videoId = resolvedFullCache.current.get(track.id);
+          if (resolvedOffsetCache.current.has(track.id)) {
+            setAutoLyricsOffsets((m) => ({ ...m, [track.id]: resolvedOffsetCache.current.get(track.id) }));
+          }
         } else {
           try {
             const q = `${track.title} ${track.artist?.name || ""}`.trim();
             const results = await Api.search(q);
-            videoId = results?.[0]?.videoId || null;
+            // Jangan langsung ambil hasil pertama — pilih kandidat yang paling
+            // mendekati rekaman official (lihat komentar di pickBestAudioMatch),
+            // supaya timing lirik synced tidak telat karena beda versi.
+            const best = pickBestAudioMatch(results, track);
+            videoId = best?.videoId || results?.[0]?.videoId || null;
             resolvedFullCache.current.set(track.id, videoId);
+            // "Official Video/MV" sering punya intro logo beberapa detik yang
+            // bikin lirik synced kelihatan telat. Kalau durasi kandidat lebih
+            // panjang dari metadata track, anggap selisihnya itu intro dan
+            // simpan sebagai offset otomatis buat menggeser highlight lirik.
+            const offsetSeconds = estimateIntroOffsetSeconds(best?.duration, track.duration);
+            resolvedOffsetCache.current.set(track.id, offsetSeconds);
+            setAutoLyricsOffsets((m) => ({ ...m, [track.id]: offsetSeconds }));
           } catch { videoId = null; }
         }
       }
@@ -1322,6 +1362,7 @@ export function PlayerProvider({ children }) {
   const value = {
     queueList, order, posInOrder, currentTrack, upNext, history,
     currentTrackHasLyrics, playSource,
+    lyricsOffsetSeconds, adjustLyricsOffset, resetLyricsOffset,
     isPlaying, currentTime, duration: clipDuration, isPreviewClip, loadingAudio,
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,

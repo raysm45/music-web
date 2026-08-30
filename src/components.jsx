@@ -807,6 +807,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const {
     currentTrack, currentTime: playerTime, seekTo, isPreviewClip,
     liked, toggleLike, loadingAudio, currentTrackHasLyrics,
+    lyricsOffsetSeconds, adjustLyricsOffset, resetLyricsOffset,
   } = usePlayer();
   const { navigate } = useRouter();
   const { t, lyricsOpen, toggleLyrics, closeLyrics, openContextMenu } = useUI();
@@ -947,7 +948,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                   <AppleLyricsPane
                     id="aivy-am-lyrics-mobile"
                     track={currentTrack}
-                    currentTime={playerTime}
+                    currentTime={Math.max(0, playerTime - lyricsOffsetSeconds)}
                     onSeek={seekTo}
                     highlightColor="#f5f5f5"
                     fontSize="md"
@@ -957,6 +958,15 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                       {t("syncLyrics")}
                     </button>
                   )}
+                  <div className="aivy-lyr2-offset-row">
+                    <button type="button" className="aivy-lyr2-offset-btn" onClick={() => adjustLyricsOffset(-0.5)} aria-label={t("syncLyricsEarlier")}>−0.5s</button>
+                    {!!lyricsOffsetSeconds && (
+                      <button type="button" className="aivy-lyr2-offset-btn" onClick={resetLyricsOffset} title={t("syncLyricsReset")}>
+                        {lyricsOffsetSeconds > 0 ? "+" : ""}{lyricsOffsetSeconds.toFixed(1)}s
+                      </button>
+                    )}
+                    <button type="button" className="aivy-lyr2-offset-btn" onClick={() => adjustLyricsOffset(0.5)} aria-label={t("syncLyricsLater")}>+0.5s</button>
+                  </div>
                 </>
               )}
             </div>
@@ -2223,7 +2233,10 @@ function useIsMobile(breakpoint = 860) {
 
 export function LyricsOverlay() {
   const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu } = useUI();
-  const { currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration } = usePlayer();
+  const {
+    currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration,
+    lyricsOffsetSeconds, adjustLyricsOffset, resetLyricsOffset,
+  } = usePlayer();
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
@@ -2331,6 +2344,23 @@ export function LyricsOverlay() {
           <Type size={16} />
           <span className="aivy-fontsize-tag">{fontSize}</span>
         </button>
+        {/* Nudge lirik kalau videonya masih ada opening/intro yang bikin
+            lirik synced kelihatan telat/kecepetan dibanding metadata durasi. */}
+        <button className="aivy-lyrics-fbtn aivy-lyrics-fbtn-dup" onClick={() => adjustLyricsOffset(-0.5)} disabled={!currentTrack} aria-label={t("syncLyricsEarlier")} title={t("syncLyricsEarlier")}>
+          <span className="aivy-fontsize-tag">−0.5s</span>
+        </button>
+        <button
+          className={`aivy-lyrics-fbtn aivy-lyrics-fbtn-dup ${lyricsOffsetSeconds ? "active" : ""}`}
+          onClick={resetLyricsOffset}
+          disabled={!currentTrack || !lyricsOffsetSeconds}
+          aria-label={t("syncLyricsReset")}
+          title={lyricsOffsetSeconds ? `${t("syncLyricsReset")}: ${lyricsOffsetSeconds.toFixed(1)}s` : t("syncLyricsReset")}
+        >
+          <span className="aivy-fontsize-tag">{lyricsOffsetSeconds ? `${lyricsOffsetSeconds > 0 ? "+" : ""}${lyricsOffsetSeconds.toFixed(1)}s` : "0.0s"}</span>
+        </button>
+        <button className="aivy-lyrics-fbtn aivy-lyrics-fbtn-dup" onClick={() => adjustLyricsOffset(0.5)} disabled={!currentTrack} aria-label={t("syncLyricsLater")} title={t("syncLyricsLater")}>
+          <span className="aivy-fontsize-tag">+0.5s</span>
+        </button>
       </div>
 
       {currentTrack && (
@@ -2404,7 +2434,7 @@ export function LyricsOverlay() {
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
             <AppleLyricsPane
               track={currentTrack}
-              currentTime={currentTime}
+              currentTime={Math.max(0, currentTime - lyricsOffsetSeconds)}
               onSeek={seekTo}
               highlightColor={highlightColor}
               fontSize={fontSize}
