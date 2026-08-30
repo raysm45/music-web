@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, X, Plus, Users, LogIn, MoreHorizontal, Clock,
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
-  PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, ArrowDownToLine, Smile,
+  PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -817,14 +817,15 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const lyricsMode = !!(open && lyricsOpen);
   const [singMode, setSingMode] = useState(false);
   const [lyricsMounted, setLyricsMounted] = useState(false);
+  const [lyricsUnsynced, setLyricsUnsynced] = useState(false);
 
   const coverRef = useRef(null);
   const metaRef = useRef(null);
   const captureHeroFlip = useHeroFlip(lyricsMode, coverRef, metaRef);
 
   const trackKey = currentTrack?.id;
-  useEffect(() => { setSingMode(false); setLyricsMounted(false); }, [trackKey]);
-  useEffect(() => { if (lyricsOpen) setLyricsMounted(true); }, [lyricsOpen]);
+  useEffect(() => { setSingMode(false); setLyricsMounted(false); setLyricsUnsynced(false); }, [trackKey]);
+  useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
 
   const handleLyricsToggle = () => { captureHeroFlip(); toggleLyrics(); };
   const handleGrabberTap = () => {
@@ -842,7 +843,28 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
       el.currentTime = Math.max(0, (ct || 0) - 1);
       requestAnimationFrame(() => { el.currentTime = ct; });
     });
+    setLyricsUnsynced(false);
   };
+
+  // Sembunyikan pill "Sync" selama lirik masih auto-scroll mengikuti lagu.
+  // Begitu user menggeser lirik sendiri (scroll/drag manual), matikan
+  // autoScroll bawaan <am-lyrics> dan tampilkan pill supaya user bisa
+  // balik ke posisi yang pas kapan pun mereka mau.
+  useEffect(() => {
+    if (!lyricsMounted) return undefined;
+    const el = document.getElementById("aivy-am-lyrics-mobile");
+    if (!el) return undefined;
+    const handleManualScroll = () => {
+      el.autoScroll = false;
+      setLyricsUnsynced(true);
+    };
+    el.addEventListener("wheel", handleManualScroll, { passive: true });
+    el.addEventListener("touchmove", handleManualScroll, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", handleManualScroll);
+      el.removeEventListener("touchmove", handleManualScroll);
+    };
+  }, [lyricsMounted, trackKey]);
 
   const remaining = Math.max(0, (duration || 0) - (currentTime || 0));
 
@@ -894,9 +916,11 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                     highlightColor="#f5f5f5"
                     fontSize="md"
                   />
-                  <button className="aivy-lyr2-pill" onClick={scrollToActiveLyric} aria-label={t("lyrics")}>
-                    <ArrowDownToLine size={15} />
-                  </button>
+                  {lyricsUnsynced && (
+                    <button type="button" className="aivy-lyr2-pill" onClick={scrollToActiveLyric}>
+                      {t("syncLyrics")}
+                    </button>
+                  )}
                 </>
               )}
             </div>
