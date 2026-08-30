@@ -39,6 +39,7 @@ export function parseLRC(lrc) {
   }
   return out.sort((a, b) => a.time - b.time);
 }
+
 export function estimateWordTimeline(lines, trackDuration) {
   if (!Array.isArray(lines) || !lines.length) return [];
   return lines.map((line, i) => {
@@ -67,6 +68,7 @@ export function estimateWordTimeline(lines, trackDuration) {
     return { ...line, end, words: timedWords };
   });
 }
+
 export function wordProgress(word, currentTime) {
   if (!word) return 0;
   if (currentTime <= word.start) return 0;
@@ -114,6 +116,7 @@ export function seededShuffle(arr, seedNum) {
   }
   return out;
 }
+
 export function cleanTrackTitleForLyrics(rawTitle, artistName) {
   if (!rawTitle) return rawTitle;
   let t = rawTitle;
@@ -138,6 +141,7 @@ const OFFICIAL_AUDIO_RE = /\bofficial\s*audio\b/i;
 const OFFICIAL_VIDEO_RE = /\b(official\s*(music\s*)?video|\bmv\b)\b/i;
 const LYRIC_VIDEO_RE = /\blyrics?\b(\s*video)?/i;
 const AVOID_HINT_RE = /\b(cover|remix|remake|live|reaction|8d|slowed|reverb|sped\s*up|nightcore|instrumental|karaoke|tribute|type\s*beat|piano\s*version|acoustic|parody|reversed|mashup|bootleg|fan\s*made)\b/i;
+
 export function pickBestAudioMatch(results, track) {
   if (!Array.isArray(results) || !results.length) return null;
   const artistName = track?.artist?.name || "";
@@ -146,10 +150,17 @@ export function pickBestAudioMatch(results, track) {
   const scored = results.map((r, index) => {
     let score = 0;
     if (artistName && isRelevantArtistMatch(r.artist || "", artistName)) score += 5;
-    if (OFFICIAL_AUDIO_RE.test(r.title || "")) score += 4;
-    else if (OFFICIAL_VIDEO_RE.test(r.title || "")) score += 1;
-    if (LYRIC_VIDEO_RE.test(r.title || "")) score -= 8;
-    else if (AVOID_HINT_RE.test(r.title || "")) score -= 4;
+
+    if (LYRIC_VIDEO_RE.test(r.title || "")) {
+      score += 8;
+    } else if (OFFICIAL_AUDIO_RE.test(r.title || "")) {
+      score -= 5;
+    } else if (OFFICIAL_VIDEO_RE.test(r.title || "")) {
+      score -= 3;
+    } else if (AVOID_HINT_RE.test(r.title || "")) {
+      score -= 4;
+    }
+
     if (wantedDuration && r.duration) {
       const diff = Math.abs(r.duration - wantedDuration);
       if (diff <= 2) score += 3;
@@ -165,6 +176,7 @@ export function pickBestAudioMatch(results, track) {
   scored.sort((a, b) => b.score - a.score);
   return scored[0].r;
 }
+
 export function estimateIntroOffsetSeconds(candidateDuration, trackDuration) {
   if (!candidateDuration || !trackDuration) return 0;
   const diff = candidateDuration - trackDuration;
@@ -179,6 +191,7 @@ export function debounce(fn, ms) {
     t = setTimeout(() => fn(...args), ms);
   };
 }
+
 export function isRelevantArtistMatch(name, q) {
   const norm = (s) => (s || "")
     .toLowerCase()
@@ -195,6 +208,7 @@ export function isRelevantArtistMatch(name, q) {
   const matched = nameWords.filter((w) => queryWords.has(w)).length;
   return matched / nameWords.length >= 0.8;
 }
+
 const RECENT_SEARCH_THUMBS_KEY = "aivy_recent_search_thumbs";
 const RECENT_SEARCH_THUMBS_MAX = 12;
 
@@ -207,7 +221,7 @@ function readRecentSearchThumbs() {
 }
 
 function writeRecentSearchThumbs(arr) {
-  try { localStorage.setItem(RECENT_SEARCH_THUMBS_KEY, JSON.stringify(arr)); } catch { /* ignore (storage full/blocked) */ }
+  try { localStorage.setItem(RECENT_SEARCH_THUMBS_KEY, JSON.stringify(arr)); } catch { }
 }
 
 export function getRecentSearchThumbs() {
@@ -237,4 +251,4 @@ export function removeRecentSearchThumb(query) {
 
 export function clearRecentSearchThumbs() {
   writeRecentSearchThumbs([]);
-                      }
+}
