@@ -597,12 +597,15 @@ body.aivy-resizing *{ user-select: none !important; }
   position: relative; z-index: 1; width: 100%; min-height: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   opacity: 0; transform: translateY(16px); pointer-events: none;
-  flex-grow: 0; flex-shrink: 1; flex-basis: 0%;
-  transition: opacity .32s var(--ease), transform .42s var(--ease), flex-grow .45s var(--ease);
+  /* flex-grow tetap 1 walau non-aktif: div ini jadi "spacer" tak kasat
+     mata yang mendorong npx-controls (termasuk baris tombol
+     lirik/output/antrean) supaya selalu nempel di bawah layar, persis
+     seperti saat mode lirik aktif. */
+  flex-grow: 1; flex-shrink: 1; flex-basis: 0%;
+  transition: opacity .32s var(--ease), transform .42s var(--ease);
 }
 .npx-lyrics-wrap.is-active{
   opacity: 1; transform: translateY(0); pointer-events: auto; justify-content: flex-start;
-  flex-grow: 1;
 }
 .npx-lyrics-wrap .aivy-am-lyrics{ position: absolute; inset: 0; padding: 2px 8px 0; --lyrics-scroll-padding-top: 24%; }
 
@@ -1547,13 +1550,20 @@ body.aivy-resizing *{ user-select: none !important; }
 /* Lyrics — jump-to-active-line pill and Sing toggle, used inside the
    morphing sheet's npx-lyrics-wrap / npx-sing-row (see NowPlayingSheet). */
 .aivy-lyr2-pill{
-  position: absolute; right: 12px; bottom: 16px; z-index: 2;
-  width: 30px; height: 46px; border-radius: 999px; border: .5px solid rgba(255,255,255,.25);
-  background: rgba(120,120,128,.36); backdrop-filter: blur(10px); color: var(--sheet-ink);
+  position: absolute; left: 50%; bottom: 16px; z-index: 2;
+  transform: translateX(-50%);
+  padding: 9px 26px; border-radius: 999px; border: none;
+  background: #ffffff; color: #000000; font-size: 13px; font-weight: 700;
+  white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.35);
   display: flex; align-items: center; justify-content: center;
   transition: transform .15s var(--ease), background .2s var(--ease);
+  animation: aivy-lyr2-pill-in .22s var(--ease);
 }
-.aivy-lyr2-pill:active{ transform: scale(.92); background: rgba(120,120,128,.5); }
+.aivy-lyr2-pill:active{ transform: translateX(-50%) scale(.94); background: #ececec; }
+@keyframes aivy-lyr2-pill-in{
+  from{ opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to{ opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 .aivy-lyr2-sing{ padding: 4px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--sheet-ink-dim); border: 1px solid var(--sheet-line); transition: background .2s var(--ease), color .2s var(--ease); }
 .aivy-lyr2-sing.active{ background: var(--sheet-ink); color: #14150f; border-color: transparent; }
 
