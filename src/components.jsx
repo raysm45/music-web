@@ -757,14 +757,22 @@ function useHeroFlip(mode, coverRef, metaRef) {
     firstRects.current = null;
     if (!first) return;
 
-    const play = (el, firstRect) => {
+    const play = (el, firstRect, { uniform = false } = {}) => {
       if (!el || !firstRect || !firstRect.width || !firstRect.height) return;
       const last = el.getBoundingClientRect();
       if (!last.width || !last.height) return;
       const dx = firstRect.left - last.left;
       const dy = firstRect.top - last.top;
-      const sx = firstRect.width / last.width;
-      const sy = firstRect.height / last.height;
+      let sx = firstRect.width / last.width;
+      let sy = firstRect.height / last.height;
+      if (uniform) {
+        // Text blocks: scaling x/y independently stretches or squashes the
+        // letters (the container's aspect ratio changes a lot more than a
+        // font-size change should look like). Use one factor for both axes,
+        // driven by the height ratio since that tracks font-size directly.
+        sx = sy;
+      }
+      el.style.willChange = "transform";
       el.style.transition = "none";
       el.style.transformOrigin = "top left";
       el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
@@ -774,7 +782,7 @@ function useHeroFlip(mode, coverRef, metaRef) {
     };
 
     play(coverRef.current, first.cover);
-    play(metaRef.current, first.meta);
+    play(metaRef.current, first.meta, { uniform: true });
 
     clearTimeout(cleanupTimer.current);
     cleanupTimer.current = setTimeout(() => {
@@ -783,6 +791,7 @@ function useHeroFlip(mode, coverRef, metaRef) {
         el.style.transition = "";
         el.style.transform = "";
         el.style.transformOrigin = "";
+        el.style.willChange = "";
       });
     }, HERO_FLIP_MS + 40);
 
