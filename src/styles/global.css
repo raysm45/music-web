@@ -1808,7 +1808,7 @@ body.aivy-resizing *{ user-select: none !important; }
     --bg: #12140F; --bg-elev: #191C14; --bg-elev-2: #21251A; --bg-elev-3: #282C1F;
     --line: #2A2E20; --line-soft: #21241A;
     --ink: #ECE8D9; --ink-dim: #9BA08A; --ink-faint: #676B57;
-    --moss: #8CA37C; --moss-strong: #ADC79C; --moss-ink: #10130D;
+    --moss: #ECE8D9; --moss-strong: #FFFFFF; --moss-ink: #12140F;
     --berry: #C97B6B; --berry-strong: #DE9686; --gold: #D3B673;
   }
 }
