@@ -832,7 +832,19 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const captureHeroFlip = useHeroFlip(lyricsMode, flipTargets);
 
   const trackKey = currentTrack?.id;
-  useEffect(() => { setSingMode(false); setLyricsMounted(false); setLyricsUnsynced(false); }, [trackKey]);
+  useEffect(() => {
+    setSingMode(false);
+    setLyricsUnsynced(false);
+    // Only reset the mounted flag if the lyrics panel is currently closed.
+    // If it's already open when the track changes, leave <AppleLyricsPane>
+    // mounted — its own effect (keyed on track?.id) already re-fetches the
+    // new track's lyrics. Unconditionally unmounting here was the bug:
+    // lyricsOpen hasn't changed, so the effect below (which only reacts to
+    // lyricsOpen) never fires again to remount it, leaving lyrics blank
+    // until the panel is closed and reopened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!lyricsOpen) setLyricsMounted(false);
+  }, [trackKey]);
   useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
 
   const handleLyricsToggle = () => { captureHeroFlip(); toggleLyrics(); };
