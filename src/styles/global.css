@@ -562,14 +562,49 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet-head{ position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top,0px)) 18px 6px; flex-shrink: 0; color: var(--sheet-ink); }
 .aivy-sheet-head-actions{ display: flex; align-items: center; gap: 4px; }
 .aivy-sheet-body{ position: relative; z-index: 2; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 6px 26px calc(28px + var(--safe-b)); color: var(--sheet-ink); }
-.aivy-sheet-art{ width: min(78vw, 320px); aspect-ratio: 1; border-radius: var(--radius-lg); overflow: hidden; margin: 10px 0 26px; flex-shrink: 0; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
-.aivy-sheet-meta{ width: 100%; text-align: left; margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.aivy-sheet-meta .t{ font-family: var(--font-display); font-size: clamp(19px, 5vw, 24px); font-weight: 600; line-height: 1.2; color: var(--sheet-ink); }
-.aivy-sheet-meta .a{ font-size: 14px; color: var(--sheet-ink-dim); margin-top: 4px; }
-.aivy-sheet-meta-actions{ display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.aivy-sheet-meta-actions .aivy-icon-btn{ color: var(--sheet-ink-dim); }
-.aivy-sheet-meta-actions .aivy-icon-btn:hover{ color: var(--sheet-ink); background: var(--sheet-elev); }
-.aivy-sheet-meta-actions .aivy-icon-btn.active{ color: #ffd54a; }
+/* ---- Morphing hero: cover + title/artist shared between "player" and
+   "lyrics" layouts of the same sheet. The two layouts below are plain,
+   independent CSS states — the actual smooth morph between them is done
+   in JS (see useHeroFlip / NowPlayingSheet) via a FLIP transform, so these
+   rules only need to describe each state correctly, not how to tween
+   between them. */
+.npx-hero{ display: flex; flex-direction: column; align-items: center; width: 100%; position: relative; z-index: 2; }
+.npx-cover{ width: min(78vw, 320px); aspect-ratio: 1; border-radius: var(--radius-lg); overflow: hidden; margin: 10px 0 20px; flex-shrink: 0; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.npx-metarow{ width: 100%; text-align: left; margin-bottom: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.npx-titles{ min-width: 0; }
+.npx-titles .t{ font-family: var(--font-display); font-size: clamp(19px, 5vw, 24px); font-weight: 600; line-height: 1.2; color: var(--sheet-ink); }
+.npx-titles .t .badge{ display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.16); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; vertical-align: 2px; }
+.npx-titles .a{ font-size: 14px; color: var(--sheet-ink-dim); margin-top: 4px; }
+.npx-actions{ display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.npx-actions .aivy-icon-btn{ color: var(--sheet-ink-dim); }
+.npx-actions .aivy-icon-btn:hover{ color: var(--sheet-ink); background: var(--sheet-elev); }
+.npx-actions .aivy-icon-btn.active{ color: #ffd54a; }
+
+/* Compact "lyrics" state — cover shrinks to a thumbnail, title/artist move
+   up beside it. Reached only via the JS FLIP transition, never a bare
+   CSS transition, since flex-direction/font-size don't interpolate. */
+.npx-hero.is-compact{ flex-direction: row; align-items: center; gap: 10px; padding: calc(2px + env(safe-area-inset-top, 0px)) 0 0; }
+.npx-hero.is-compact .npx-cover{ width: 44px; height: 44px; margin: 0; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.35); flex-shrink: 0; }
+.npx-hero.is-compact .npx-metarow{ flex: 1; min-width: 0; margin: 0; align-items: center; }
+.npx-hero.is-compact .npx-titles{ flex: 1; min-width: 0; }
+.npx-hero.is-compact .npx-titles .t{ font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.npx-hero.is-compact .npx-titles .a{ font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.npx-hero.is-compact .npx-actions .aivy-icon-btn{ width: 34px; height: 34px; }
+
+/* The lyrics pane fills the space vacated by the shrinking cover, fading
+   and sliding up into place from behind it. */
+.npx-lyrics-wrap{
+  position: relative; z-index: 1; width: 100%; flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0; transform: translateY(16px); pointer-events: none;
+  transition: opacity .32s var(--ease), transform .42s var(--ease);
+}
+.npx-lyrics-wrap.is-active{ opacity: 1; transform: translateY(0); pointer-events: auto; justify-content: flex-start; }
+.npx-lyrics-wrap .aivy-am-lyrics{ position: absolute; inset: 0; padding: 2px 8px 0; --lyrics-scroll-padding-top: 24%; }
+
+.npx-controls{ width: 100%; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.npx-sing-row{ height: 0; overflow: hidden; opacity: 0; transition: opacity .25s var(--ease), height .3s var(--ease), margin .3s var(--ease); }
+.npx-sing-row.is-active{ height: 30px; opacity: 1; margin-bottom: 8px; }
 .aivy-sheet .aivy-scrubber-row{ width: 100%; margin-bottom: 18px; }
 .aivy-sheet .aivy-scrubber .track{ background: var(--sheet-line); }
 .aivy-sheet .aivy-scrubber .fill{ background: var(--sheet-ink); }
@@ -1478,10 +1513,12 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet-grabber:active{ background: rgba(255,255,255,.55); }
 
 .aivy-sheet .aivy-sheet-body{ padding: 4px 26px calc(20px + var(--safe-b)); }
-.aivy-sheet .aivy-sheet-art{ width: min(58vw, 300px); border-radius: 10px; margin: 14px 0 26px; box-shadow: 0 18px 48px rgba(0,0,0,.45); }
-.aivy-sheet .aivy-sheet-meta{ align-items: center; margin-bottom: 16px; }
-.aivy-sheet .aivy-sheet-meta .t{ font-size: 21px; letter-spacing: -.01em; }
-.aivy-sheet .aivy-sheet-meta .a{ font-size: 15px; margin-top: 3px; }
+.npx-cover{ width: min(58vw, 300px); border-radius: 10px; margin: 14px 0 20px; box-shadow: 0 18px 48px rgba(0,0,0,.45); }
+.npx-hero.is-compact .npx-cover{ width: 44px; height: 44px; margin: 0; border-radius: 6px; }
+.npx-titles .t{ font-size: 21px; letter-spacing: -.01em; }
+.npx-hero.is-compact .npx-titles .t{ font-size: 14.5px; letter-spacing: normal; }
+.npx-titles .a{ font-size: 15px; margin-top: 3px; }
+.npx-hero.is-compact .npx-titles .a{ font-size: 12px; margin-top: 2px; }
 .aivy-sheet .aivy-scrubber-row{ margin-bottom: 14px; }
 .aivy-sheet .aivy-time{ font-size: 11px; width: 36px; }
 .aivy-sheet .aivy-scrubber .track{ height: 6px; }
@@ -1503,77 +1540,18 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet-icon-row .aivy-icon-btn{ width: 42px; height: 42px; }
 .aivy-sheet-icon-row .aivy-icon-btn svg{ width: 22px; height: 22px; }
 
-/* Now playing <-> Lyrics: one sheet, two panels that slide sideways
-   instead of a second overlay stacking on top. */
-.aivy-sheet-panels{
-  position: relative; z-index: 2; flex: 1; min-height: 0;
-  display: flex; width: 200%;
-  transition: transform var(--dur-slow) var(--ease);
-  will-change: transform;
-}
-.aivy-sheet.showing-lyrics .aivy-sheet-panels{ transform: translateX(-50%); }
-.aivy-sheet-panel{ flex: 0 0 50%; width: 50%; min-width: 0; min-height: 0; }
-.aivy-sheet-panel-lyrics{
-  display: flex; flex-direction: column; overflow: hidden;
-  --lyr-ink: var(--sheet-ink); --lyr-ink-dim: var(--sheet-ink-dim); --lyr-ink-faint: var(--sheet-ink-faint);
-  --lyr-line: var(--sheet-line); --lyr-elev: var(--sheet-elev); --lyr-elev-2: rgba(255,255,255,.12);
-}
-.aivy-sheet-panel-lyrics .aivy-lyr2{ height: 100%; }
-.aivy-sheet-panel-lyrics .aivy-lyr2-head{ padding-top: 6px; }
-
-/* Lyrics � compact mobile layout */
-.aivy-lyrics-bg{
-  position: absolute; inset: -12%; z-index: 0; background-size: cover; background-position: center;
-  filter: blur(46px) saturate(1.4) brightness(.6); transform: scale(1.2); pointer-events: none;
-}
-.aivy-lyrics-bg::after{ content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.22) 0%, rgba(0,0,0,.45) 100%); }
-.aivy-lyr2{ position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; flex-direction: column; color: var(--lyr-ink); }
-.aivy-lyr2-head{ display: flex; align-items: center; gap: 10px; padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 8px; flex-shrink: 0; }
-.aivy-lyr2-head .thumb{ width: 44px; height: 44px; border-radius: 6px; overflow: hidden; flex-shrink: 0; background: rgba(255,255,255,.1); box-shadow: 0 4px 14px rgba(0,0,0,.35); }
-.aivy-lyr2-head .meta{ flex: 1; min-width: 0; }
-.aivy-lyr2-head .t{ font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.aivy-lyr2-head .t .badge{ display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.16); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; vertical-align: 2px; }
-.aivy-lyr2-head .a{ font-size: 12px; color: var(--lyr-ink-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.aivy-lyr2-head .aivy-icon-btn{ width: 34px; height: 34px; color: var(--lyr-ink-dim); flex-shrink: 0; }
-.aivy-lyr2-head .aivy-icon-btn.active{ color: #fff; }
-.aivy-lyr2-body{ position: relative; flex: 1; min-height: 0; }
-.aivy-lyr2-body .aivy-am-lyrics{ position: absolute; inset: 0; padding: 2px 8px 0; --lyrics-scroll-padding-top: 24%; }
+/* Lyrics — jump-to-active-line pill and Sing toggle, used inside the
+   morphing sheet's npx-lyrics-wrap / npx-sing-row (see NowPlayingSheet). */
 .aivy-lyr2-pill{
   position: absolute; right: 12px; bottom: 16px; z-index: 2;
   width: 30px; height: 46px; border-radius: 999px; border: .5px solid rgba(255,255,255,.25);
-  background: rgba(120,120,128,.36); backdrop-filter: blur(10px); color: #fff;
+  background: rgba(120,120,128,.36); backdrop-filter: blur(10px); color: var(--sheet-ink);
   display: flex; align-items: center; justify-content: center;
   transition: transform .15s var(--ease), background .2s var(--ease);
 }
 .aivy-lyr2-pill:active{ transform: scale(.92); background: rgba(120,120,128,.5); }
-.aivy-lyr2-controls{
-  flex-shrink: 0; display: flex; flex-direction: column;
-  padding: 6px 22px calc(14px + var(--safe-b));
-  background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.24) 100%);
-}
-.aivy-lyr2-controls .aivy-scrubber{ margin-left: 45px; margin-right: 45px; }
-.aivy-lyr2-controls .aivy-scrubber .track{ height: 6px; background: var(--lyr-line); }
-.aivy-lyr2-controls .aivy-scrubber:hover .track, .aivy-lyr2-controls .aivy-scrubber.dragging .track{ height: 8px; }
-.aivy-lyr2-controls .aivy-scrubber .fill, .aivy-lyr2-controls .aivy-scrubber .thumb{ background: var(--lyr-ink); }
-.aivy-lyr2-times{ display: grid; grid-template-columns: 36px 1fr 36px; gap: 9px; align-items: center; margin: 0 0 10px; }
-.aivy-lyr2-times .aivy-time{ width: auto; font-size: 11px; color: var(--lyr-ink-faint); }
-.aivy-lyr2-sing{ justify-self: center; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--lyr-ink-dim); transition: background .2s var(--ease), color .2s var(--ease); }
-.aivy-lyr2-sing.active{ background: var(--lyr-ink); color: #14150f; }
-.aivy-lyr2-controls .aivy-transport-btns{ justify-content: center; gap: 36px; margin: 8px 0 20px; }
-.aivy-lyr2-controls .aivy-transport-btns .aivy-icon-btn{ width: 44px; height: 44px; color: var(--lyr-ink); }
-.aivy-lyr2-controls .aivy-transport-btns .aivy-icon-btn svg{ width: 28px; height: 28px; }
-.aivy-lyr2-controls .aivy-play-btn{ width: 64px; height: 64px; background: transparent; color: #fff; }
-.aivy-lyr2-controls .aivy-play-btn:hover{ transform: scale(1.04); }
-.aivy-lyr2-controls .aivy-play-btn svg{ width: 46px; height: 46px; margin-left: 3px; }
-.aivy-lyr2-controls .aivy-vol{ display: grid; grid-template-columns: 36px 1fr 36px; gap: 9px; width: 100%; margin-bottom: 18px; }
-.aivy-lyr2-controls .aivy-vol .track{ width: 100%; max-width: none; height: 6px; background: var(--lyr-line); }
-.aivy-lyr2-controls .aivy-vol:hover .track, .aivy-lyr2-controls .aivy-vol.dragging .track{ height: 8px; }
-.aivy-lyr2-controls .aivy-vol .fill{ background: var(--lyr-ink); }
-.aivy-lyr2-controls .aivy-vol .aivy-icon-btn{ width: 36px; height: 36px; color: var(--lyr-ink-dim); }
-.aivy-lyr2-controls .vol-end{ color: var(--lyr-ink-faint); }
-.aivy-lyr2-controls .aivy-sheet-icon-row{ padding: 6px 8px 0; }
-.aivy-lyr2-controls .aivy-sheet-icon-row .aivy-icon-btn{ color: var(--lyr-ink-dim); }
-.aivy-lyr2-controls .aivy-sheet-icon-row .aivy-icon-btn.active{ color: var(--lyr-ink); }
+.aivy-lyr2-sing{ padding: 4px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--sheet-ink-dim); border: 1px solid var(--sheet-line); transition: background .2s var(--ease), color .2s var(--ease); }
+.aivy-lyr2-sing.active{ background: var(--sheet-ink); color: #14150f; border-color: transparent; }
 
 /* ===== Room 2.0 ===== */
 .aivy-room2-head{ margin-bottom: 16px; }
