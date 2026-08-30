@@ -12,10 +12,10 @@ const SHORTCUTS_KEY = "aivy_shortcut_overrides";
 const FOLDER_KEY = "aivy_last_download_folder";
 
 const THEME_SWATCHES = {
-  system: ["#171a12", "#8ca37c", "#ece8d9"],
-  black: ["#000000", "#8ca37c", "#f2f2f0"],
-  white: ["#ffffff", "#4c6b41", "#141414"],
-  dark: ["#12140f", "#8ca37c", "#ece8d9"],
+  system: ["#171a12", "#ece8d9", "#ece8d9"],
+  black: ["#000000", "#ffffff", "#f2f2f0"],
+  white: ["#ffffff", "#141414", "#141414"],
+  dark: ["#12140f", "#ece8d9", "#ece8d9"],
   ocean: ["#0b1220", "#4fa3e3", "#dfe9f5"],
   purple: ["#13101e", "#a78bfa", "#eae4f6"],
   forest: ["#0e1510", "#63b46a", "#e2ecdf"],
