@@ -144,6 +144,7 @@ export function RoomPage() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
   const [voted, setVoted] = useState(false);
+  const [skipPulsing, setSkipPulsing] = useState(false);
 
   useEffect(() => {
     if (!authUser) return;
@@ -234,7 +235,9 @@ export function RoomPage() {
                 <button className="aivy-icon-btn" onClick={togglePlay} aria-label={isPlaying ? t("pause") : t("play")}>
                   {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
                 </button>
-                <button className={`aivy-icon-btn skip ${voted ? "voted" : ""}`} onClick={handleSkip}
+                <button className={`aivy-icon-btn skip skip-next ${voted ? "voted" : ""} ${skipPulsing ? "is-pulsing" : ""}`}
+                  onClick={() => { handleSkip(); setSkipPulsing(true); }}
+                  onAnimationEnd={() => setSkipPulsing(false)}
                   aria-label={controlLocked ? t("voteSkipLabel") : t("next")}
                   title={controlLocked ? `${t("voteSkipLabel")} (${skipVote.count}/${skipVote.total || skipVote.needed})` : t("next")}>
                   <SkipForward size={17} fill="currentColor" />
