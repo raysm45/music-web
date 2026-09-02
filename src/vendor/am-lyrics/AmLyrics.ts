@@ -2007,6 +2007,11 @@ export class AmLyrics extends LitElement {
   @state()
   private translationLang = 'id';
 
+  // Incremented on every translate request; lets an in-flight request detect
+  // it's been superseded by a newer language switch and discard its result
+  // instead of clobbering a more recent translation.
+  private translationRequestSeq = 0;
+
   private static readonly TRANSLATION_LANGUAGES: { code: string; label: string }[] = [
     { code: 'id', label: 'Indonesia' },
     { code: 'en', label: 'English' },
@@ -2072,6 +2077,8 @@ export class AmLyrics extends LitElement {
     if (this.showTranslation && this.lyrics) {
       const needsTranslation = this.lyrics.some(l => !l.translation);
       if (needsTranslation) {
+        const requestedLang = this.translationLang;
+        const seq = (this.translationRequestSeq += 1);
         this.isLoading = true;
         try {
           // Prepare batch: extract text from all lines
@@ -2082,14 +2089,25 @@ export class AmLyrics extends LitElement {
 
           // If all are empty, skip
           if (textToTranslate.every(t => !t)) {
-            this.isLoading = false;
+            if (seq === this.translationRequestSeq) this.isLoading = false;
             return;
           }
 
           const result = await GoogleService.translate(
             textToTranslate,
-            this.translationLang,
+            requestedLang,
           );
+
+          // A newer language switch (or another applyTranslation call)
+          // started after this one — discard this now-stale result so it
+          // can't clobber the more recent translation on screen.
+          if (
+            seq !== this.translationRequestSeq ||
+            requestedLang !== this.translationLang
+          ) {
+            return;
+          }
+
           const translations = Array.isArray(result) ? result : [result];
 
           const newLyrics = this.lyrics.map((line, index) => {
@@ -2105,7 +2123,7 @@ export class AmLyrics extends LitElement {
           // eslint-disable-next-line no-console
           console.error('Translation failed', e);
         } finally {
-          this.isLoading = false;
+          if (seq === this.translationRequestSeq) this.isLoading = false;
         }
       }
     }
@@ -2233,6 +2251,9 @@ export class AmLyrics extends LitElement {
 
   @query('.lyrics-container')
   private lyricsContainer?: HTMLElement;
+
+  @query('.translation-lang-select')
+  private translationLangSelectEl?: HTMLSelectElement;
 
   private lastInstrumentalIndex: number | null = null;
 
@@ -4330,6 +4351,17 @@ export class AmLyrics extends LitElement {
   }
 
   updated(changedProperties: Map<string | number | symbol, unknown>) {
+    // Lit's `.value` property binding on a native <select> doesn't always
+    // stick (the browser's own selectedIndex can win the race), leaving the
+    // dropdown showing a stale language after switching. Force it in sync
+    // imperatively after every render.
+    if (
+      this.translationLangSelectEl &&
+      this.translationLangSelectEl.value !== this.translationLang
+    ) {
+      this.translationLangSelectEl.value = this.translationLang;
+    }
+
     const lyricsDomBecameRenderable =
       changedProperties.has('lyrics') ||
       (changedProperties.has('isLoading') &&
