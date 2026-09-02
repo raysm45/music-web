@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Search, X, Clock, TrendingUp, ArrowLeft, ArrowUpLeft, Mic, AudioLines, Music2, Smile, Globe } from "lucide-react";
+import { Search, X, Clock, TrendingUp, ArrowLeft, ArrowUpLeft, Mic, Music2, Smile, Globe } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
@@ -21,11 +21,13 @@ export function SearchPage() {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState([]);
   const [recentThumbs, setRecentThumbs] = useState(() => getRecentSearchThumbs());
   const [suggestions, setSuggestions] = useState([]);
   const [lyricsMap, setLyricsMap] = useState({});
+  const [checkingLyrics, setCheckingLyrics] = useState(false);
   const [artistHit, setArtistHit] = useState(null);
   const [genresOpen, setGenresOpen] = useState(false);
   const [listening, setListening] = useState(false);
@@ -80,6 +82,7 @@ export function SearchPage() {
     const seq = ++requestSeqRef.current;
     setSearching(true);
     setHasSearched(true);
+    setSearchedQuery(trimmed);
     setArtistHit(null);
 
     Api.artistQuick(trimmed).then((res) => {
@@ -151,6 +154,7 @@ export function SearchPage() {
   };
 
   const handleVoiceSearch = () => {
+    if (listening) { stopVoiceSearch(); return; }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     const rec = new SR();
@@ -177,15 +181,16 @@ export function SearchPage() {
   const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.thumbnail, duration: r.duration || null, artist: r.artist ? { name: r.artist } : null } : r));
 
   useEffect(() => {
-    if (!results.length) { setLyricsMap({}); return; }
+    if (!results.length) { setLyricsMap({}); setCheckingLyrics(false); return; }
     let cancelled = false;
     setLyricsMap({});
+    setCheckingLyrics(true);
     const items = results.map((r) => (r.videoId ? { id: r.videoId, title: r.title, artist: r.artist ? { name: r.artist } : null, duration: r.duration || null } : r));
     const found = {};
     const CONCURRENCY = 5;
     let cursor = 0;
     const worker = async () => {
-      while (cursor < items.length) {
+      while (!cancelled && cursor < items.length) {
         const item = items[cursor++];
         try {
           const cleanedTitle = cleanTrackTitleForLyrics(item.title, item.artist?.name);
@@ -197,14 +202,18 @@ export function SearchPage() {
       }
     };
     Promise.all(Array.from({ length: Math.min(CONCURRENCY, items.length) }, worker)).then(() => {
-      if (!cancelled) setLyricsMap({ ...found });
+      if (!cancelled) { setLyricsMap({ ...found }); setCheckingLyrics(false); }
     });
     return () => { cancelled = true; };
   }, [results]);
 
+  // Urutan final (lirik duluan) baru dipakai setelah pengecekan lirik selesai,
+  // supaya hasil pencarian yang sudah tampil tidak tiba-tiba lompat/geser
+  // posisinya saat data lirik baru masuk belakangan.
   const sortedList = useMemo(() => {
+    if (checkingLyrics) return list;
     return [...list].sort((a, b) => (lyricsMap[a.id] ? 0 : 1) - (lyricsMap[b.id] ? 0 : 1));
-  }, [list, lyricsMap]);
+  }, [list, lyricsMap, checkingLyrics]);
 
   return (
     <div className="aivy-view-enter">
@@ -222,11 +231,9 @@ export function SearchPage() {
           {query ? (
             <button className="aivy-icon-btn sm" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={15} /></button>
           ) : (
-            <button className="aivy-icon-btn sm" onClick={handleVoiceSearch} aria-label="Cari dengan suara"><Mic size={16} /></button>
+            <button className={`aivy-icon-btn sm ${listening ? "active" : ""}`} onClick={handleVoiceSearch} aria-label={listening ? t("stopVoiceSearch") : t("searchWithVoice")}><Mic size={16} /></button>
           )}
         </div>
-
-        <button className="aivy-waveform-btn" onClick={handleVoiceSearch} aria-label="Telusuri dengan suara"><AudioLines size={17} /></button>
 
         {focused && query.trim() && suggestions.length > 0 && (
           <div className="aivy-suggest-drop">
@@ -262,7 +269,7 @@ export function SearchPage() {
                   <div key={r.query} className="aivy-recent-row-v2" onClick={() => runSearch(r.query)}>
                     <span className="ic"><Clock size={17} /></span>
                     <span className="txt">{r.query}</span>
-                    <button className="fill" onClick={(e) => fillQuery(r.query, e)} aria-label="Isi ke kolom pencarian"><ArrowUpLeft size={16} /></button>
+                    <button className="fill" onClick={(e) => fillQuery(r.query, e)} aria-label={t("fillSearchBox")}><ArrowUpLeft size={16} /></button>
                   </div>
                 ))}
               </div>
@@ -271,8 +278,8 @@ export function SearchPage() {
           )}
 
           <section className="aivy-search-shortcuts">
-            <button className="aivy-shortcut-card"><span className="ic"><Music2 size={18} /></span><span className="lbl">Rilis baru</span></button>
-            <button className="aivy-shortcut-card"><span className="ic"><TrendingUp size={18} /></span><span className="lbl">Tangga lagu</span></button>
+            <button className="aivy-shortcut-card" onClick={() => runSearch(tt("rilis baru", "new releases"))}><span className="ic"><Music2 size={18} /></span><span className="lbl">Rilis baru</span></button>
+            <button className="aivy-shortcut-card" onClick={() => runSearch(tt("tangga lagu", "top charts"))}><span className="ic"><TrendingUp size={18} /></span><span className="lbl">Tangga lagu</span></button>
             <button className="aivy-shortcut-card" onClick={() => setGenresOpen((v) => !v)}><span className="ic"><Smile size={18} /></span><span className="lbl">Jenis musik &amp; suasana</span></button>
           </section>
 
@@ -309,13 +316,13 @@ export function SearchPage() {
 
       {hasSearched && (
         <div style={{ padding: "4px 2px 12px" }}>
-          {searching ? <span className="eyebrow">{t("searching")}</span> : <span className="eyebrow">{results.length} {t("resultsFor")} "{query}"</span>}
+          {searching ? <span className="eyebrow">{t("searching")}</span> : <span className="eyebrow">{results.length} {t("resultsFor")} "{searchedQuery}"</span>}
         </div>
       )}
 
       {hasSearched && (
-        searching ? <SkeletonList count={8} /> : (
-          sortedList.length ? <div>{sortedList.map((tr, i) => <TrackRow key={tr.id + i} track={tr} index={i} list={sortedList} queueMode="radio" source={{ type: "search" }} />)}</div> : (
+        (searching || checkingLyrics) ? <SkeletonList count={8} /> : (
+          sortedList.length ? <div>{sortedList.map((tr, i) => <TrackRow key={`${tr.id}-${i}`} track={tr} index={i} list={sortedList} queueMode="radio" source={{ type: "search" }} />)}</div> : (
             <div className="aivy-empty"><Search size={34} color="var(--ink-faint)" /><div className="title">{t("noResults")}</div><div className="sub">{t("noResultsSub")}</div></div>
           )
         )
