@@ -499,7 +499,13 @@ export function PlayerProvider({ children }) {
     progressElsRef.current.forEach((mode, el) => {
       if (!el) return;
       if (mode === "left") el.style.left = `${pct}%`;
-      else el.style.width = `${pct}%`;
+      // "fill" bars (mode === "width") dipakai buat progress bar yang di-update
+      // 60x/detik lewat requestAnimationFrame selama lagu main (lihat useEffect
+      // "tick" di bawah). Pakai transform: scaleX() alih-alih width supaya
+      // browser cuma perlu compositing di GPU, bukan hitung ulang layout tiap
+      // frame — animasi lain (scroll, transisi halaman) jadi nggak keteteran
+      // pas lagu diputar. Visualnya sama persis, cuma jalurnya lebih murah.
+      else el.style.transform = `scaleX(${pct / 100})`;
     });
   }, []);
 
