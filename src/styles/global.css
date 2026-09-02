@@ -65,7 +65,7 @@ body{
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overscroll-behavior: none;
 }
 a{ color: inherit; text-decoration: none; }
-button{ font-family: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+button{ font-family: inherit; color: inherit; background: none; border: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 input, select{ font-family: inherit; color: inherit; }
 ul{ list-style: none; margin: 0; padding: 0; }
 svg{ display: block; }
@@ -174,12 +174,30 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-content.is-mobile{ padding: 6px 16px 24px; }
 .aivy-content.no-pad{ padding: 0; overflow: hidden; }
 
-.aivy-icon-btn{ width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--ink-dim); flex-shrink: 0; transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
-.aivy-icon-btn:hover{ color: var(--ink); background: var(--bg-elev-2); }
+.aivy-icon-btn{ width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--ink-dim); flex-shrink: 0; background: none; transition: color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
+.aivy-icon-btn:hover{ color: var(--ink); background: none; }
+.aivy-icon-btn:active{ background: none; transform: scale(0.9); }
 .aivy-icon-btn.active{ color: var(--moss-strong); }
 .aivy-icon-btn.sm{ width: 28px; height: 28px; }
 .aivy-icon-btn:disabled{ opacity: .35; cursor: default; }
 .aivy-icon-btn:disabled:hover{ background: none; color: var(--ink-dim); }
+.aivy-icon-btn:disabled:active{ transform: none; }
+
+/* Seek previous/next press feedback: icon nudges in the skip direction and
+   snaps back, triggered from JS via the .is-pulsing class on click so the
+   full animation always plays even on a very quick tap. */
+.skip-prev.is-pulsing svg{ animation: aivy-skip-prev .32s var(--ease); }
+.skip-next.is-pulsing svg{ animation: aivy-skip-next .32s var(--ease); }
+@keyframes aivy-skip-prev{
+  0%{ transform: translateX(0) scale(1); }
+  35%{ transform: translateX(-4px) scale(0.82); }
+  100%{ transform: translateX(0) scale(1); }
+}
+@keyframes aivy-skip-next{
+  0%{ transform: translateX(0) scale(1); }
+  35%{ transform: translateX(4px) scale(0.82); }
+  100%{ transform: translateX(0) scale(1); }
+}
 
 .aivy-chip{ display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: var(--radius-pill); border: 1px solid var(--line); font-size: 12.5px; color: var(--ink-dim); font-weight: 500; white-space: nowrap; flex-shrink: 0; transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
 .aivy-chip:hover{ color: var(--ink); border-color: var(--ink-faint); }
@@ -304,9 +322,9 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-transport{ flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 640px; margin: 0 auto; }
 .aivy-transport-btns{ display: flex; align-items: center; gap: 6px; }
-.aivy-play-btn{ width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
-.aivy-play-btn:hover{ transform: scale(1.06); }
-.aivy-play-btn:active{ transform: scale(0.96); }
+.aivy-play-btn{ width: 34px; height: 34px; border-radius: 50%; background: none; color: var(--ink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
+.aivy-play-btn:hover{ transform: scale(1.06); background: none; }
+.aivy-play-btn:active{ transform: scale(0.9); background: none; }
 .aivy-play-btn svg{ margin-left: 1px; }
 .aivy-play-btn:disabled{ opacity: .4; }
 
@@ -577,7 +595,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .npx-titles .a{ font-size: 14px; color: var(--sheet-ink-dim); margin-top: 4px; }
 .npx-actions{ display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .npx-actions .aivy-icon-btn{ color: var(--sheet-ink-dim); }
-.npx-actions .aivy-icon-btn:hover{ color: var(--sheet-ink); background: var(--sheet-elev); }
+.npx-actions .aivy-icon-btn:hover{ color: var(--sheet-ink); background: none; }
 .npx-actions .aivy-icon-btn.active{ color: #ffd54a; }
 
 /* Compact "lyrics" state — cover shrinks to a thumbnail, title/artist move
@@ -632,7 +650,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet .aivy-time{ color: var(--sheet-ink-faint); }
 .aivy-sheet .aivy-transport-btns{ gap: 20px; margin-bottom: 8px; }
 .aivy-sheet .aivy-transport-btns .aivy-icon-btn{ color: var(--sheet-ink); }
-.aivy-sheet .aivy-play-btn{ width: 60px; height: 60px; background: var(--sheet-ink); color: #16180f; }
+.aivy-sheet .aivy-play-btn{ width: 60px; height: 60px; background: none; color: var(--sheet-ink); }
 .aivy-sheet .aivy-vol{ width: 100%; margin-bottom: 4px; }
 .aivy-sheet .aivy-vol .track{ background: var(--sheet-line); width: 100%; max-width: none; }
 .aivy-sheet .aivy-vol .fill{ background: var(--sheet-ink); }
@@ -640,7 +658,7 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-sheet-icon-row{ width: 100%; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 6px 26px; margin-top: 4px; }
 .aivy-sheet-icon-row .aivy-icon-btn{ color: var(--sheet-ink-dim); }
-.aivy-sheet-icon-row .aivy-icon-btn:hover{ color: var(--sheet-ink); background: var(--sheet-elev); }
+.aivy-sheet-icon-row .aivy-icon-btn:hover{ color: var(--sheet-ink); background: none; }
 .aivy-sheet-icon-row .aivy-icon-btn.active{ color: var(--sheet-ink); }
 .aivy-sheet-icon-row .aivy-icon-btn:disabled{ opacity: .3; }
 
@@ -1241,8 +1259,8 @@ body.aivy-resizing *{ user-select: none !important; }
 :root[data-theme="light"] .aivy-lyrics-track .cover,
 :root[data-theme="light"] .aivy-lyrics-share .cover-mini{ background: #eee; }
 :root[data-theme="light"] .aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn.active{ color: #000; }
-:root[data-theme="light"] .aivy-lyrics-side .aivy-play-btn{ background: #000; color: #fff; }
-:root[data-theme="light"] .aivy-lyrics-side .aivy-play-btn:hover{ background: #262626; }
+:root[data-theme="light"] .aivy-lyrics-side .aivy-play-btn{ background: none; color: #000; }
+:root[data-theme="light"] .aivy-lyrics-side .aivy-play-btn:hover{ background: none; }
 :root[data-theme="light"] .aivy-lyric-word .base{ color: rgba(20,21,15,.34); }
 :root[data-theme="light"] .aivy-lyric-word .fill{ color: #000; text-shadow: none; }
 
@@ -1286,7 +1304,7 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-lyrics-actions{ display: none; align-items: center; gap: 4px; padding: 0 22px 14px; flex-shrink: 0; }
 .aivy-lyrics-actions .aivy-icon-btn{ color: var(--lyr-ink-dim); }
-.aivy-lyrics-actions .aivy-icon-btn:hover{ color: var(--lyr-ink); background: var(--lyr-elev); }
+.aivy-lyrics-actions .aivy-icon-btn:hover{ color: var(--lyr-ink); background: none; }
 .aivy-lyrics-actions .aivy-icon-btn.active{ color: #fff; }
 
 .aivy-lyrics-share{ margin: 0 22px 14px; background: var(--lyr-elev); border: .5px solid var(--lyr-line); border-radius: var(--radius-md); padding: 14px; text-align: center; flex-shrink: 0; }
@@ -1326,10 +1344,10 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-lyrics-side .aivy-transport-btns{ display: flex; padding: 8px 22px 6px; justify-content: center; gap: 26px; }
 .aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn{ color: var(--lyr-ink-dim); }
-.aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn:hover{ color: var(--lyr-ink); background: var(--lyr-elev); }
+.aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn:hover{ color: var(--lyr-ink); background: none; }
 .aivy-lyrics-side .aivy-transport-btns .aivy-icon-btn.active{ color: #fff; }
-.aivy-lyrics-side .aivy-play-btn{ background: #fff; color: #000; }
-.aivy-lyrics-side .aivy-play-btn:hover{ background: #e6e6e6; }
+.aivy-lyrics-side .aivy-play-btn{ background: none; color: #fff; }
+.aivy-lyrics-side .aivy-play-btn:hover{ background: none; }
 
 .aivy-lyrics-side .aivy-vol{ display: grid; grid-template-columns: 30px 1fr 30px; align-items: center; gap: 8px; padding: 4px 22px 8px; }
 .aivy-lyrics-side .aivy-vol .track{ background: var(--lyr-line); width: 100%; }
@@ -1354,7 +1372,7 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-lyrics-side .aivy-sheet-icon-row{ padding: 8px 22px 22px; }
   .aivy-lyrics-side .aivy-sheet-icon-row .aivy-icon-btn{ color: var(--lyr-ink-dim); }
   .aivy-lyrics-side .aivy-sheet-icon-row .aivy-icon-btn:hover,
-  .aivy-lyrics-side .aivy-sheet-icon-row .aivy-icon-btn.active{ color: var(--lyr-ink); background: var(--lyr-elev); }
+  .aivy-lyrics-side .aivy-sheet-icon-row .aivy-icon-btn.active{ color: var(--lyr-ink); background: none; }
 }
 
 .aivy-lyrics-body-wrap{ position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
