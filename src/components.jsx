@@ -626,17 +626,21 @@ export function SkeletonHeroPage({ round = false, rows = 6 }) {
 export function TransportButtons({ big = false, minimal = false }) {
   const { isPlaying, togglePlay, next, prev, shuffle, toggleShuffle, repeat, cycleRepeat, currentTrack, room } = usePlayer();
   const { authUser, t } = useUI();
+  const [pulse, setPulse] = useState(null); // "prev" | "next" | null
   const RepeatIcon = repeat === "one" ? Repeat1 : Repeat;
   const isHost = !room || !authUser || room.hostId === authUser.id;
   const controlLocked = room && room.hostOnlyControl && !isHost;
+  const handlePrev = () => { prev(); setPulse("prev"); };
+  const handleNext = () => { next(false); setPulse("next"); };
+  const clearPulse = () => setPulse(null);
   return (
     <div className="aivy-transport-btns">
       {!minimal && <button className={`aivy-icon-btn ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} disabled={!!room}><Shuffle size={big ? 18 : 16} /></button>}
-      <button className="aivy-icon-btn" onClick={prev} disabled={!currentTrack || controlLocked} aria-label={t("previous")}><SkipBack size={big ? 22 : 18} fill="currentColor" /></button>
+      <button className={`aivy-icon-btn skip-prev ${pulse === "prev" ? "is-pulsing" : ""}`} onClick={handlePrev} onAnimationEnd={clearPulse} disabled={!currentTrack || controlLocked} aria-label={t("previous")}><SkipBack size={big ? 22 : 18} fill="currentColor" /></button>
       <button className="aivy-play-btn" onClick={togglePlay} disabled={!currentTrack || controlLocked} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={big ? 24 : 16} fill="currentColor" /> : <Play size={big ? 24 : 16} fill="currentColor" />}
       </button>
-      <button className="aivy-icon-btn" onClick={() => next(false)} disabled={!currentTrack || controlLocked} aria-label={t("next")}><SkipForward size={big ? 22 : 18} fill="currentColor" /></button>
+      <button className={`aivy-icon-btn skip-next ${pulse === "next" ? "is-pulsing" : ""}`} onClick={handleNext} onAnimationEnd={clearPulse} disabled={!currentTrack || controlLocked} aria-label={t("next")}><SkipForward size={big ? 22 : 18} fill="currentColor" /></button>
       {!minimal && <button className={`aivy-icon-btn ${repeat !== "off" ? "active" : ""}`} onClick={cycleRepeat} aria-label={t("repeat")} aria-pressed={repeat !== "off"} disabled={!!room}><RepeatIcon size={big ? 18 : 16} /></button>}
     </div>
   );
@@ -694,6 +698,7 @@ export function MiniPlayer({ onExpand }) {
   const { currentTrack, isPlaying, togglePlay, next, loadingAudio } = usePlayer();
   const { registerFill } = useScrubberBinding();
   const { t } = useUI();
+  const [pulsing, setPulsing] = useState(false);
   if (!currentTrack) return null;
   return (
     <div className="aivy-mini-player" onClick={onExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}>
@@ -702,7 +707,12 @@ export function MiniPlayer({ onExpand }) {
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
       </button>
-      <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); next(false); }} aria-label={t("next")}><SkipForward size={18} fill="currentColor" /></button>
+      <button
+        className={`aivy-icon-btn skip-next ${pulsing ? "is-pulsing" : ""}`}
+        onClick={(e) => { e.stopPropagation(); next(false); setPulsing(true); }}
+        onAnimationEnd={() => setPulsing(false)}
+        aria-label={t("next")}
+      ><SkipForward size={18} fill="currentColor" /></button>
       <div className={`mini-progress ${loadingAudio ? "is-loading" : ""}`}>{loadingAudio ? <div className="skeleton-shine" /> : <div className="fill" ref={registerFill} />}</div>
     </div>
   );
