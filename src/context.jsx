@@ -365,6 +365,26 @@ export function PlayerProvider({ children }) {
     a.crossOrigin = "anonymous";
     return a;
   })());
+  const promptCast = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return { ok: false, reason: "unsupported" };
+    // Remote Playback API — supported by Chromium-based browsers for
+    // casting an individual <audio>/<video> element to a Chromecast or
+    // similar receiver. Not implemented everywhere, so this degrades
+    // gracefully when unavailable rather than throwing.
+    if (!audio.remote || typeof audio.remote.prompt !== "function") {
+      return { ok: false, reason: "unsupported" };
+    }
+    try {
+      await audio.remote.prompt();
+      return { ok: true };
+    } catch (err) {
+      // User dismissed the device picker, or no devices were found —
+      // either way there's nothing actionable to surface as an error.
+      return { ok: false, reason: "cancelled" };
+    }
+  }, []);
+
   const progressElsRef = useRef(new Map());
   const resolvedFullCache = useRef(new Map());
   const recoveringRef = useRef(false);
@@ -1342,6 +1362,7 @@ export function PlayerProvider({ children }) {
     suggestedQueue, promoteSuggestion,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
     chatMessages, sendChatMessage, voteSkip,
+    promptCast,
   };
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;
 }

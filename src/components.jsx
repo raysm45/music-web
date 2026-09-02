@@ -7,6 +7,7 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
+  Cast, Info, Copy,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -819,12 +820,15 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     liked, toggleLike, loadingAudio, currentTrackHasLyrics,
   } = usePlayer();
   const { navigate } = useRouter();
-  const { t, lyricsOpen, toggleLyrics, closeLyrics, openContextMenu } = useUI();
+  const { t, lyricsOpen, toggleLyrics, closeLyrics } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
-  const menuItems = useTrackMenuItems(currentTrack || {});
-  const handleMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, menuItems); };
+  const isOpus = !!currentTrack && !isPreviewClip;
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [aodOpen, setAodOpen] = useState(false);
+  const handleMore = () => { if (!currentTrack) return; setMoreOpen(true); };
 
   const lyricsMode = !!(open && lyricsOpen);
   const [singMode, setSingMode] = useState(false);
@@ -926,7 +930,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               </div>
               <div className="npx-metarow">
                 <div className="npx-titles" ref={metaRef}>
-                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
+                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}{isOpus && <span className="badge badge-opus">OPUS</span>}</div>
                   <div
                     className="a"
                     onClick={() => { if (lyricsMode) return; currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}
@@ -988,7 +992,236 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
           </div>
         )}
       </div>
+
+      <TrackOptionsSheet
+        open={moreOpen}
+        track={currentTrack}
+        isOpus={isOpus}
+        onClose={() => setMoreOpen(false)}
+        onOpenDetail={() => { setMoreOpen(false); setDetailOpen(true); }}
+        onOpenAod={() => { setMoreOpen(false); setAodOpen(true); }}
+      />
+      <TrackDetailSheet
+        open={detailOpen}
+        track={currentTrack}
+        isOpus={isOpus}
+        isPreviewClip={isPreviewClip}
+        onClose={() => setDetailOpen(false)}
+      />
+      <AlwaysOnDisplay
+        open={aodOpen}
+        track={currentTrack}
+        onClose={() => setAodOpen(false)}
+      />
     </>
+  );
+}
+
+export function TrackOptionsSheet({ open, track, isOpus, onClose, onOpenDetail, onOpenAod }) {
+  const { navigate } = useRouter();
+  const { t, pushToast } = useUI();
+  const { promptCast } = usePlayer();
+  const sheetRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onKey(e) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!track) return null;
+
+  const handleCast = async () => {
+    onClose();
+    const res = await promptCast();
+    if (!res.ok) pushToast(res.reason === "unsupported" ? t("castUnsupported") : t("castNoDevice"));
+  };
+  const handleCopyLink = () => {
+    navigator.clipboard?.writeText(buildShareUrl(track));
+    pushToast(t("linkCopied"));
+    onClose();
+  };
+  const handleArtist = () => {
+    if (!track.artist?.id) return;
+    onClose();
+    navigate("artist", { params: { id: track.artist.id } });
+  };
+  const handleAlbum = () => {
+    if (!track.album?.id) return;
+    onClose();
+    navigate("album", { params: { id: track.album.id } });
+  };
+
+  const items = [
+    { key: "detail", icon: <Info size={18} />, label: t("npDetail"), onSelect: onOpenDetail },
+    { key: "cast", icon: <Cast size={18} />, label: t("npCast"), onSelect: handleCast },
+    { key: "artist", icon: <Music2 size={18} />, label: t("npViewArtist"), onSelect: handleArtist, disabled: !track.artist?.id },
+    { key: "album", icon: <Music2 size={18} />, label: t("npViewAlbum"), onSelect: handleAlbum, disabled: !track.album?.id },
+    { key: "copy", icon: <Share2 size={18} />, label: t("npCopyLink"), onSelect: handleCopyLink },
+    { key: "aod", icon: <Moon size={18} />, label: t("npAodMode"), onSelect: onOpenAod },
+  ];
+
+  return (
+    <>
+      <div className={`aivy-sheet-backdrop over-sheet ${open ? "open" : ""}`} onClick={onClose} />
+      <div ref={sheetRef} className={`aivy-actionsheet ${open ? "open" : ""}`} aria-hidden={!open}>
+        <div className="aivy-actionsheet-grabber" onClick={onClose} />
+        <div className="aivy-actionsheet-track">
+          <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={8} style={{ width: 44, height: 44 }} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {track.title}{isOpus && <span className="badge badge-opus" style={{ marginLeft: 6 }}>OPUS</span>}
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {track.artist?.name || "\u2014"}
+            </div>
+          </div>
+        </div>
+        {items.map((item) => (
+          <button
+            key={item.key}
+            className={`aivy-actionsheet-item ${item.disabled ? "disabled" : ""}`}
+            onClick={item.onSelect}
+            disabled={item.disabled}
+          >
+            {item.icon}<span>{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function TrackDetailInfoTab({ track }) {
+  const { t, pushToast } = useUI();
+  const copy = (value) => { if (!value) return; navigator.clipboard?.writeText(String(value)); pushToast(t("copiedToClipboard")); };
+  const rows = [
+    { label: t("detailSongTitle"), value: track.title },
+    { label: t("detailSongArtist"), value: track.artist?.name },
+  ];
+  if (track.album?.title) rows.push({ label: t("detailSongAlbum"), value: track.album.title });
+  rows.push({ label: t("detailMediaId"), value: track.videoId || track.id });
+
+  return (
+    <div className="aivy-detailsheet-list">
+      {rows.filter((r) => r.value).map((r, i) => (
+        <div key={i} className="aivy-detailsheet-row">
+          <div style={{ minWidth: 0 }}>
+            <div className="lbl">{r.label}</div>
+            <div className="val">{r.value}</div>
+          </div>
+          <button className="aivy-icon-btn sm" onClick={() => copy(r.value)} aria-label={t("copiedToClipboard")}><Copy size={15} /></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TrackDetailTechnicalTab({ track, isOpus, isPreviewClip }) {
+  const { t, pushToast } = useUI();
+  const copy = (value) => { if (!value) return; navigator.clipboard?.writeText(String(value)); pushToast(t("copiedToClipboard")); };
+
+  // We don't probe the actual media stream, but the two source types this
+  // app plays are consistent enough to state their format outright:
+  // full tracks are proxied YouTube audio (itag 251 = webm/opus @ 48kHz),
+  // and previews are 30s Deezer clips (mpeg/mp3).
+  const rows = isOpus
+    ? [
+        { label: t("detailQuality"), value: t("detailQualityFull") },
+        { label: t("detailMimeType"), value: "audio/webm" },
+        { label: t("detailCodec"), value: "opus" },
+        { label: t("detailSampleRate"), value: "48000 Hz" },
+        { label: t("detailItag"), value: "251" },
+        { label: t("detailSource"), value: "YouTube" },
+      ]
+    : [
+        { label: t("detailQuality"), value: t("detailQualityPreview") },
+        { label: t("detailMimeType"), value: "audio/mpeg" },
+        { label: t("detailCodec"), value: "mp3" },
+        { label: t("detailSource"), value: "Deezer" },
+      ];
+
+  return (
+    <div className="aivy-detailsheet-list">
+      {rows.map((r, i) => (
+        <div key={i} className="aivy-detailsheet-row">
+          <div style={{ minWidth: 0 }}>
+            <div className="lbl">{r.label}</div>
+            <div className="val">{r.value}</div>
+          </div>
+          <button className="aivy-icon-btn sm" onClick={() => copy(r.value)} aria-label={t("copiedToClipboard")}><Copy size={15} /></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function TrackDetailSheet({ open, track, isOpus, isPreviewClip, onClose }) {
+  const { t } = useUI();
+  const [tab, setTab] = useState("info");
+  useEffect(() => { if (open) setTab("info"); }, [open, track?.id]);
+
+  if (!track) return null;
+
+  return (
+    <>
+      <div className={`aivy-sheet-backdrop over-sheet ${open ? "open" : ""}`} onClick={onClose} />
+      <div className={`aivy-detailsheet ${open ? "open" : ""}`} aria-hidden={!open}>
+        <div className="aivy-detailsheet-grabber" onClick={onClose} />
+        <div className="aivy-detailsheet-body aivy-scroll">
+          <div className="aivy-detailsheet-head">
+            <SmartCover src={track.cover} seed={track.id + track.title} size={52} radius={10} style={{ width: 52, height: 52 }} />
+            <div style={{ minWidth: 0 }}>
+              <div className="eyebrow">{t("npDetail")}</div>
+              <div className="ttl" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.title}</div>
+              <div className="sub" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.artist?.name || "\u2014"}</div>
+            </div>
+          </div>
+
+          <div className="aivy-detailsheet-tabs">
+            <button className={tab === "info" ? "active" : ""} onClick={() => setTab("info")}>{t("detailTabInfo")}</button>
+            <button className={tab === "technical" ? "active" : ""} onClick={() => setTab("technical")}>{t("detailTabTechnical")}</button>
+          </div>
+
+          {tab === "info"
+            ? <TrackDetailInfoTab track={track} />
+            : <TrackDetailTechnicalTab track={track} isOpus={isOpus} isPreviewClip={isPreviewClip} />}
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function AlwaysOnDisplay({ open, track, onClose }) {
+  const { t } = useUI();
+  const { isPlaying } = usePlayer();
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const id = setInterval(() => setNow(new Date()), 1000 * 15);
+    setNow(new Date());
+    return () => clearInterval(id);
+  }, [open]);
+
+  if (!track) return null;
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+
+  return (
+    <div className={`aivy-aod ${open ? "open" : ""}`} aria-hidden={!open} onClick={onClose}>
+      <div className="aivy-aod-clock">{hh}<span className="colon">:</span>{mm}</div>
+      <div className="aivy-aod-track">
+        <SmartCover src={track.cover} seed={track.id + track.title} size={28} radius={6} style={{ width: 28, height: 28 }} />
+        <div className="aivy-aod-meta">
+          <div className="t">{track.title}</div>
+          <div className="a">{track.artist?.name || "\u2014"}</div>
+        </div>
+        <span className={`aivy-aod-dot ${isPlaying ? "is-playing" : ""}`} aria-hidden="true" />
+      </div>
+      <div className="aivy-aod-hint">{t("aodTapToExit")}</div>
+    </div>
   );
 }
 
