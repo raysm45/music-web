@@ -228,6 +228,9 @@ const dict = {
 
     searchPlaceholder: "Cari lagu atau artist, lalu tekan Enter",
     clear: "Bersihin",
+    searchWithVoice: "Cari dengan suara",
+    stopVoiceSearch: "Berhenti dengerin",
+    fillSearchBox: "Isi ke kolom pencarian",
     recentSearches: "Pencarian terakhir",
     clearAll: "Bersihin semua",
     exploreGenre: "Jelajahi genre",
@@ -583,6 +586,9 @@ const dict = {
 
     searchPlaceholder: "Search for a song or artist, then press Enter",
     clear: "Clear",
+    searchWithVoice: "Search with voice",
+    stopVoiceSearch: "Stop listening",
+    fillSearchBox: "Fill search box",
     recentSearches: "Recent searches",
     clearAll: "Clear all",
     exploreGenre: "Explore genres",
