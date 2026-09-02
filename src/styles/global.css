@@ -262,7 +262,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-row .meta .a:hover{ color: var(--ink-dim); text-decoration: underline; }
 .aivy-row .col-album{ min-width: 0; flex: 1; font-size: 12.5px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: none; }
 .aivy-row .right{ display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.aivy-row .dur{ font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); min-width: 40px; text-align: right; flex-shrink: 0; white-space: nowrap; }
+.aivy-row .dur{ font-family: var(--font-body); font-size: 12px; color: var(--ink-faint); min-width: 40px; text-align: right; flex-shrink: 0; white-space: nowrap; }
 .aivy-row .row-actions{ display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity var(--dur-fast) var(--ease); }
 .aivy-row:hover .row-actions{ opacity: 1; }
 .aivy-row .row-actions.liked{ opacity: 1; }
