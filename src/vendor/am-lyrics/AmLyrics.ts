@@ -2594,9 +2594,10 @@ export class AmLyrics extends LitElement {
   }
 
   private static getDisplaySourceLabel(sourceLabel: string): string {
-    return sourceLabel.toLowerCase().includes('lyricsplus')
-      ? 'QQ'
-      : sourceLabel;
+    const lower = sourceLabel.toLowerCase();
+    if (lower.includes('lyricsplus')) return 'QQ';
+    if (lower.includes('bini')) return 'Aivy-Lyrics';
+    return sourceLabel;
   }
 
   private static getSourceKey(sourceLabel: string | null | undefined): string {
@@ -7527,7 +7528,9 @@ export class AmLyrics extends LitElement {
     // and new public CSS variables (which take precedence)
     this.style.setProperty('--highlight-color', this.highlightColor);
 
-    const sourceLabel = this.lyricsSource ?? 'Unavailable';
+    const sourceLabel = this.lyricsSource
+      ? AmLyrics.getDisplaySourceLabel(this.lyricsSource)
+      : 'Unavailable';
 
     const isUnsynced = this.cachedIsUnsynced;
     const hasLeftAlignedLines = this.lyrics?.some(
@@ -8179,17 +8182,6 @@ export class AmLyrics extends LitElement {
                           .songwriters}
                       </span>`
                     : ''}
-                  <span class="version-info" style="margin-top: 8px;">
-                    <b style="font-weight: 750;">am-lyrics</b> v${VERSION} •
-
-                    <a
-                      href="https://github.com/uimaxbai/apple-music-web-components"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style="display: inline-flex; align-items: center; gap: 4px;"
-                      >Star me on GitHub
-                    </a>
-                  </span>
                 </div>
               </footer>
             `
