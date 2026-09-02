@@ -849,33 +849,23 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const scrollToActiveLyric = () => {
     const el = document.getElementById("aivy-am-lyrics-mobile");
     if (!el) return;
-    // `isUserScrolling`/`userScrollTimeoutId`/`_handleActiveLineScroll` are
-    // marked `private` only in am-lyrics' TypeScript source — at runtime
-    // they're ordinary instance properties/methods we can reach from here.
-    // Just nudging `currentTime` (the old trick) isn't enough: the library
-    // gates its own auto-scroll on `!isUserScrolling`, so while that flag
-    // is still true (within its own 5s "let momentum settle" window) our
-    // time nudge gets silently ignored. Clear it directly, then force one
-    // immediate scroll to the active line.
-    if (el.userScrollTimeoutId) {
-      clearTimeout(el.userScrollTimeoutId);
-      el.userScrollTimeoutId = undefined;
-    }
-    el.isUserScrolling = false;
-    el.lyricsContainer?.classList.remove("user-scrolling", "not-focused");
-    el.autoScroll = true;
-    if (typeof el._handleActiveLineScroll === "function") {
-      el._handleActiveLineScroll([], true);
+    // `resumeAutoScroll` is marked `private` only in am-lyrics' TypeScript
+    // source — at runtime it's an ordinary instance method we can reach
+    // from here. It clears the manual-scroll flag and jumps back to the
+    // active line in one go.
+    if (typeof el.resumeAutoScroll === "function") {
+      el.resumeAutoScroll();
     }
     setLyricsUnsynced(false);
   };
 
-  // Sembunyikan pill "Sync" selama lirik masih auto-scroll mengikuti lagu.
+  // Tampilkan pill "Sync" selama lirik masih di-scroll manual oleh user.
   // am-lyrics sudah mendeteksi scroll manual sendiri (lewat wheel/touchmove
   // di dalam shadow DOM-nya) dan menambah class "user-scrolling" ke
-  // container-nya selama itu — kita cuma numpang lihat class itu lewat
-  // MutationObserver, tanpa ikut mematikan autoScroll bawaannya, supaya
-  // fitur auto-resume 5 detik miliknya tetap jalan seperti biasa.
+  // container-nya selama itu, dan class itu TIDAK lagi otomatis hilang
+  // setelah beberapa detik — hanya hilang saat user menekan tombol Sync
+  // (lihat scrollToActiveLyric di atas). Kita cuma numpang lihat class itu
+  // lewat MutationObserver untuk tahu kapan pill-nya harus muncul.
   useEffect(() => {
     if (!lyricsMounted) return undefined;
     let observer;
@@ -2229,6 +2219,7 @@ export function LyricsOverlay() {
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
+  const [lyricsUnsynced, setLyricsUnsynced] = useState(false);
   // Warna highlight mengikuti tema TER-RESOLVE (light/white/latte = terang),
   // bukan cuma setting "light" — dan di mobile selalu putih karena
   // background-nya blur sampul yang gelap.
@@ -2256,6 +2247,48 @@ export function LyricsOverlay() {
       document.removeEventListener("touchmove", onTouchMove);
     };
   }, [lyricsOpen]);
+
+  const scrollToActiveLyric = () => {
+    const el = document.getElementById("aivy-am-lyrics-desktop");
+    if (!el) return;
+    // `resumeAutoScroll` is marked `private` only in am-lyrics' TypeScript
+    // source — at runtime it's an ordinary instance method we can reach
+    // from here. It clears the manual-scroll flag and jumps back to the
+    // active line in one go.
+    if (typeof el.resumeAutoScroll === "function") {
+      el.resumeAutoScroll();
+    }
+    setLyricsUnsynced(false);
+  };
+
+  // Tampilkan pill "Sync" selama lirik masih di-scroll manual oleh user.
+  // am-lyrics menandai itu lewat class "user-scrolling" pada container-nya,
+  // dan class itu cuma hilang saat scrollToActiveLyric() dipanggil di atas.
+  useEffect(() => {
+    if (!lyricsOpen) return undefined;
+    let observer;
+    let retryTimer;
+    let tries = 0;
+
+    const attach = () => {
+      const el = document.getElementById("aivy-am-lyrics-desktop");
+      const container = el?.lyricsContainer;
+      if (!container) {
+        if (tries++ < 25) retryTimer = setTimeout(attach, 200);
+        return;
+      }
+      const sync = () => setLyricsUnsynced(container.classList.contains("user-scrolling"));
+      sync();
+      observer = new MutationObserver(sync);
+      observer.observe(container, { attributes: true, attributeFilter: ["class"] });
+    };
+    attach();
+
+    return () => {
+      clearTimeout(retryTimer);
+      observer?.disconnect();
+    };
+  }, [lyricsOpen, trackKey]);
 
   // No manual lyrics fetch here anymore — <am-lyrics> (AppleLyricsPane)
   // resolves everything itself against its own provider chain (BiniLyrics/
@@ -2405,12 +2438,18 @@ export function LyricsOverlay() {
 
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
             <AppleLyricsPane
+              id="aivy-am-lyrics-desktop"
               track={currentTrack}
               currentTime={currentTime}
               onSeek={seekTo}
               highlightColor={highlightColor}
               fontSize={fontSize}
             />
+            {lyricsUnsynced && (
+              <button type="button" className="aivy-lyr2-pill" onClick={scrollToActiveLyric}>
+                {t("syncLyrics")}
+              </button>
+            )}
           </div>
         </div>
       )}
