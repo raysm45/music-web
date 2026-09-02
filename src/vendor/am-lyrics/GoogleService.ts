@@ -140,10 +140,11 @@ export class GoogleService {
               CONFIG.GOOGLE.RETRY_DELAY_MS * 2 ** (attempt - 1),
             );
           } else {
-            // Fail: fill with original
-            indices.forEach((originalIdx, i) => {
-              translatedResults[originalIdx] = batch[i];
-            });
+            // Fail: leave these entries empty (not the original text) so the
+            // caller sees them as untranslated and a later retry is possible,
+            // instead of silently "succeeding" with translation === original.
+            // eslint-disable-next-line no-console
+            console.error('GoogleService.translate: giving up after retries', e);
           }
         }
       }

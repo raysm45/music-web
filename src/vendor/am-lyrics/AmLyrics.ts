@@ -2004,6 +2004,25 @@ export class AmLyrics extends LitElement {
   @state()
   private showTranslation = false;
 
+  @state()
+  private translationLang = 'id';
+
+  private static readonly TRANSLATION_LANGUAGES: { code: string; label: string }[] = [
+    { code: 'id', label: 'Indonesia' },
+    { code: 'en', label: 'English' },
+    { code: 'ja', label: '日本語' },
+    { code: 'ko', label: '한국어' },
+    { code: 'zh-CN', label: '中文 (简体)' },
+    { code: 'es', label: 'Español' },
+    { code: 'fr', label: 'Français' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'pt', label: 'Português' },
+    { code: 'ar', label: 'العربية' },
+    { code: 'hi', label: 'हिन्दी' },
+    { code: 'th', label: 'ไทย' },
+    { code: 'vi', label: 'Tiếng Việt' },
+  ];
+
   private async toggleRomanization() {
     this.showRomanization = !this.showRomanization;
     await this.applyRomanization();
@@ -2036,6 +2055,19 @@ export class AmLyrics extends LitElement {
     await this.applyTranslation();
   }
 
+  private async changeTranslationLang(lang: string) {
+    if (!lang || lang === this.translationLang) return;
+    this.translationLang = lang;
+    // Existing cached translations are in the old language — drop them
+    // so applyTranslation() below re-fetches in the newly selected language.
+    if (this.lyrics) {
+      this.lyrics = this.lyrics.map(l => ({ ...l, translation: undefined }));
+    }
+    if (this.showTranslation) {
+      await this.applyTranslation();
+    }
+  }
+
   private async applyTranslation() {
     if (this.showTranslation && this.lyrics) {
       const needsTranslation = this.lyrics.some(l => !l.translation);
@@ -2054,7 +2086,10 @@ export class AmLyrics extends LitElement {
             return;
           }
 
-          const result = await GoogleService.translate(textToTranslate, 'en');
+          const result = await GoogleService.translate(
+            textToTranslate,
+            this.translationLang,
+          );
           const translations = Array.isArray(result) ? result : [result];
 
           const newLyrics = this.lyrics.map((line, index) => {
@@ -8074,6 +8109,24 @@ export class AmLyrics extends LitElement {
                       <path d="M14 18h6" />
                     </svg>
                   </button>
+                  ${this.showTranslation
+                    ? html`<select
+                        class="format-select translation-lang-select"
+                        aria-label="Translation language"
+                        title="Translation language"
+                        .value=${this.translationLang}
+                        @change=${(e: Event) => {
+                          const lang = (e.target as HTMLSelectElement).value;
+                          this.changeTranslationLang(lang);
+                        }}
+                        @click=${(e: Event) => e.stopPropagation()}
+                      >
+                        ${AmLyrics.TRANSLATION_LANGUAGES.map(
+                          ({ code, label }) =>
+                            html`<option value=${code}>${label}</option>`,
+                        )}
+                      </select>`
+                    : ''}
                 </div>
                 <div class="download-controls">
                   <select
