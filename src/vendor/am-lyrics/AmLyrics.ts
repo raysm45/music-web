@@ -8,7 +8,6 @@ const FETCH_TIMEOUT_MS = 8000; // Timeout for all lyrics fetch requests
 const SEEK_THRESHOLD_MS = 500;
 const SCROLL_ANIMATION_DURATION_MS = 350;
 const BACKGROUND_EXIT_DURATION_MS = 450;
-const USER_SCROLL_RESUME_DELAY_MS = 5000;
 const GAP_PULSE_DURATION_MS = 4000;
 const GAP_ENTRY_FADE_MS = 160;
 const GAP_ENTRY_SCALE_MS = 400;
@@ -2005,7 +2004,7 @@ export class AmLyrics extends LitElement {
   private showTranslation = false;
 
   @state()
-  private translationLang = 'id';
+  private translationLang = 'en';
 
   // Incremented on every translate request; lets an in-flight request detect
   // it's been superseded by a newer language switch and discard its result
@@ -2013,8 +2012,8 @@ export class AmLyrics extends LitElement {
   private translationRequestSeq = 0;
 
   private static readonly TRANSLATION_LANGUAGES: { code: string; label: string }[] = [
-    { code: 'id', label: 'Indonesia' },
     { code: 'en', label: 'English' },
+    { code: 'id', label: 'Indonesia' },
     { code: 'ja', label: '日本語' },
     { code: 'ko', label: '한국어' },
     { code: 'zh-CN', label: '中文 (简体)' },
@@ -5499,26 +5498,34 @@ export class AmLyrics extends LitElement {
       return;
     }
 
-    // Mark that user is currently scrolling
+    // Mark that user is currently scrolling. Unlike before, this no longer
+    // auto-clears after a delay — once the user scrolls manually, auto-scroll
+    // stays off until they explicitly resync (see resumeAutoScroll()).
     this.setUserScrolling(true);
 
     this.clearPastLineHighlights();
 
-    // Clear any existing timeout
     if (this.userScrollTimeoutId) {
       clearTimeout(this.userScrollTimeoutId);
-    }
-
-    // Let native momentum settle before returning control to auto-scroll.
-    this.userScrollTimeoutId = window.setTimeout(() => {
-      this.setUserScrolling(false);
       this.userScrollTimeoutId = undefined;
+    }
+  }
 
-      // Optionally scroll back to current active line when re-enabling auto-scroll
-      if (this.activeLineIndices.length > 0) {
-        this._handleActiveLineScroll([], false);
-      }
-    }, USER_SCROLL_RESUME_DELAY_MS);
+  /**
+   * Publicly reachable (via the DOM element, since TS `private` is not
+   * enforced at runtime) way to resume auto-scroll after the user has
+   * manually scrolled the lyrics — used by the "Sync" button in the host UI.
+   */
+  private resumeAutoScroll() {
+    if (this.userScrollTimeoutId) {
+      clearTimeout(this.userScrollTimeoutId);
+      this.userScrollTimeoutId = undefined;
+    }
+    this.setUserScrolling(false);
+    this.lyricsContainer?.classList.remove('not-focused');
+    if (this.activeLineIndices.length > 0) {
+      this._handleActiveLineScroll([], true);
+    }
   }
 
   private clearPastLineHighlights() {
