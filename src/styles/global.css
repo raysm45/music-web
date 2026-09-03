@@ -587,9 +587,9 @@ body.aivy-resizing *{ user-select: none !important; }
   filter: blur(46px) saturate(1.5) brightness(.55); transform: scale(1.15); pointer-events: none;
 }
 .aivy-sheet-bg::after{ content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%); }
-.aivy-sheet-head{ position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top,0px)) 18px 6px; flex-shrink: 0; color: var(--sheet-ink); }
+.aivy-sheet-head{ position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top,0px)) 18px 6px; flex-shrink: 0; color: var(--sheet-ink); touch-action: none; }
 .aivy-sheet-head-actions{ display: flex; align-items: center; gap: 4px; }
-.aivy-sheet-body{ position: relative; z-index: 2; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y; display: flex; flex-direction: column; align-items: center; padding: 6px 26px calc(28px + var(--safe-b)); color: var(--sheet-ink); }
+.aivy-sheet-body{ position: relative; z-index: 2; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; align-items: center; padding: 6px 26px calc(28px + var(--safe-b)); color: var(--sheet-ink); }
 /* ---- Morphing hero: cover + title/artist shared between "player" and
    "lyrics" layouts of the same sheet. The two layouts below are plain,
    independent CSS states — the actual smooth morph between them is done
@@ -644,7 +644,7 @@ body.aivy-resizing *{ user-select: none !important; }
    mode instead lets the lyrics pane fill the middle (order 1) and groups
    the playback controls together with the icon row at the bottom, exactly
    like the pre-lyrics-mode layout used to. */
-.aivy-sheet .npx-hero{ order: 0; }
+.aivy-sheet .npx-hero{ order: 0; touch-action: none; }
 .aivy-sheet .npx-top-controls{ order: 1; }
 .aivy-sheet .aivy-sheet-icon-row{ order: 3; }
 .aivy-sheet.mode-lyrics .npx-lyrics-wrap{ order: 1; }
@@ -712,6 +712,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-detailsheet-tabs button{ flex: 1; padding: 8px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink-dim); }
 .aivy-detailsheet-tabs button.active{ background: var(--bg-elev); color: var(--ink); box-shadow: var(--shadow-pop); }
 .aivy-detailsheet-list{ background: var(--bg-elev-2); border-radius: 14px; overflow: hidden; margin-bottom: 8px; }
+.aivy-detailsheet-audio-ceiling{ font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); padding: 10px 4px 2px; }
 .aivy-detailsheet-credits{ margin-top: 4px; }
 .aivy-detailsheet-subhead{ font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-faint); padding: 4px 4px 8px; }
 .aivy-detailsheet-subhead-row{ display: flex; align-items: center; justify-content: space-between; }
@@ -1674,7 +1675,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-tab-sealed button{ pointer-events: none; opacity: .5; }
 
 /* ===== Apple Music-style mobile Now Playing & Lyrics ===== */
-.aivy-sheet-grabber-row{ position: relative; z-index: 2; display: flex; justify-content: center; padding: calc(10px + env(safe-area-inset-top, 0px)) 0 2px; flex-shrink: 0; }
+.aivy-sheet-grabber-row{ position: relative; z-index: 2; display: flex; justify-content: center; padding: calc(10px + env(safe-area-inset-top, 0px)) 0 2px; flex-shrink: 0; touch-action: none; }
 .aivy-sheet-grabber{ width: 38px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.35); padding: 0; }
 .aivy-sheet-grabber:active{ background: rgba(255,255,255,.55); }
 
