@@ -520,6 +520,8 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-credits-card-row .name{ font-size: 14px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aivy-credits-card-row .role{ font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aivy-credits-card-row .aivy-chip{ padding: 6px 14px; font-size: 12px; }
+.aivy-credits-card-description{ font-size: 13px; line-height: 1.55; color: var(--ink-dim); white-space: pre-wrap; padding: 10px 0; }
+.aivy-credits-card-description--loading{ color: var(--ink-faint); font-style: italic; }
 
 /* Full breakdown modal, opened via "Show all" */
 .aivy-credits-modal{ width: min(440px, 100%); padding: 24px 22px; }
@@ -530,6 +532,11 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-credits-group .names{ font-size: 13.5px; line-height: 1.5; color: var(--ink-dim); }
 .aivy-credits-group .names strong{ color: var(--ink); font-weight: 700; }
 .aivy-credits-source{ font-size: 12px; line-height: 1.5; color: var(--ink-faint); padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.aivy-credits-modal-description{ font-size: 13.5px; line-height: 1.6; color: var(--ink-dim); white-space: pre-wrap; }
+.aivy-credits-modal-description--loading{ color: var(--ink-faint); font-style: italic; }
+.aivy-credits-modal-description--empty{ color: var(--ink-faint); }
+.aivy-credits-copy-btn{ display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line-soft); background: var(--bg-elev); color: var(--ink); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.aivy-credits-copy-btn:hover{ background: var(--bg-elev-hover, var(--bg-elev)); }
 .aivy-room-pane-head{ display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 4px 6px 10px; }
 .aivy-room-pane-head .t{ font-family: var(--font-display); font-size: 16px; font-weight: 600; }
 .aivy-room-members{ display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
@@ -707,6 +714,10 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-detailsheet-list{ background: var(--bg-elev-2); border-radius: 14px; overflow: hidden; margin-bottom: 8px; }
 .aivy-detailsheet-credits{ margin-top: 4px; }
 .aivy-detailsheet-subhead{ font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-faint); padding: 4px 4px 8px; }
+.aivy-detailsheet-subhead-row{ display: flex; align-items: center; justify-content: space-between; }
+.aivy-detailsheet-description{ font-size: 13.5px; line-height: 1.6; color: var(--ink-dim); white-space: pre-wrap; padding: 4px 4px 12px; }
+.aivy-detailsheet-description-loading{ font-size: 13px; color: var(--ink-faint); font-style: italic; padding: 4px 4px 12px; }
+.aivy-detailsheet-description-empty{ font-size: 13px; color: var(--ink-faint); padding: 4px 4px 12px; }
 .aivy-detailsheet-row{ display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
 .aivy-detailsheet-row:last-child{ border-bottom: none; }
 .aivy-detailsheet-row .lbl{ font-size: 11.5px; color: var(--ink-faint); margin-bottom: 2px; }
