@@ -37,8 +37,12 @@ export const Api = {
   artistQuick: (q) => apiGet(`/api/artist/quick?q=${encodeURIComponent(q)}`),
   album: (id) => apiGet(`/api/album/${id}`),
   track: (id) => apiGet(`/api/track/${id}`),
-  trackCredits: ({ title, artist }) =>
-    apiGet(`/api/track/credits?title=${encodeURIComponent(title || "")}&artist=${encodeURIComponent(artist || "")}`),
+  // ArchiveTune-style: ambil deskripsi asli video YouTube (bukan title/artist lookup lagi).
+  // Backend harus panggil innertube WEB client (bukan WEB_REMIX) ke endpoint /next
+  // lalu ambil videoSecondaryInfoRenderer.attributedDescription.content.
+  // Lihat server-reference/track-description.js untuk contoh implementasi backend.
+  trackDescription: (videoId) =>
+    apiGet(`/api/track/description?videoId=${encodeURIComponent(videoId || "")}`),
   similar: (args) =>
     apiGet(`/api/similar?${args.trackId ? `trackId=${encodeURIComponent(args.trackId)}` : `title=${encodeURIComponent(args.title)}&artist=${encodeURIComponent(args.artist || "")}`}`),
 

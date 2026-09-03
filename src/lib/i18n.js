@@ -70,6 +70,9 @@ const dict = {
     writtenByLabel: "Ditulis oleh",
     producedByLabel: "Diproduksi oleh",
     sourceLabel: "Sumber",
+    descriptionLabel: "Deskripsi",
+    copyLabel: "Salin",
+    descriptionUnavailable: "Deskripsi tidak tersedia.",
 
     tabNowPlaying: "Now Playing",
     tabQueue: "Antrean",
@@ -460,6 +463,9 @@ const dict = {
     writtenByLabel: "Written by",
     producedByLabel: "Produced by",
     sourceLabel: "Source",
+    descriptionLabel: "Description",
+    copyLabel: "Copy",
+    descriptionUnavailable: "Description unavailable.",
 
     tabNowPlaying: "Now Playing",
     tabQueue: "Queue",
