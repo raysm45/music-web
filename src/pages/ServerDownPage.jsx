@@ -1,20 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
+
+function seededRandom(seed) {
+  return function () {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+}
 
 export function ServerDownPage() {
-  const [currentTime, setCurrentTime] = useState('');
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      setCurrentTime(`${hours}:${minutes}:${seconds} WIB`);
-    };
-
-    updateTime();
-    const intervalId = setInterval(updateTime, 1000);
-    return () => clearInterval(intervalId);
+  const dots = useMemo(() => {
+    const rand = seededRandom(42);
+    return Array.from({ length: 200 }, () => ({
+      delay: `${(rand() * 3).toFixed(2)}s`,
+      duration: `${(0.5 + rand() * 1.5).toFixed(2)}s`,
+    }));
   }, []);
 
   const styles = `
@@ -63,7 +62,7 @@ export function ServerDownPage() {
     .container {
       text-align: center;
       padding: 48px 32px;
-      max-width: 640px;
+      max-width: 680px;
       width: 100%;
       position: relative;
       z-index: 1;
@@ -176,6 +175,76 @@ export function ServerDownPage() {
       margin: 0 auto 32px;
     }
 
+    .simulation-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 16px;
+      margin-bottom: 36px;
+    }
+
+    .simulation-header {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .server-labels {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px 20px;
+      margin-bottom: 20px;
+    }
+
+    .server-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status-dot.ok {
+      background: var(--dot);
+    }
+
+    .status-dot.error {
+      background: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    .dots-grid {
+      display: grid;
+      grid-template-columns: repeat(20, 8px);
+      gap: 4px;
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--dot);
+      animation: dot-blink 1.2s ease-in-out infinite;
+    }
+
+    @keyframes dot-blink {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 1; }
+    }
+
     .info-grid {
       display: flex;
       justify-content: center;
@@ -273,6 +342,10 @@ export function ServerDownPage() {
         max-width: 280px;
         justify-content: center;
       }
+      .dots-grid {
+        grid-template-columns: repeat(10, 8px);
+        gap: 3px;
+      }
     }
   `;
 
@@ -292,14 +365,50 @@ export function ServerDownPage() {
         <h1>Server Sedang Gangguan</h1>
 
         <p className="description">
-          Layanan kami saat ini sedang mengalami gangguan teknis.
-          Tim kami sedang bekerja keras untuk memulihkan layanan secepat mungkin.
+          Layanan kami saat ini sedang tidak bisa menghubungi server.
+          kami sedang bekerja keras untuk memulihkan layanan secepat mungkin.
         </p>
         <p className="description-sub">
           Mohon maaf atas ketidaknyamanan yang ditimbulkan.
         </p>
 
         <div className="divider"></div>
+
+        <div className="simulation-panel">
+          <div className="simulation-header">Menghubungi Server...</div>
+          <div className="server-labels">
+            <span className="server-label">
+              <span className="status-dot ok"></span> Player
+            </span>
+            <span className="server-label">
+              <span className="status-dot ok"></span> Metadata
+            </span>
+            <span className="server-label">
+              <span className="status-dot ok"></span> Database
+            </span>
+            <span className="server-label">
+              <span className="status-dot error"></span> API
+            </span>
+            <span className="server-label">
+              <span className="status-dot ok"></span> Auth
+            </span>
+            <span className="server-label">
+              <span className="status-dot error"></span> Cache
+            </span>
+          </div>
+          <div className="dots-grid">
+            {dots.map((dot, index) => (
+              <span
+                key={index}
+                className="dot"
+                style={{
+                  animationDelay: dot.delay,
+                  animationDuration: dot.duration,
+                }}
+              ></span>
+            ))}
+          </div>
+        </div>
 
         <div className="info-grid">
           <div className="info-item">
@@ -312,7 +421,7 @@ export function ServerDownPage() {
           </div>
           <div className="info-item">
             <div className="label">Terakhir Update</div>
-            <div className="value">{currentTime}</div>
+            <div className="value">13:30:00 WIB</div>
           </div>
         </div>
 
