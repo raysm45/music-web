@@ -589,7 +589,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet-bg::after{ content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%); }
 .aivy-sheet-head{ position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top,0px)) 18px 6px; flex-shrink: 0; color: var(--sheet-ink); }
 .aivy-sheet-head-actions{ display: flex; align-items: center; gap: 4px; }
-.aivy-sheet-body{ position: relative; z-index: 2; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 6px 26px calc(28px + var(--safe-b)); color: var(--sheet-ink); }
+.aivy-sheet-body{ position: relative; z-index: 2; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y; display: flex; flex-direction: column; align-items: center; padding: 6px 26px calc(28px + var(--safe-b)); color: var(--sheet-ink); }
 /* ---- Morphing hero: cover + title/artist shared between "player" and
    "lyrics" layouts of the same sheet. The two layouts below are plain,
    independent CSS states — the actual smooth morph between them is done
