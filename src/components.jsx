@@ -1111,7 +1111,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
       <TrackDetailSheet
         open={detailOpen}
         track={currentTrack}
-        audioFormat={audioFormat}
         isPreviewClip={isPreviewClip}
         onClose={() => setDetailOpen(false)}
       />
@@ -1286,55 +1285,59 @@ function TrackDetailInfoTab({ track }) {
   );
 }
 
-function TrackDetailTechnicalTab({ track, audioFormat, isPreviewClip }) {
+// Cache kecil per videoId+quality biar ganti tab bolak-balik nggak nembak
+// endpoint /audio-info berkali-kali (spek audio nggak berubah selama sesi).
+const audioInfoCache = new Map();
+function useTrackAudioInfo(track) {
+  const videoId = track?.videoId || track?.id || null;
+  const [info, setInfo] = useState(null); // null = loading, "unavailable", atau objek
+  useEffect(() => {
+    setInfo(null);
+    if (!videoId) { setInfo("unavailable"); return undefined; }
+    let alive = true;
+    const applyResult = (v) => { if (alive) setInfo(v); };
+    const cached = audioInfoCache.get(videoId);
+    if (cached !== undefined) {
+      if (cached && typeof cached.then === "function") cached.then(applyResult);
+      else applyResult(cached);
+      return () => { alive = false; };
+    }
+    const promise = import("./lib/api.js")
+      .then(({ Api }) => Api.trackAudioInfo(videoId))
+      .catch(() => "unavailable");
+    audioInfoCache.set(videoId, promise);
+    promise.then((v) => { audioInfoCache.set(videoId, v); applyResult(v); });
+    return () => { alive = false; };
+  }, [videoId]);
+  return info;
+}
+
+function TrackDetailTechnicalTab({ track, isPreviewClip }) {
   const { t, pushToast } = useUI();
-  const { getAudioSrc, duration: playerDuration } = usePlayer();
   const copy = (value) => { if (!value) return; navigator.clipboard?.writeText(String(value)); pushToast(t("copiedToClipboard")); };
 
-  // Container/codec used to be stated outright from a guess ("full track =
-  // webm/opus, preview = mp3") — but the backend can fall back to a
-  // different itag/container depending on what's actually available for a
-  // given video, so a "full" track isn't guaranteed to be webm/opus. That
-  // guess has been replaced with `audioFormat`, sniffed for real from the
-  // file's own magic bytes (see lib/audioFormat.js). Bitrate and file size
-  // vary per track regardless, so those are still measured for real with a
-  // ranged fetch against the actual stream URL, reading the total size
-  // back from Content-Range.
-  const [measured, setMeasured] = useState(null); // null = checking, "unavailable", or { bytes }
-  useEffect(() => {
-    let alive = true;
-    setMeasured(null);
-    const src = getAudioSrc?.();
-    if (!src) { setMeasured("unavailable"); return undefined; }
-    fetch(src, { headers: { Range: "bytes=0-0" } })
-      .then((res) => {
-        if (!alive) return;
-        const range = res.headers.get("content-range");
-        const total = range?.includes("/") ? Number(range.split("/")[1]) : null;
-        setMeasured(Number.isFinite(total) && total > 0 ? { bytes: total } : "unavailable");
-      })
-      .catch(() => { if (alive) setMeasured("unavailable"); });
-    return () => { alive = false; };
-  }, [track?.id, getAudioSrc]);
+  // Spesifikasi audio asli — langsung dari hasil resolve yt-dlp yang beneran
+  // dipakai buat men-stream track ini (lihat GET /api/track/audio-info di
+  // backend), bukan ditebak dari ranged-fetch/byte-sniffing di browser lagi.
+  const audioInfo = useTrackAudioInfo(track);
+  const loadingInfo = audioInfo === null;
+  const info = audioInfo && audioInfo !== "unavailable" ? audioInfo : null;
+  const format = info?.format || null;
 
-  const fileSizeValue = measured === null ? t("loading")
-    : measured === "unavailable" ? t("detailNotAvailable")
-    : `${(measured.bytes / (1024 * 1024)).toFixed(1)} MB`;
-  const bitrateValue = measured === null ? t("loading")
-    : measured === "unavailable" || !(playerDuration > 0) ? t("detailNotAvailable")
-    : `${Math.round((measured.bytes * 8) / 1000 / playerDuration)} Kbps`;
+  const val = (v, suffix = "") => (loadingInfo ? t("loading") : v != null ? `${v}${suffix}` : t("detailNotAvailable"));
 
-  const detecting = audioFormat === null;
-  const detected = audioFormat && audioFormat !== "unavailable" ? audioFormat : null;
-  const mimeTypeValue = detecting ? t("loading") : (detected?.mimeType || t("detailNotAvailable"));
-  const codecValue = detecting ? t("loading") : (detected?.codec || t("detailNotAvailable"));
+  const filesizeValue = loadingInfo ? t("loading")
+    : format?.filesizeBytes ? `${(format.filesizeBytes / (1024 * 1024)).toFixed(1)} MB${format.filesizeIsEstimate ? " (\u2248)" : ""}`
+    : t("detailNotAvailable");
 
   const rows = [
     { label: t("detailQuality"), value: isPreviewClip ? t("detailQualityPreview") : t("detailQualityFull") },
-    { label: t("detailMimeType"), value: mimeTypeValue },
-    { label: t("detailCodec"), value: codecValue },
-    { label: t("detailBitrate"), value: bitrateValue },
-    { label: t("detailFileSize"), value: fileSizeValue },
+    { label: t("detailCodec"), value: val(format?.codec) },
+    { label: t("detailMimeType"), value: val(format?.mimeType) },
+    { label: t("detailBitrate"), value: val(format?.bitrateKbps, " Kbps") },
+    { label: t("detailSampleRate"), value: val(format?.sampleRateHz, " Hz") },
+    { label: t("detailFileSize"), value: filesizeValue },
+    { label: t("detailItag"), value: val(format?.itag) },
   ];
 
   return (
@@ -1348,11 +1351,12 @@ function TrackDetailTechnicalTab({ track, audioFormat, isPreviewClip }) {
           <button className="aivy-icon-btn sm" onClick={() => copy(r.value)} aria-label={t("copiedToClipboard")}><Copy size={15} /></button>
         </div>
       ))}
+      {!isPreviewClip && <div className="aivy-detailsheet-audio-ceiling">{t("detailAudioCeiling")}</div>}
     </div>
   );
 }
 
-export function TrackDetailSheet({ open, track, audioFormat, isPreviewClip, onClose }) {
+export function TrackDetailSheet({ open, track, isPreviewClip, onClose }) {
   const { t } = useUI();
   const [tab, setTab] = useState("info");
   const sheetRef = useRef(null);
@@ -1387,7 +1391,7 @@ export function TrackDetailSheet({ open, track, audioFormat, isPreviewClip, onCl
 
           {tab === "info"
             ? <TrackDetailInfoTab track={track} />
-            : <TrackDetailTechnicalTab track={track} audioFormat={audioFormat} isPreviewClip={isPreviewClip} />}
+            : <TrackDetailTechnicalTab track={track} isPreviewClip={isPreviewClip} />}
         </div>
       </div>
     </>
