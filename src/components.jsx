@@ -67,19 +67,26 @@ function usePanelResize({ width, setWidth, min, max, side }) {
 // on buttons inside the drag area (play/pause, grabber, etc.) keep working
 // exactly as before. While dragging, `dragRef`'s element (if provided) is
 // given a live translateY so the sheet visually follows the finger.
-function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, threshold = 110, velocityThreshold = 0.55 }) {
-  const stRef = useRef({ pointerId: null, dragging: false, startY: 0, startTime: 0, delta: 0 });
+function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scrollRef, threshold = 110, velocityThreshold = 0.55 }) {
+  const stRef = useRef({ pointerId: null, dragging: false, startY: 0, startTime: 0, delta: 0, blocked: false });
 
-  const reset = () => { stRef.current = { pointerId: null, dragging: false, startY: 0, startTime: 0, delta: 0 }; };
+  const reset = () => { stRef.current = { pointerId: null, dragging: false, startY: 0, startTime: 0, delta: 0, blocked: false }; };
 
   const onPointerDown = useCallback((e) => {
     if (!active) return;
-    stRef.current = { pointerId: e.pointerId, dragging: false, startY: e.clientY, startTime: Date.now(), delta: 0 };
-  }, [active]);
+    // `scrollRef`, when given, lets this same gesture live on a larger,
+    // otherwise-scrollable area (e.g. the whole sheet body) instead of just
+    // a thin dedicated handle: we only arm the close/expand drag while that
+    // area is already scrolled to its start, so an ordinary scroll doesn't
+    // get hijacked into closing the sheet.
+    const blocked = direction === "down" && !!scrollRef?.current && scrollRef.current.scrollTop > 0;
+    stRef.current = { pointerId: e.pointerId, dragging: false, startY: e.clientY, startTime: Date.now(), delta: 0, blocked };
+  }, [active, direction, scrollRef]);
 
   const onPointerMove = useCallback((e) => {
     const st = stRef.current;
     if (st.pointerId !== e.pointerId) return;
+    if (st.blocked) return;
     const raw = e.clientY - st.startY;
     const signed = direction === "down" ? raw : -raw;
     if (!st.dragging) {
@@ -89,6 +96,12 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, thre
       if (dragRef?.current) dragRef.current.style.transition = "none";
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     }
+    // Once we've committed to this gesture, stop the event from also being
+    // read as a native scroll/pull-to-refresh (or, inside a Discord
+    // Activity webview, a host-level swipe-to-dismiss) — without this the
+    // drag can visually "let go" mid-swipe and the surrounding page/app
+    // reloads instead of the sheet closing.
+    if (st.dragging) { try { e.preventDefault(); } catch {} }
     st.delta = Math.max(0, signed);
     if (dragRef?.current) {
       const px = direction === "down" ? st.delta : -st.delta;
@@ -918,7 +931,8 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   // parent's handler and intentionally does NOT reset `lyricsOpen` (see
   // App.jsx), so swiping down out of lyrics and reopening (mini player tap
   // or swipe-up) lands back on lyrics instead of resetting to the cover.
-  const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: onClose, dragRef: sheetRef });
+  const bodyScrollRef = useRef(null);
+  const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: onClose, dragRef: sheetRef, scrollRef: bodyScrollRef });
 
   const trackKey = currentTrack?.id;
   // NOTE: don't unmount AppleLyricsPane on track change — it already
@@ -1002,7 +1016,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
           <button className="aivy-sheet-grabber" onClick={handleGrabberTap} aria-label={t("close")} />
         </div>
         {currentTrack && (
-          <div className="aivy-sheet-body aivy-scroll">
+          <div
+            ref={bodyScrollRef}
+            className="aivy-sheet-body aivy-scroll"
+            onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
+            onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
+          >
             <div className={`npx-hero ${lyricsMode ? "is-compact" : ""}`}>
               <div className="npx-cover" ref={coverRef}>
                 <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }} />
@@ -1674,7 +1693,8 @@ function useTrackDescription(track) {
   }, [videoId, hasOwnDescription]);
 
   return useMemo(() => {
-    const description = track?.description || fetchedDescription || null;
+    const raw = track?.description || fetchedDescription || null;
+    const description = raw ? raw.replace(/YouTube/gi, "aivy") : null;
     return {
       hasAnything: !!description,
       loading,
