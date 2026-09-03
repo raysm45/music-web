@@ -140,6 +140,7 @@ const dict = {
     detailItag: "Itag",
     detailSource: "Sumber",
     detailReleaseDate: "Dirilis",
+    detailAudioCeiling: "YouTube tidak menyediakan audio lossless/hi-res — ini kualitas audio tertinggi yang tersedia dari sumber ini.",
     detailNotAvailable: "Tidak tersedia",
     copiedToClipboard: "Disalin",
 
@@ -533,6 +534,7 @@ const dict = {
     detailItag: "Itag",
     detailSource: "Source",
     detailReleaseDate: "Released",
+    detailAudioCeiling: "YouTube doesn't offer lossless/hi-res audio — this is the highest quality available from this source.",
     detailNotAvailable: "Not available",
     copiedToClipboard: "Copied",
 

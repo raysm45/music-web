@@ -1,3 +1,5 @@
+import { getPreferredAudioQuality } from "./audioFormat.js";
+
 export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.cosmicx.fun";
 
 async function throwApiError(res) {
@@ -57,16 +59,24 @@ export const Api = {
 
   async getStreamUrl(videoId) {
     if (!videoId) return null;
+    const quality = getPreferredAudioQuality();
+    const cacheKey = `${videoId}:${quality}`;
     const nowS = Math.floor(Date.now() / 1000);
-    const cached = streamTicketCache.get(videoId);
+    const cached = streamTicketCache.get(cacheKey);
     if (cached && cached.expiresAt - TICKET_MARGIN_S > nowS) {
       return `${API_BASE}/api/s/${encodeURIComponent(cached.sid)}`;
     }
-    const ticket = await apiSend("/api/stream-ticket", "POST", { videoId });
+    const ticket = await apiSend("/api/stream-ticket", "POST", { videoId, quality });
     if (!ticket?.sid) throw new Error("tiket stream kosong");
-    streamTicketCache.set(videoId, ticket);
+    streamTicketCache.set(cacheKey, ticket);
     return `${API_BASE}/api/s/${encodeURIComponent(ticket.sid)}`;
   },
+
+  // Spesifikasi audio ASLI (itag, codec, bitrate, sample rate, filesize, dst)
+  // dari hasil resolve yt-dlp yang beneran dipakai buat stream track ini —
+  // bukan tebakan sniff byte di sisi klien lagi.
+  trackAudioInfo: (videoId) =>
+    apiGet(`/api/track/audio-info?videoId=${encodeURIComponent(videoId || "")}&quality=${getPreferredAudioQuality()}`),
 
   me: () => apiGet("/auth/me"),
   logout: () => apiSend("/auth/logout", "POST"),
