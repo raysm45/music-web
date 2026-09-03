@@ -1022,6 +1022,8 @@ export function TrackOptionsSheet({ open, track, isOpus, onClose, onOpenDetail, 
   const { t, pushToast } = useUI();
   const { promptCast } = usePlayer();
   const sheetRef = useRef(null);
+  const [resolvingArtist, setResolvingArtist] = useState(false);
+  const [resolvingAlbum, setResolvingAlbum] = useState(false);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -1042,13 +1044,52 @@ export function TrackOptionsSheet({ open, track, isOpus, onClose, onOpenDetail, 
     pushToast(t("linkCopied"));
     onClose();
   };
-  const handleArtist = () => {
-    if (!track.artist?.id) return;
-    onClose();
-    navigate("artist", { params: { id: track.artist.id } });
+
+  // Most YouTube-sourced tracks only carry an artist *name*, not the id
+  // ArtistPage needs — but the artist endpoint (see useArtistAbout above)
+  // already accepts a plain name as its lookup key, so we can go straight
+  // there instead of hiding the option whenever an id is missing.
+  const handleArtist = async () => {
+    if (!track.artist?.name) return;
+    if (track.artist?.id) { onClose(); navigate("artist", { params: { id: track.artist.id } }); return; }
+    setResolvingArtist(true);
+    try {
+      const { Api } = await import("./lib/api.js");
+      const res = await Api.artist(track.artist.name);
+      if (res?.name && isRelevantArtistMatch(res.name, track.artist.name)) {
+        onClose();
+        navigate("artist", { params: { id: track.artist.id || track.artist.name } });
+      } else {
+        pushToast(t("artistNotFound"));
+      }
+    } catch {
+      pushToast(t("artistNotFound"));
+    } finally {
+      setResolvingArtist(false);
+    }
   };
-  const handleAlbum = () => {
-    if (!track.album?.id) return;
+
+  // Albums have no name-based lookup endpoint, so we fall back to
+  // searching for the track again and taking the album id off whichever
+  // result actually matches this album's title.
+  const handleAlbum = async () => {
+    if (!track.album?.id) {
+      if (!track.album?.title) return;
+      setResolvingAlbum(true);
+      try {
+        const { Api } = await import("./lib/api.js");
+        const q = `${track.album.title} ${track.artist?.name || ""}`.trim();
+        const results = await Api.search(q);
+        const hit = (results || []).find((r) => r.album?.id && isRelevantArtistMatch(r.album.title || "", track.album.title));
+        if (hit) { onClose(); navigate("album", { params: { id: hit.album.id } }); }
+        else pushToast(t("albumNotFound"));
+      } catch {
+        pushToast(t("albumNotFound"));
+      } finally {
+        setResolvingAlbum(false);
+      }
+      return;
+    }
     onClose();
     navigate("album", { params: { id: track.album.id } });
   };
@@ -1056,11 +1097,11 @@ export function TrackOptionsSheet({ open, track, isOpus, onClose, onOpenDetail, 
   const items = [
     { key: "detail", icon: <Info size={18} />, label: t("npDetail"), onSelect: onOpenDetail },
     { key: "cast", icon: <Cast size={18} />, label: t("npCast"), onSelect: handleCast },
-    { key: "artist", icon: <Music2 size={18} />, label: t("npViewArtist"), onSelect: handleArtist, disabled: !track.artist?.id },
-    { key: "album", icon: <Music2 size={18} />, label: t("npViewAlbum"), onSelect: handleAlbum, disabled: !track.album?.id },
+    track.artist?.name && { key: "artist", icon: <Music2 size={18} />, label: t("npViewArtist"), onSelect: handleArtist, busy: resolvingArtist },
+    (track.album?.id || track.album?.title) && { key: "album", icon: <Music2 size={18} />, label: t("npViewAlbum"), onSelect: handleAlbum, busy: resolvingAlbum },
     { key: "copy", icon: <Share2 size={18} />, label: t("npCopyLink"), onSelect: handleCopyLink },
     { key: "aod", icon: <Moon size={18} />, label: t("npAodMode"), onSelect: onOpenAod },
-  ];
+  ].filter(Boolean);
 
   return (
     <>
@@ -1081,11 +1122,12 @@ export function TrackOptionsSheet({ open, track, isOpus, onClose, onOpenDetail, 
         {items.map((item) => (
           <button
             key={item.key}
-            className={`aivy-actionsheet-item ${item.disabled ? "disabled" : ""}`}
+            className={`aivy-actionsheet-item ${item.busy ? "is-busy" : ""}`}
             onClick={item.onSelect}
-            disabled={item.disabled}
+            disabled={item.busy}
           >
             {item.icon}<span>{item.label}</span>
+            {item.busy && <span className="aivy-actionsheet-spinner" aria-hidden="true" />}
           </button>
         ))}
       </div>
@@ -1101,37 +1143,111 @@ function TrackDetailInfoTab({ track }) {
     { label: t("detailSongArtist"), value: track.artist?.name },
   ];
   if (track.album?.title) rows.push({ label: t("detailSongAlbum"), value: track.album.title });
+  if (track.album?.releaseDate) rows.push({ label: t("detailReleaseDate"), value: String(track.album.releaseDate).slice(0, 10) });
   rows.push({ label: t("detailMediaId"), value: track.videoId || track.id });
 
+  const credits = useCreditsData(track);
+
   return (
-    <div className="aivy-detailsheet-list">
-      {rows.filter((r) => r.value).map((r, i) => (
-        <div key={i} className="aivy-detailsheet-row">
-          <div style={{ minWidth: 0 }}>
-            <div className="lbl">{r.label}</div>
-            <div className="val">{r.value}</div>
+    <>
+      <div className="aivy-detailsheet-list">
+        {rows.filter((r) => r.value).map((r, i) => (
+          <div key={i} className="aivy-detailsheet-row">
+            <div style={{ minWidth: 0 }}>
+              <div className="lbl">{r.label}</div>
+              <div className="val">{r.value}</div>
+            </div>
+            <button className="aivy-icon-btn sm" onClick={() => copy(r.value)} aria-label={t("copiedToClipboard")}><Copy size={15} /></button>
           </div>
-          <button className="aivy-icon-btn sm" onClick={() => copy(r.value)} aria-label={t("copiedToClipboard")}><Copy size={15} /></button>
+        ))}
+      </div>
+
+      {credits.hasAnything && (
+        <div className="aivy-detailsheet-credits">
+          <div className="aivy-detailsheet-subhead">{t("creditsLabel")}</div>
+          <div className="aivy-detailsheet-list">
+            {credits.performedBy.length > 0 && (
+              <div className="aivy-detailsheet-row">
+                <div style={{ minWidth: 0 }}>
+                  <div className="lbl">{t("performedByLabel")}</div>
+                  <div className="val">{credits.performedBy.join(", ")}</div>
+                </div>
+              </div>
+            )}
+            {credits.writtenBy.length > 0 && (
+              <div className="aivy-detailsheet-row">
+                <div style={{ minWidth: 0 }}>
+                  <div className="lbl">{t("writtenByLabel")}</div>
+                  <div className="val">{credits.writtenBy.join(", ")}</div>
+                </div>
+              </div>
+            )}
+            {credits.producedBy.length > 0 && (
+              <div className="aivy-detailsheet-row">
+                <div style={{ minWidth: 0 }}>
+                  <div className="lbl">{t("producedByLabel")}</div>
+                  <div className="val">{credits.producedBy.join(", ")}</div>
+                </div>
+              </div>
+            )}
+            {credits.source.length > 0 && (
+              <div className="aivy-detailsheet-row">
+                <div style={{ minWidth: 0 }}>
+                  <div className="lbl">{t("sourceLabel")}</div>
+                  <div className="val">{credits.source.join(", ")}</div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }
 
 function TrackDetailTechnicalTab({ track, isOpus, isPreviewClip }) {
   const { t, pushToast } = useUI();
+  const { getAudioSrc, duration: playerDuration } = usePlayer();
   const copy = (value) => { if (!value) return; navigator.clipboard?.writeText(String(value)); pushToast(t("copiedToClipboard")); };
 
-  // We don't probe the actual media stream, but the two source types this
-  // app plays are consistent enough to state their format outright:
-  // full tracks are proxied YouTube audio (itag 251 = webm/opus @ 48kHz),
-  // and previews are 30s Deezer clips (mpeg/mp3).
+  // The two source types this app plays are consistent enough to state
+  // their container/codec outright (full tracks are proxied YouTube audio
+  // — itag 251, webm/opus @ 48kHz; previews are 30s Deezer mp3 clips) —
+  // but bitrate and file size vary per track, so instead of guessing we
+  // measure them for real with a 1-byte ranged fetch against the actual
+  // stream URL and read the total size back from Content-Range.
+  const [measured, setMeasured] = useState(null); // null = checking, "unavailable", or { bytes }
+  useEffect(() => {
+    let alive = true;
+    setMeasured(null);
+    const src = getAudioSrc?.();
+    if (!src) { setMeasured("unavailable"); return undefined; }
+    fetch(src, { headers: { Range: "bytes=0-0" } })
+      .then((res) => {
+        if (!alive) return;
+        const range = res.headers.get("content-range");
+        const total = range?.includes("/") ? Number(range.split("/")[1]) : null;
+        setMeasured(Number.isFinite(total) && total > 0 ? { bytes: total } : "unavailable");
+      })
+      .catch(() => { if (alive) setMeasured("unavailable"); });
+    return () => { alive = false; };
+  }, [track?.id, getAudioSrc]);
+
+  const fileSizeValue = measured === null ? t("loading")
+    : measured === "unavailable" ? t("detailNotAvailable")
+    : `${(measured.bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const bitrateValue = measured === null ? t("loading")
+    : measured === "unavailable" || !(playerDuration > 0) ? t("detailNotAvailable")
+    : `${Math.round((measured.bytes * 8) / 1000 / playerDuration)} Kbps`;
+
   const rows = isOpus
     ? [
         { label: t("detailQuality"), value: t("detailQualityFull") },
         { label: t("detailMimeType"), value: "audio/webm" },
         { label: t("detailCodec"), value: "opus" },
+        { label: t("detailBitrate"), value: bitrateValue },
         { label: t("detailSampleRate"), value: "48000 Hz" },
+        { label: t("detailFileSize"), value: fileSizeValue },
         { label: t("detailItag"), value: "251" },
         { label: t("detailSource"), value: "YouTube" },
       ]
@@ -1139,6 +1255,8 @@ function TrackDetailTechnicalTab({ track, isOpus, isPreviewClip }) {
         { label: t("detailQuality"), value: t("detailQualityPreview") },
         { label: t("detailMimeType"), value: "audio/mpeg" },
         { label: t("detailCodec"), value: "mp3" },
+        { label: t("detailBitrate"), value: bitrateValue },
+        { label: t("detailFileSize"), value: fileSizeValue },
         { label: t("detailSource"), value: "Deezer" },
       ];
 

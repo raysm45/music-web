@@ -385,6 +385,14 @@ export function PlayerProvider({ children }) {
     }
   }, []);
 
+  // Exposes the exact URL currently loaded into the <audio> element, so
+  // callers (e.g. the track detail sheet) can measure real file size /
+  // bitrate via a ranged fetch instead of guessing at numbers.
+  const getAudioSrc = useCallback(() => {
+    const audio = audioRef.current;
+    return audio?.currentSrc || audio?.src || null;
+  }, []);
+
   const progressElsRef = useRef(new Map());
   const resolvedFullCache = useRef(new Map());
   const recoveringRef = useRef(false);
@@ -1362,7 +1370,7 @@ export function PlayerProvider({ children }) {
     suggestedQueue, promoteSuggestion,
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
     chatMessages, sendChatMessage, voteSkip,
-    promptCast,
+    promptCast, getAudioSrc,
   };
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;
 }
