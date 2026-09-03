@@ -10,9 +10,19 @@ function seededRandom(seed) {
 export function ServerDownPage() {
   const dots = useMemo(() => {
     const rand = seededRandom(42);
-    return Array.from({ length: 200 }, () => ({
-      delay: `${(rand() * 5).toFixed(2)}s`,
-      duration: `${(3 + rand() * 5).toFixed(2)}s`,
+    const totalDots = 200;
+    const errorCount = 3; // hanya 3 titik merah
+    const errorIndices = new Set();
+
+    // pilih 3 indeks acak untuk titik error
+    while (errorIndices.size < errorCount) {
+      errorIndices.add(Math.floor(rand() * totalDots));
+    }
+
+    return Array.from({ length: totalDots }, (_, i) => ({
+      delay: `${(rand() * 0.3).toFixed(2)}s`,     // 0 – 0.3 detik
+      duration: `${(0.3 + rand() * 0.7).toFixed(2)}s`, // 0.3 – 1 detik
+      isError: errorIndices.has(i),
     }));
   }, []);
 
@@ -232,12 +242,23 @@ export function ServerDownPage() {
       margin: 0 auto;
     }
 
+    /* Titik normal: berkedip putih (flicker opacity) */
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: #fff;
-      animation: dot-blink 4s ease-in-out infinite;
+      animation: dot-flicker 0.8s steps(2, jump-none) infinite;
+    }
+
+    /* Titik error: berkedip merah (flicker warna) */
+    .dot.error {
+      animation: dot-blink 0.6s steps(1, end) infinite;
+    }
+
+    @keyframes dot-flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
     }
 
     @keyframes dot-blink {
@@ -400,7 +421,7 @@ export function ServerDownPage() {
             {dots.map((dot, index) => (
               <span
                 key={index}
-                className="dot"
+                className={`dot${dot.isError ? ' error' : ''}`}
                 style={{
                   animationDelay: dot.delay,
                   animationDuration: dot.duration,
