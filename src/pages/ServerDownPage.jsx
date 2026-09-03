@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const ServerDownPage = () => {
+export function ServerDownPage() {
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
@@ -339,6 +339,4 @@ const ServerDownPage = () => {
       </div>
     </>
   );
-};
-
-export default ServerDownPage;
+}
