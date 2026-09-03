@@ -1146,7 +1146,7 @@ function TrackDetailInfoTab({ track }) {
   if (track.album?.releaseDate) rows.push({ label: t("detailReleaseDate"), value: String(track.album.releaseDate).slice(0, 10) });
   rows.push({ label: t("detailMediaId"), value: track.videoId || track.id });
 
-  const credits = useCreditsData(track);
+  const { description, loading } = useTrackDescription(track);
 
   return (
     <>
@@ -1162,45 +1162,19 @@ function TrackDetailInfoTab({ track }) {
         ))}
       </div>
 
-      {credits.hasAnything && (
-        <div className="aivy-detailsheet-credits">
-          <div className="aivy-detailsheet-subhead">{t("creditsLabel")}</div>
-          <div className="aivy-detailsheet-list">
-            {credits.performedBy.length > 0 && (
-              <div className="aivy-detailsheet-row">
-                <div style={{ minWidth: 0 }}>
-                  <div className="lbl">{t("performedByLabel")}</div>
-                  <div className="val">{credits.performedBy.join(", ")}</div>
-                </div>
-              </div>
-            )}
-            {credits.writtenBy.length > 0 && (
-              <div className="aivy-detailsheet-row">
-                <div style={{ minWidth: 0 }}>
-                  <div className="lbl">{t("writtenByLabel")}</div>
-                  <div className="val">{credits.writtenBy.join(", ")}</div>
-                </div>
-              </div>
-            )}
-            {credits.producedBy.length > 0 && (
-              <div className="aivy-detailsheet-row">
-                <div style={{ minWidth: 0 }}>
-                  <div className="lbl">{t("producedByLabel")}</div>
-                  <div className="val">{credits.producedBy.join(", ")}</div>
-                </div>
-              </div>
-            )}
-            {credits.source.length > 0 && (
-              <div className="aivy-detailsheet-row">
-                <div style={{ minWidth: 0 }}>
-                  <div className="lbl">{t("sourceLabel")}</div>
-                  <div className="val">{credits.source.join(", ")}</div>
-                </div>
-              </div>
-            )}
-          </div>
+      <div className="aivy-detailsheet-credits">
+        <div className="aivy-detailsheet-subhead-row">
+          <div className="aivy-detailsheet-subhead">{t("descriptionLabel")}</div>
+          {description && (
+            <button className="aivy-icon-btn sm" onClick={() => copy(description)} aria-label={t("copyLabel")}>
+              <Copy size={15} />
+            </button>
+          )}
         </div>
-      )}
+        {description && <div className="aivy-detailsheet-description">{description}</div>}
+        {!description && loading && <div className="aivy-detailsheet-description-loading">{t("loading")}</div>}
+        {!description && !loading && <div className="aivy-detailsheet-description-empty">{t("descriptionUnavailable")}</div>}
+      </div>
     </>
   );
 }
@@ -1564,143 +1538,113 @@ function AboutArtistSection({ track, onNavigate }) {
     </div>
   );
 }
-const creditsFetchCache = new Map();
-function useCreditsData(track) {
-  const trackId = track?.id;
-  const hasOwnCredits = !!track?.credits;
-  const isDeezerId = /^\d+$/.test(String(trackId));
-  const titleKey = (track?.title || "").toLowerCase();
-  const artistKey = (track?.artist?.name || "").toLowerCase();
-  const [fetchedCredits, setFetchedCredits] = useState(null);
+// ArchiveTune-style: deskripsi diambil dari video YouTube asli lewat videoId
+// (backend memanggil innertube WEB client -> /next -> attributedDescription.content),
+// bukan lookup title/artist ke sumber credits terstruktur seperti sebelumnya.
+const descriptionFetchCache = new Map();
+function useTrackDescription(track) {
+  const videoId = track?.videoId || track?.id || null;
+  const hasOwnDescription = !!track?.description;
+  const [fetchedDescription, setFetchedDescription] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setFetchedCredits(null);
-    if (hasOwnCredits || !trackId) return;
-
-    const canFetch = isDeezerId || !!track?.title;
-    if (!canFetch) return;
+    setFetchedDescription(null);
+    if (hasOwnDescription || !videoId) return;
 
     let alive = true;
-    const applyResult = (credits) => { if (alive) setFetchedCredits(credits); };
+    const applyResult = (description) => {
+      if (alive) { setFetchedDescription(description); setLoading(false); }
+    };
 
-    const cacheKey = isDeezerId ? trackId : `t:${titleKey}|${artistKey}`;
-    const cached = creditsFetchCache.get(cacheKey);
+    const cached = descriptionFetchCache.get(videoId);
     if (cached !== undefined) {
-      if (cached && typeof cached.then === "function") cached.then(applyResult);
-      else applyResult(cached);
+      if (cached && typeof cached.then === "function") {
+        setLoading(true);
+        cached.then(applyResult);
+      } else {
+        applyResult(cached);
+      }
       return () => { alive = false; };
     }
 
-    const promise = (isDeezerId
-      ? import("./lib/api.js").then(({ Api }) => Api.track(trackId)).then((full) => full?.credits || null)
-      : import("./lib/api.js").then(({ Api }) => Api.trackCredits({ title: track?.title, artist: track?.artist?.name })).then((r) => r?.credits || null)
-    ).catch(() => null);
-    creditsFetchCache.set(cacheKey, promise);
-    promise.then((credits) => {
-      creditsFetchCache.set(cacheKey, credits);
-      applyResult(credits);
+    setLoading(true);
+    const promise = import("./lib/api.js")
+      .then(({ Api }) => Api.trackDescription(videoId))
+      .then((r) => r?.description || null)
+      .catch(() => null);
+    descriptionFetchCache.set(videoId, promise);
+    promise.then((description) => {
+      descriptionFetchCache.set(videoId, description);
+      applyResult(description);
     });
 
     return () => { alive = false; };
-  }, [trackId, hasOwnCredits, isDeezerId, titleKey, artistKey]);
+  }, [videoId, hasOwnDescription]);
 
   return useMemo(() => {
-    const mainArtistName = track?.artist?.name || null;
-    const c = track?.credits || fetchedCredits || null;
-
-    const contributors = [];
-    if (mainArtistName) contributors.push({ name: mainArtistName, roleKey: "mainArtistRole", isMainArtist: true });
-    (c?.contributors || []).forEach((p) => {
-      if (p?.name) contributors.push({ name: p.name, role: (p.roles || []).join(", ") || null });
-    });
-
-    const performedBy = c?.performedBy?.length ? c.performedBy : (mainArtistName ? [mainArtistName] : []);
-    const writtenBy = c?.writtenBy || [];
-    const producedBy = c?.producedBy || [];
-    const source = c?.source || [];
-
+    const description = track?.description || fetchedDescription || null;
     return {
-      hasAnything: contributors.length > 0,
-      contributors,
+      hasAnything: !!description,
+      loading,
       title: track?.title || "",
-      performedBy, writtenBy, producedBy, source,
+      description,
     };
-  }, [track, fetchedCredits]);
+  }, [track, fetchedDescription, loading]);
 }
 function CreditsCard({ track }) {
   const { t, openCredits } = useUI();
-  const data = useCreditsData(track);
-  const [following, setFollowing] = useState(false);
+  const { description, loading } = useTrackDescription(track);
 
-  if (!data.hasAnything) return null;
+  if (!description && !loading) return null;
+
+  const preview = description && description.length > 220
+    ? `${description.slice(0, 220).trimEnd()}…`
+    : description;
 
   return (
     <div className="aivy-credits-card">
       <div className="aivy-credits-card-head">
-        <span className="aivy-credits-card-title">{t("creditsLabel")}</span>
+        <span className="aivy-credits-card-title">{t("descriptionLabel")}</span>
         <button type="button" className="aivy-credits-showall" onClick={() => openCredits(track)}>{t("showAllLabel")}</button>
       </div>
       <div className="aivy-credits-card-list">
-        {data.contributors.slice(0, 4).map((p, i) => (
-          <div className="aivy-credits-card-row" key={i}>
-            <div className="who">
-              <div className="name">{p.name}</div>
-              <div className="role">{p.isMainArtist ? t(p.roleKey) : p.role}</div>
-            </div>
-            {p.isMainArtist && (
-              <button
-                type="button"
-                className={following ? "aivy-chip active" : "aivy-chip"}
-                onClick={() => setFollowing((f) => !f)}
-              >
-                {following ? <><Check size={13} /> {t("following")}</> : t("follow")}
-              </button>
-            )}
-          </div>
-        ))}
+        {preview
+          ? <div className="aivy-credits-card-description">{preview}</div>
+          : <div className="aivy-credits-card-description aivy-credits-card-description--loading">{t("loading")}</div>}
       </div>
     </div>
   );
 }
 export function CreditsModal() {
-  const { creditsTrack, closeCredits, t } = useUI();
+  const { creditsTrack, closeCredits, t, pushToast } = useUI();
   if (!creditsTrack) return null;
-  const data = useCreditsData(creditsTrack);
+  const { title, description, loading } = useTrackDescription(creditsTrack);
+
+  const copy = () => {
+    if (!description) return;
+    navigator.clipboard?.writeText(description);
+    pushToast(t("copiedToClipboard"));
+  };
 
   return (
     <div className="aivy-modal-backdrop" onClick={closeCredits}>
       <div className="aivy-modal aivy-credits-modal" onClick={(e) => e.stopPropagation()}>
         <div className="aivy-modal-head">
-          <div className="aivy-modal-title">{t("creditsLabel")}</div>
+          <div className="aivy-modal-title">{t("descriptionLabel")}</div>
           <button className="aivy-icon-btn sm" onClick={closeCredits} aria-label={t("close")}><X size={17} /></button>
         </div>
         <div className="aivy-credits-modal-body aivy-scroll">
-          <div className="aivy-credits-modal-song">{data.title}</div>
+          <div className="aivy-credits-modal-song">{title}</div>
 
-          {data.performedBy.length > 0 && (
-            <div className="aivy-credits-group">
-              <div className="label">{t("performedByLabel")}</div>
-              <div className="names">{data.performedBy.join(", ")}</div>
-            </div>
-          )}
+          {description && <div className="aivy-credits-modal-description">{description}</div>}
+          {!description && loading && <div className="aivy-credits-modal-description aivy-credits-modal-description--loading">{t("loading")}</div>}
+          {!description && !loading && <div className="aivy-credits-modal-description aivy-credits-modal-description--empty">{t("descriptionUnavailable")}</div>}
 
-          {data.writtenBy.length > 0 && (
-            <div className="aivy-credits-group">
-              <div className="label">{t("writtenByLabel")}</div>
-              <div className="names">
-                <strong>{data.writtenBy[0]}</strong>
-                {data.writtenBy.length > 1 ? `, ${data.writtenBy.slice(1).join(", ")}` : ""}
-              </div>
-            </div>
-          )}
-
-          <div className="aivy-credits-group">
-            <div className="label">{t("producedByLabel")}</div>
-            <div className="names">{data.producedBy.length > 0 ? data.producedBy.join(", ") : "\u2013"}</div>
-          </div>
-
-          {data.source.length > 0 && (
-            <div className="aivy-credits-source">{t("sourceLabel")}: {data.source.join(", ")}</div>
+          {description && (
+            <button type="button" className="aivy-credits-copy-btn" onClick={copy}>
+              <Copy size={14} /> {t("copyLabel")}
+            </button>
           )}
         </div>
       </div>
