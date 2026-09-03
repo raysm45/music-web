@@ -105,3 +105,20 @@ export function clearAudioFormatCache(url) {
   if (url) detectCache.delete(url);
   else detectCache.clear();
 }
+
+// Deteksi sekali: browser ini bisa decode Opus/WebM lewat elemen <audio>
+// native atau nggak. Safari (desktop & iOS) TIDAK bisa — jadi buat mereka
+// kita minta backend paksa kasih AAC/m4a walau bitrate-nya lebih rendah
+// daripada Opus, karena m4a yang jalan > Opus yang nggak bisa diputar.
+let cachedAudioQuality = null;
+export function getPreferredAudioQuality() {
+  if (cachedAudioQuality) return cachedAudioQuality;
+  try {
+    const probe = document.createElement("audio");
+    const canOpus = probe.canPlayType('audio/webm; codecs="opus"') !== "";
+    cachedAudioQuality = canOpus ? "high" : "compatible";
+  } catch {
+    cachedAudioQuality = "compatible";
+  }
+  return cachedAudioQuality;
+}
