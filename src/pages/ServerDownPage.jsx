@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 
 function seededRandom(seed) {
   return function () {
@@ -8,20 +8,37 @@ function seededRandom(seed) {
 }
 
 export function ServerDownPage() {
+  const totalDots = 200;
+  const errorCount = 5; // jumlah titik merah (1-5)
+
+  // State untuk menyimpan posisi titik merah yang sedang aktif
+  const [errorIndices, setErrorIndices] = useState(() => {
+    const rand = seededRandom(42);
+    const indices = new Set();
+    while (indices.size < errorCount) {
+      indices.add(Math.floor(rand() * totalDots));
+    }
+    return Array.from(indices);
+  });
+
+  // Ubah posisi titik merah setiap 2 detik secara acak
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newIndices = new Set();
+      while (newIndices.size < errorCount) {
+        newIndices.add(Math.floor(Math.random() * totalDots));
+      }
+      setErrorIndices(Array.from(newIndices));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Buat array dots statis tanpa isError (hanya untuk render)
   const dots = useMemo(() => {
     const rand = seededRandom(42);
-    const totalDots = 200;
-    const errorCount = 5; 
-    const errorIndices = new Set();
-
-    while (errorIndices.size < errorCount) {
-      errorIndices.add(Math.floor(rand() * totalDots));
-    }
-
-    return Array.from({ length: totalDots }, (_, i) => ({
-      delay: `${(rand() * 0.3).toFixed(2)}s`,     
+    return Array.from({ length: totalDots }, () => ({
+      delay: `${(rand() * 0.3).toFixed(2)}s`,
       duration: `${(0.3 + rand() * 0.7).toFixed(2)}s`,
-      isError: errorIndices.has(i),
     }));
   }, []);
 
@@ -414,7 +431,7 @@ export function ServerDownPage() {
             {dots.map((dot, index) => (
               <span
                 key={index}
-                className={`dot${dot.isError ? ' error' : ''}`}
+                className={`dot${errorIndices.includes(index) ? ' error' : ''}`}
                 style={{
                   animationDelay: dot.delay,
                   animationDuration: dot.duration,
