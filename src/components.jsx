@@ -59,6 +59,68 @@ function usePanelResize({ width, setWidth, min, max, side }) {
   return { onDragStart, isDragging };
 }
 
+// Drag-to-dismiss / drag-to-open for mobile sheets (now playing, lyrics,
+// track detail, queue) and swipe-up-to-expand for the mini player.
+// `direction` is the gesture direction that should trigger `onTrigger`
+// ("down" to close a sheet, "up" to expand the mini player). We only start
+// tracking a drag once the finger has moved a few pixels, so ordinary taps
+// on buttons inside the drag area (play/pause, grabber, etc.) keep working
+// exactly as before. While dragging, `dragRef`'s element (if provided) is
+// given a live translateY so the sheet visually follows the finger.
+function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, threshold = 110, velocityThreshold = 0.55 }) {
+  const stRef = useRef({ pointerId: null, dragging: false, startY: 0, startTime: 0, delta: 0 });
+
+  const reset = () => { stRef.current = { pointerId: null, dragging: false, startY: 0, startTime: 0, delta: 0 }; };
+
+  const onPointerDown = useCallback((e) => {
+    if (!active) return;
+    stRef.current = { pointerId: e.pointerId, dragging: false, startY: e.clientY, startTime: Date.now(), delta: 0 };
+  }, [active]);
+
+  const onPointerMove = useCallback((e) => {
+    const st = stRef.current;
+    if (st.pointerId !== e.pointerId) return;
+    const raw = e.clientY - st.startY;
+    const signed = direction === "down" ? raw : -raw;
+    if (!st.dragging) {
+      if (Math.abs(raw) < 6) return;
+      if (signed < 0) { reset(); return; } // moving the wrong way — not our gesture
+      st.dragging = true;
+      if (dragRef?.current) dragRef.current.style.transition = "none";
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    }
+    st.delta = Math.max(0, signed);
+    if (dragRef?.current) {
+      const px = direction === "down" ? st.delta : -st.delta;
+      dragRef.current.style.transform = `translateY(${px}px)`;
+    }
+  }, [direction, dragRef]);
+
+  const finish = useCallback((commit) => {
+    if (dragRef?.current) { dragRef.current.style.transition = ""; dragRef.current.style.transform = ""; }
+    if (commit) onTrigger();
+    reset();
+  }, [dragRef, onTrigger]);
+
+  const onPointerUp = useCallback((e) => {
+    const st = stRef.current;
+    if (st.pointerId !== e.pointerId) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    if (!st.dragging) { reset(); return; }
+    const elapsed = Math.max(1, Date.now() - st.startTime);
+    const velocity = st.delta / elapsed;
+    finish(st.delta > threshold || velocity > velocityThreshold);
+  }, [finish, threshold, velocityThreshold]);
+
+  const onPointerCancel = useCallback((e) => {
+    const st = stRef.current;
+    if (st.pointerId !== e.pointerId) return;
+    finish(false);
+  }, [finish]);
+
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
+}
+
 export class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
@@ -700,9 +762,14 @@ export function MiniPlayer({ onExpand }) {
   const { registerFill } = useScrubberBinding();
   const { t } = useUI();
   const [pulsing, setPulsing] = useState(false);
+  const miniRef = useRef(null);
+  const swipe = useVerticalSwipe({ active: !!currentTrack, direction: "up", onTrigger: onExpand, dragRef: miniRef, threshold: 36, velocityThreshold: 0.35 });
   if (!currentTrack) return null;
   return (
-    <div className="aivy-mini-player" onClick={onExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}>
+    <div
+      className="aivy-mini-player" ref={miniRef} onClick={onExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
+      onPointerDown={swipe.onPointerDown} onPointerMove={swipe.onPointerMove} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
+    >
       <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={6} />
       <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
@@ -838,12 +905,20 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const coverRef = useRef(null);
   const metaRef = useRef(null);
   const controlsRef = useRef(null);
+  const sheetRef = useRef(null);
   const flipTargets = useRef([
     { ref: coverRef },
     { ref: metaRef, uniform: true },
     { ref: controlsRef, uniform: true },
   ]).current;
   const captureHeroFlip = useHeroFlip(lyricsMode, flipTargets);
+  // Swiping down (from the grabber handle) always dismisses the whole sheet
+  // in one gesture, whether or not lyrics are showing — unlike tapping the
+  // grabber, which steps out of lyrics mode first. `onClose` here is the
+  // parent's handler and intentionally does NOT reset `lyricsOpen` (see
+  // App.jsx), so swiping down out of lyrics and reopening (mini player tap
+  // or swipe-up) lands back on lyrics instead of resetting to the cover.
+  const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: onClose, dragRef: sheetRef });
 
   const trackKey = currentTrack?.id;
   // NOTE: don't unmount AppleLyricsPane on track change — it already
@@ -911,7 +986,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={handleGrabberTap} />
-      <div className={`aivy-sheet ${open ? "open" : ""} ${lyricsMode ? "mode-lyrics" : ""}`} aria-hidden={!open}>
+      <div ref={sheetRef} className={`aivy-sheet ${open ? "open" : ""} ${lyricsMode ? "mode-lyrics" : ""}`} aria-hidden={!open}>
         {currentTrack && (
           <div
             className="aivy-sheet-bg"
@@ -919,7 +994,11 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             aria-hidden="true"
           />
         )}
-        <div className="aivy-sheet-grabber-row">
+        <div
+          className="aivy-sheet-grabber-row"
+          onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
+          onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
+        >
           <button className="aivy-sheet-grabber" onClick={handleGrabberTap} aria-label={t("close")} />
         </div>
         {currentTrack && (
@@ -1252,6 +1331,8 @@ function TrackDetailTechnicalTab({ track, isOpus, isPreviewClip }) {
 export function TrackDetailSheet({ open, track, isOpus, isPreviewClip, onClose }) {
   const { t } = useUI();
   const [tab, setTab] = useState("info");
+  const sheetRef = useRef(null);
+  const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: onClose, dragRef: sheetRef });
   useEffect(() => { if (open) setTab("info"); }, [open, track?.id]);
 
   if (!track) return null;
@@ -1259,8 +1340,12 @@ export function TrackDetailSheet({ open, track, isOpus, isPreviewClip, onClose }
   return (
     <>
       <div className={`aivy-sheet-backdrop over-sheet ${open ? "open" : ""}`} onClick={onClose} />
-      <div className={`aivy-detailsheet ${open ? "open" : ""}`} aria-hidden={!open}>
-        <div className="aivy-detailsheet-grabber" onClick={onClose} />
+      <div ref={sheetRef} className={`aivy-detailsheet ${open ? "open" : ""}`} aria-hidden={!open}>
+        <div
+          className="aivy-detailsheet-grabber" onClick={onClose}
+          onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
+          onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
+        />
         <div className="aivy-detailsheet-body aivy-scroll">
           <div className="aivy-detailsheet-head">
             <SmartCover src={track.cover} seed={track.id + track.title} size={52} radius={10} style={{ width: 52, height: 52 }} />
@@ -1320,11 +1405,17 @@ export function AlwaysOnDisplay({ open, track, onClose }) {
 export function QueueSheet({ open, onClose }) {
   const { t } = useUI();
   const [tab, setTab] = useState("queue");
+  const sheetRef = useRef(null);
+  const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: onClose, dragRef: sheetRef });
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={onClose} />
-      <div className={`aivy-sheet aivy-queue-sheet ${open ? "open" : ""}`} aria-hidden={!open}>
-        <div className="aivy-sheet-head">
+      <div ref={sheetRef} className={`aivy-sheet aivy-queue-sheet ${open ? "open" : ""}`} aria-hidden={!open}>
+        <div
+          className="aivy-sheet-head"
+          onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
+          onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
+        >
           <button className="aivy-icon-btn" onClick={onClose} aria-label={t("close")}><ChevronDown size={22} /></button>
           <span className="eyebrow">{t("tabQueue")}</span>
           <span style={{ width: 38 }} />

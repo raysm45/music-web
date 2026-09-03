@@ -435,6 +435,19 @@ export function PlayerProvider({ children }) {
 
       const graph = { ctx, source, preamp, bands, compressor, fadeGain };
       audioGraphRef.current = graph;
+      // Mobile browsers (iOS Safari in particular, also Chrome/Android in
+      // some cases) suspend — or mark "interrupted" — the AudioContext
+      // whenever the page is backgrounded/locked, a call comes in, etc.
+      // Because the <audio> element's output is routed entirely through
+      // this graph (createMediaElementSource redirects it, it can no
+      // longer play straight to the speaker), a suspended context means
+      // total silence even though the element itself is still technically
+      // "playing" and its currentTime keeps advancing. Resuming as soon as
+      // the state changes — instead of only when the tab becomes visible
+      // again — closes most of that gap.
+      ctx.addEventListener("statechange", () => {
+        if (ctx.state !== "running" && isPlayingRef.current) ctx.resume().catch(() => {});
+      });
       return graph;
     } catch {
       return null;
@@ -785,6 +798,36 @@ export function PlayerProvider({ children }) {
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [writeProgress, clipDuration, resumeAudioCtx]);
+
+  // Watchdog buat playback di background: statechange & visibilitychange
+  // kadang tidak cukup cepat (atau tidak fire sama sekali di sebagian
+  // browser HP) buat nangkep AudioContext yang di-suspend/di-"interrupt"
+  // pas layar dikunci / app dipindah ke belakang. Timer ini ngecek tiap
+  // beberapa detik selama status play masih true: kalau context-nya tidak
+  // "running", coba resume lagi; kalau elemen <audio>-nya sendiri ke-pause
+  // (misal OS ngerebut audio focus sebentar), coba play() lagi juga. Dicek
+  // juga saat balik ke foreground/tab fokus buat jaga-jaga race dengan
+  // listener lain di atas.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return undefined;
+    const nudge = () => {
+      if (!isPlayingRef.current) return;
+      const graph = audioGraphRef.current;
+      if (graph?.ctx && graph.ctx.state !== "running") graph.ctx.resume().catch(() => {});
+      if (audio.paused) audio.play().catch(() => {});
+    };
+    const id = setInterval(nudge, 3000);
+    document.addEventListener("visibilitychange", nudge);
+    window.addEventListener("focus", nudge);
+    window.addEventListener("pageshow", nudge);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", nudge);
+      window.removeEventListener("focus", nudge);
+      window.removeEventListener("pageshow", nudge);
+    };
+  }, []);
 
   useEffect(() => {
     let raf;

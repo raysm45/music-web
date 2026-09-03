@@ -46,7 +46,7 @@ const PAGE_BY_ROUTE = {
 
 function AppInner() {
   const { name, params } = useRouter();
-  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek, mobileQueueOpen, openMobileQueue, closeMobileQueue, closeLyrics } = useUI();
+  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek, mobileQueueOpen, openMobileQueue, closeMobileQueue } = useUI();
   const { currentTrack } = usePlayer();
   const isMobile = useIsMobile(860);
   const isPanelCompact = useIsMobile(1240);
@@ -87,7 +87,11 @@ function AppInner() {
 
       {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
       {isMobile && !isImmersiveShorts && <MobileTabBar />}
-      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => { setNowPlayingOpen(false); closeLyrics(); }} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} />}
+      {/* Closing here intentionally leaves `lyricsOpen` untouched (no closeLyrics()) so
+          that dismissing the sheet while lyrics are showing — by swipe or tap — and
+          reopening it (mini player tap/swipe-up) brings the user right back to lyrics
+          instead of resetting to the cover view. */}
+      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} />}
       {isMobile && <QueueSheet open={mobileQueueOpen} onClose={closeMobileQueue} />}
 
       <AddToPlaylistModal />
