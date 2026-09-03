@@ -11,17 +11,16 @@ export function ServerDownPage() {
   const dots = useMemo(() => {
     const rand = seededRandom(42);
     const totalDots = 200;
-    const errorCount = 3; // hanya 3 titik merah
+    const errorCount = 5; 
     const errorIndices = new Set();
 
-    // pilih 3 indeks acak untuk titik error
     while (errorIndices.size < errorCount) {
       errorIndices.add(Math.floor(rand() * totalDots));
     }
 
     return Array.from({ length: totalDots }, (_, i) => ({
-      delay: `${(rand() * 0.3).toFixed(2)}s`,     // 0 – 0.3 detik
-      duration: `${(0.3 + rand() * 0.7).toFixed(2)}s`, // 0.3 – 1 detik
+      delay: `${(rand() * 0.3).toFixed(2)}s`,     
+      duration: `${(0.3 + rand() * 0.7).toFixed(2)}s`,
       isError: errorIndices.has(i),
     }));
   }, []);
@@ -242,23 +241,17 @@ export function ServerDownPage() {
       margin: 0 auto;
     }
 
-    /* Titik normal: berkedip putih (flicker opacity) */
+    /* Titik putih: statis, tidak ada animasi */
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #fff;
-      animation: dot-flicker 0.8s steps(2, jump-none) infinite;
+      background: #ffffff;
     }
 
-    /* Titik error: berkedip merah (flicker warna) */
+    /* Titik merah: berkedip cepat */
     .dot.error {
       animation: dot-blink 0.6s steps(1, end) infinite;
-    }
-
-    @keyframes dot-flicker {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.2; }
     }
 
     @keyframes dot-blink {
@@ -438,7 +431,7 @@ export function ServerDownPage() {
           </div>
           <div className="info-item">
             <div className="label">Estimasi Pemulihan</div>
-            <div className="value">± 60 menit</div>
+            <div className="value">± 5 jam</div>
           </div>
           <div className="info-item">
             <div className="label">Terakhir Update</div>
