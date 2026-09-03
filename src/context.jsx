@@ -4,6 +4,7 @@ import React, {
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
 import { clamp, uid, debounce, pickBestAudioMatch } from "./lib/utils.js";
+import { detectAudioFormat } from "./lib/audioFormat.js";
 import { makeT } from "./lib/i18n.js";
 import { useDiscordActivity } from "./lib/discordActivity.js";
 
@@ -334,6 +335,10 @@ export function PlayerProvider({ children }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [clipDuration, setClipDuration] = useState(0);
   const [isPreviewClip, setIsPreviewClip] = useState(true);
+  // Real detected container/codec of the file currently loaded into the
+  // <audio> element — null while unknown/detecting, "unavailable" if
+  // sniffing failed, or { label, mimeType, codec, container }.
+  const [audioFormat, setAudioFormat] = useState(null);
   const [volume, setVolumeState] = useState(0.7);
   const [muted, setMuted] = useState(false);
   const [shuffle, setShuffle] = useState(false);
@@ -623,7 +628,7 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (!currentTrack) { audio.pause(); audio.removeAttribute("src"); return; }
+    if (!currentTrack) { audio.pause(); audio.removeAttribute("src"); setAudioFormat(null); return; }
     let cancelled = false;
     setLoadingAudio(true);
     resolveAudioSrc(currentTrack).then((resolved) => {
@@ -636,6 +641,11 @@ export function PlayerProvider({ children }) {
       setIsPreviewClip(resolved.preview);
       const isNewSrc = audio.src !== resolved.src;
       if (isNewSrc) audio.src = resolved.src;
+      setAudioFormat(null);
+      detectAudioFormat(resolved.src).then((fmt) => {
+        if (cancelled) return;
+        setAudioFormat(fmt || "unavailable");
+      });
       audio.volume = muted ? 0 : volume;
       wasFadedOutRef.current = false;
       const graph = ensureAudioGraph();
@@ -1429,7 +1439,7 @@ export function PlayerProvider({ children }) {
   const value = {
     queueList, order, posInOrder, currentTrack, upNext, history,
     currentTrackHasLyrics, playSource,
-    isPlaying, currentTime, duration: clipDuration, isPreviewClip, loadingAudio,
+    isPlaying, currentTime, duration: clipDuration, isPreviewClip, audioFormat, loadingAudio,
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue, addAllToQueueEnd, playAllNext,

@@ -67,10 +67,10 @@ function usePanelResize({ width, setWidth, min, max, side }) {
 // on buttons inside the drag area (play/pause, grabber, etc.) keep working
 // exactly as before. While dragging, `dragRef`'s element (if provided) is
 // given a live translateY so the sheet visually follows the finger.
-function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scrollRef, threshold = 110, velocityThreshold = 0.55 }) {
-  const stRef = useRef({ pointerId: null, dragging: false, startY: 0, startTime: 0, delta: 0, blocked: false });
+function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scrollRef, threshold = 90, velocityThreshold = 0.45 }) {
+  const stRef = useRef({ pointerId: null, dragging: false, startY: 0, startTime: 0, dragStartTime: 0, delta: 0, blocked: false });
 
-  const reset = () => { stRef.current = { pointerId: null, dragging: false, startY: 0, startTime: 0, delta: 0, blocked: false }; };
+  const reset = () => { stRef.current = { pointerId: null, dragging: false, startY: 0, startTime: 0, dragStartTime: 0, delta: 0, blocked: false }; };
 
   const onPointerDown = useCallback((e) => {
     if (!active) return;
@@ -80,7 +80,7 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
     // area is already scrolled to its start, so an ordinary scroll doesn't
     // get hijacked into closing the sheet.
     const blocked = direction === "down" && !!scrollRef?.current && scrollRef.current.scrollTop > 0;
-    stRef.current = { pointerId: e.pointerId, dragging: false, startY: e.clientY, startTime: Date.now(), delta: 0, blocked };
+    stRef.current = { pointerId: e.pointerId, dragging: false, startY: e.clientY, startTime: Date.now(), dragStartTime: 0, delta: 0, blocked };
   }, [active, direction, scrollRef]);
 
   const onPointerMove = useCallback((e) => {
@@ -93,6 +93,14 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
       if (Math.abs(raw) < 6) return;
       if (signed < 0) { reset(); return; } // moving the wrong way — not our gesture
       st.dragging = true;
+      // Velocity should reflect how fast the *swipe* was, not how long the
+      // finger sat still before the swipe started — measuring from
+      // pointerdown made a normal "rest thumb, then flick" swipe read as
+      // artificially slow and fail the velocity check, on top of the
+      // separately-too-high distance threshold. Both together meant the
+      // sheet would visibly follow the finger but almost always snap back
+      // instead of closing.
+      st.dragStartTime = Date.now();
       if (dragRef?.current) dragRef.current.style.transition = "none";
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     }
@@ -120,7 +128,7 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
     if (st.pointerId !== e.pointerId) return;
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
     if (!st.dragging) { reset(); return; }
-    const elapsed = Math.max(1, Date.now() - st.startTime);
+    const elapsed = Math.max(1, Date.now() - st.dragStartTime);
     const velocity = st.delta / elapsed;
     finish(st.delta > threshold || velocity > velocityThreshold);
   }, [finish, threshold, velocityThreshold]);
@@ -896,7 +904,7 @@ function useHeroFlip(mode, targets) {
 
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const {
-    currentTrack, currentTime: playerTime, seekTo, isPreviewClip,
+    currentTrack, currentTime: playerTime, seekTo, isPreviewClip, audioFormat,
     liked, toggleLike, loadingAudio, currentTrackHasLyrics,
   } = usePlayer();
   const { navigate } = useRouter();
@@ -904,7 +912,9 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
-  const isOpus = !!currentTrack && !isPreviewClip;
+  // Real detected codec label ("OPUS", "MP3", "AAC", ...) — null while
+  // still sniffing the file, "unavailable" if detection failed.
+  const formatLabel = audioFormat && audioFormat !== "unavailable" ? audioFormat.label : null;
   const [moreOpen, setMoreOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [aodOpen, setAodOpen] = useState(false);
@@ -1027,7 +1037,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               </div>
               <div className="npx-metarow">
                 <div className="npx-titles" ref={metaRef}>
-                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}{isOpus && <span className="badge badge-opus">OPUS</span>}</div>
+                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}{formatLabel && <span className="badge badge-opus">{formatLabel}</span>}</div>
                   <div
                     className="a"
                     onClick={() => { if (lyricsMode) return; currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}
@@ -1093,7 +1103,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
       <TrackOptionsSheet
         open={moreOpen}
         track={currentTrack}
-        isOpus={isOpus}
+        formatLabel={formatLabel}
         onClose={() => setMoreOpen(false)}
         onOpenDetail={() => { setMoreOpen(false); setDetailOpen(true); }}
         onOpenAod={() => { setMoreOpen(false); setAodOpen(true); }}
@@ -1101,7 +1111,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
       <TrackDetailSheet
         open={detailOpen}
         track={currentTrack}
-        isOpus={isOpus}
+        audioFormat={audioFormat}
         isPreviewClip={isPreviewClip}
         onClose={() => setDetailOpen(false)}
       />
@@ -1114,7 +1124,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   );
 }
 
-export function TrackOptionsSheet({ open, track, isOpus, onClose, onOpenDetail, onOpenAod }) {
+export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod }) {
   const { navigate } = useRouter();
   const { t, pushToast } = useUI();
   const { promptCast } = usePlayer();
@@ -1209,7 +1219,7 @@ export function TrackOptionsSheet({ open, track, isOpus, onClose, onOpenDetail, 
           <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={8} style={{ width: 44, height: 44 }} />
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 14.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {track.title}{isOpus && <span className="badge badge-opus" style={{ marginLeft: 6 }}>OPUS</span>}
+              {track.title}{formatLabel && <span className="badge badge-opus" style={{ marginLeft: 6 }}>{formatLabel}</span>}
             </div>
             <div style={{ fontSize: 12.5, color: "var(--ink-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {track.artist?.name || "\u2014"}
@@ -1276,17 +1286,20 @@ function TrackDetailInfoTab({ track }) {
   );
 }
 
-function TrackDetailTechnicalTab({ track, isOpus, isPreviewClip }) {
+function TrackDetailTechnicalTab({ track, audioFormat, isPreviewClip }) {
   const { t, pushToast } = useUI();
   const { getAudioSrc, duration: playerDuration } = usePlayer();
   const copy = (value) => { if (!value) return; navigator.clipboard?.writeText(String(value)); pushToast(t("copiedToClipboard")); };
 
-  // The two source types this app plays are consistent enough to state
-  // their container/codec outright (full tracks are proxied YouTube audio
-  // — itag 251, webm/opus @ 48kHz; previews are 30s Deezer mp3 clips) —
-  // but bitrate and file size vary per track, so instead of guessing we
-  // measure them for real with a 1-byte ranged fetch against the actual
-  // stream URL and read the total size back from Content-Range.
+  // Container/codec used to be stated outright from a guess ("full track =
+  // webm/opus, preview = mp3") — but the backend can fall back to a
+  // different itag/container depending on what's actually available for a
+  // given video, so a "full" track isn't guaranteed to be webm/opus. That
+  // guess has been replaced with `audioFormat`, sniffed for real from the
+  // file's own magic bytes (see lib/audioFormat.js). Bitrate and file size
+  // vary per track regardless, so those are still measured for real with a
+  // ranged fetch against the actual stream URL, reading the total size
+  // back from Content-Range.
   const [measured, setMeasured] = useState(null); // null = checking, "unavailable", or { bytes }
   useEffect(() => {
     let alive = true;
@@ -1311,25 +1324,18 @@ function TrackDetailTechnicalTab({ track, isOpus, isPreviewClip }) {
     : measured === "unavailable" || !(playerDuration > 0) ? t("detailNotAvailable")
     : `${Math.round((measured.bytes * 8) / 1000 / playerDuration)} Kbps`;
 
-  const rows = isOpus
-    ? [
-        { label: t("detailQuality"), value: t("detailQualityFull") },
-        { label: t("detailMimeType"), value: "audio/webm" },
-        { label: t("detailCodec"), value: "opus" },
-        { label: t("detailBitrate"), value: bitrateValue },
-        { label: t("detailSampleRate"), value: "48000 Hz" },
-        { label: t("detailFileSize"), value: fileSizeValue },
-        { label: t("detailItag"), value: "251" },
-        { label: t("detailSource"), value: "YouTube" },
-      ]
-    : [
-        { label: t("detailQuality"), value: t("detailQualityPreview") },
-        { label: t("detailMimeType"), value: "audio/mpeg" },
-        { label: t("detailCodec"), value: "mp3" },
-        { label: t("detailBitrate"), value: bitrateValue },
-        { label: t("detailFileSize"), value: fileSizeValue },
-        { label: t("detailSource"), value: "Deezer" },
-      ];
+  const detecting = audioFormat === null;
+  const detected = audioFormat && audioFormat !== "unavailable" ? audioFormat : null;
+  const mimeTypeValue = detecting ? t("loading") : (detected?.mimeType || t("detailNotAvailable"));
+  const codecValue = detecting ? t("loading") : (detected?.codec || t("detailNotAvailable"));
+
+  const rows = [
+    { label: t("detailQuality"), value: isPreviewClip ? t("detailQualityPreview") : t("detailQualityFull") },
+    { label: t("detailMimeType"), value: mimeTypeValue },
+    { label: t("detailCodec"), value: codecValue },
+    { label: t("detailBitrate"), value: bitrateValue },
+    { label: t("detailFileSize"), value: fileSizeValue },
+  ];
 
   return (
     <div className="aivy-detailsheet-list">
@@ -1346,7 +1352,7 @@ function TrackDetailTechnicalTab({ track, isOpus, isPreviewClip }) {
   );
 }
 
-export function TrackDetailSheet({ open, track, isOpus, isPreviewClip, onClose }) {
+export function TrackDetailSheet({ open, track, audioFormat, isPreviewClip, onClose }) {
   const { t } = useUI();
   const [tab, setTab] = useState("info");
   const sheetRef = useRef(null);
@@ -1381,7 +1387,7 @@ export function TrackDetailSheet({ open, track, isOpus, isPreviewClip, onClose }
 
           {tab === "info"
             ? <TrackDetailInfoTab track={track} />
-            : <TrackDetailTechnicalTab track={track} isOpus={isOpus} isPreviewClip={isPreviewClip} />}
+            : <TrackDetailTechnicalTab track={track} audioFormat={audioFormat} isPreviewClip={isPreviewClip} />}
         </div>
       </div>
     </>
