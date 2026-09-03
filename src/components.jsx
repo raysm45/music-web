@@ -1016,13 +1016,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
           <button className="aivy-sheet-grabber" onClick={handleGrabberTap} aria-label={t("close")} />
         </div>
         {currentTrack && (
-          <div
-            ref={bodyScrollRef}
-            className="aivy-sheet-body aivy-scroll"
-            onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
-            onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
-          >
-            <div className={`npx-hero ${lyricsMode ? "is-compact" : ""}`}>
+          <div ref={bodyScrollRef} className="aivy-sheet-body aivy-scroll">
+            <div
+              className={`npx-hero ${lyricsMode ? "is-compact" : ""}`}
+              onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
+              onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
+            >
               <div className="npx-cover" ref={coverRef}>
                 <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }} />
               </div>
@@ -2557,6 +2556,50 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize,
       class="aivy-am-lyrics"
       id={id || undefined}
       style={AM_LYRICS_FONT_SIZES[fontSize] || AM_LYRICS_FONT_SIZES.md}
+    />
+  );
+}
+
+// Silently primes <am-lyrics>' own result cache (see AmLyrics.ts) for
+// whatever's up next in the queue, so that when the user actually skips to
+// it, AppleLyricsPane finds the lyrics already resolved instead of running
+// the full provider fallback chain from scratch. Renders a fully hidden,
+// off-screen <am-lyrics> instance — same component, same fetch path, just
+// nothing the user ever sees.
+export function LyricsPrefetch() {
+  const { upNext } = usePlayer();
+  const nextTrack = upNext?.[0] || null;
+  const elRef = useRef(null);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el || !nextTrack) return;
+    let cancelled = false;
+    const apply = () => {
+      if (cancelled) return;
+      el.songTitle = cleanTrackTitleForLyrics(nextTrack.title, nextTrack.artist?.name);
+      el.songArtist = nextTrack.artist?.name || "";
+      el.songDurationMs = nextTrack.duration ? Math.round(nextTrack.duration * 1000) : undefined;
+      el.query = [el.songTitle, el.songArtist].filter(Boolean).join(" ");
+      el.autoScroll = false;
+      el.interpolate = false;
+    };
+    if (typeof customElements !== "undefined" && customElements.get("am-lyrics")) {
+      apply();
+    } else if (typeof customElements !== "undefined") {
+      customElements.whenDefined("am-lyrics").then(apply);
+    } else {
+      apply();
+    }
+    return () => { cancelled = true; };
+  }, [nextTrack?.id]);
+
+  if (!nextTrack) return null;
+  return (
+    <am-lyrics
+      ref={elRef}
+      aria-hidden="true"
+      style={{ position: "fixed", width: 0, height: 0, overflow: "hidden", opacity: 0, pointerEvents: "none", left: -9999 }}
     />
   );
 }

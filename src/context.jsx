@@ -365,6 +365,20 @@ export function PlayerProvider({ children }) {
     a.crossOrigin = "anonymous";
     return a;
   })());
+  // A second, silent <audio> element used purely to warm the browser's
+  // (and any CDN's) cache for the *next* queued track's audio file while
+  // the current one is still playing — see the prefetch effect below. It
+  // never plays; it just sits there buffering so that when we actually
+  // switch `audioRef`'s src to this same URL, playback can start from
+  // cache instead of a cold network fetch.
+  const preloadAudioRef = useRef((() => {
+    if (typeof Audio === "undefined") return null;
+    const a = new Audio();
+    a.crossOrigin = "anonymous";
+    a.preload = "auto";
+    a.muted = true;
+    return a;
+  })());
   const promptCast = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) return { ok: false, reason: "unsupported" };
@@ -682,7 +696,19 @@ export function PlayerProvider({ children }) {
     if (nextIdx >= order.length) return;
     const nextTrack = queueList[order[nextIdx]];
     if (!nextTrack) return;
-    resolveAudioSrc(nextTrack).catch(() => {});
+    let cancelled = false;
+    resolveAudioSrc(nextTrack).then((resolved) => {
+      if (cancelled || !resolved) return;
+      // Actually start buffering the file itself (not just fetching the
+      // stream ticket/URL) so the real handoff in the effect above can
+      // start from a warm cache instead of a cold connection.
+      const pre = preloadAudioRef.current;
+      if (pre && pre.src !== resolved.src) {
+        pre.src = resolved.src;
+        try { pre.load(); } catch { }
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, [currentKey, posInOrder, order, queueList, inRoom, repeat, resolveAudioSrc]);
 
   useEffect(() => {

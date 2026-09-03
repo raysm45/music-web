@@ -8,6 +8,7 @@ import {
 import {
   ErrorBoundary, Sidebar, MobileTabBar, TopBar, PlayerBar, MiniPlayer, NowPlayingSheet, QueueSheet,
   RightPanel, GlobalContextMenu, AddToPlaylistModal, CreditsModal, ToastHost, ViewLoading, LyricsOverlay,
+  LyricsPrefetch,
 } from "./components.jsx";
 import { LandingPage, LoginPage } from "./pages/AuthPages.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
@@ -86,6 +87,7 @@ function AppInner() {
       {!isMobile && <RightPanel />}
 
       {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
+      {isMobile && <LyricsPrefetch />}
       {isMobile && !isImmersiveShorts && <MobileTabBar />}
       {/* Closing here intentionally leaves `lyricsOpen` untouched (no closeLyrics()) so
           that dismissing the sheet while lyrics are showing — by swipe or tap — and
