@@ -11,8 +11,8 @@ export function ServerDownPage() {
   const dots = useMemo(() => {
     const rand = seededRandom(42);
     return Array.from({ length: 200 }, () => ({
-      delay: `${(rand() * 3).toFixed(2)}s`,
-      duration: `${(0.5 + rand() * 1.5).toFixed(2)}s`,
+      delay: `${(rand() * 5).toFixed(2)}s`,
+      duration: `${(3 + rand() * 5).toFixed(2)}s`,
     }));
   }, []);
 
@@ -220,7 +220,7 @@ export function ServerDownPage() {
     }
 
     .status-dot.error {
-      background: var(--text-muted);
+      background: #444;
       opacity: 0.5;
     }
 
@@ -236,13 +236,13 @@ export function ServerDownPage() {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--dot);
-      animation: dot-blink 1.2s ease-in-out infinite;
+      background: #fff;
+      animation: dot-blink 4s ease-in-out infinite;
     }
 
     @keyframes dot-blink {
-      0%, 100% { opacity: 0.2; }
-      50% { opacity: 1; }
+      0%, 100% { background-color: #ffffff; }
+      50% { background-color: #ff3333; }
     }
 
     .info-grid {
@@ -378,10 +378,10 @@ export function ServerDownPage() {
           <div className="simulation-header">Menghubungi Server...</div>
           <div className="server-labels">
             <span className="server-label">
-              <span className="status-dot ok"></span> Player
+              <span className="status-dot error"></span> Player
             </span>
             <span className="server-label">
-              <span className="status-dot ok"></span> Metadata
+              <span className="status-dot error"></span> Metadata
             </span>
             <span className="server-label">
               <span className="status-dot ok"></span> Database
@@ -390,10 +390,10 @@ export function ServerDownPage() {
               <span className="status-dot error"></span> API
             </span>
             <span className="server-label">
-              <span className="status-dot ok"></span> Auth
+              <span className="status-dot error"></span> Auth
             </span>
             <span className="server-label">
-              <span className="status-dot error"></span> Cache
+              <span className="status-dot ok"></span> Cache
             </span>
           </div>
           <div className="dots-grid">
