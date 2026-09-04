@@ -84,18 +84,28 @@ function identify(bytes, contentType) {
 // Detects the real container/codec of the audio file at `url` via a ranged
 // fetch. Results are cached per URL (stream URLs are per-track and
 // short-lived tickets, so this never grows unbounded in practice).
+//
+// IMPORTANT: only successful detections get cached long-term. A transient
+// failure (network blip, upstream not ready yet, aborted request) used to
+// get cached as `null` forever for that URL — since the same stream ticket
+// URL is reused for repeat plays within its ~10min TTL, one bad sniff meant
+// the codec badge silently stayed hidden for every replay of that track
+// until the ticket expired. Now a failed attempt is evicted immediately so
+// the next play (or the caller) can simply try again.
 export function detectAudioFormat(url) {
   if (!url) return Promise.resolve(null);
   if (detectCache.has(url)) return detectCache.get(url);
 
   const promise = fetch(url, { headers: { Range: `bytes=0-${SNIFF_BYTES - 1}` } })
     .then(async (res) => {
-      if (!res.ok && res.status !== 206) return null;
+      if (!res.ok && res.status !== 206) { detectCache.delete(url); return null; }
       const contentType = res.headers.get("content-type");
       const buf = new Uint8Array(await res.arrayBuffer());
-      return identify(buf, contentType);
+      const result = identify(buf, contentType);
+      if (!result) detectCache.delete(url);
+      return result;
     })
-    .catch(() => null);
+    .catch(() => { detectCache.delete(url); return null; });
 
   detectCache.set(url, promise);
   return promise;
