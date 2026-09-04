@@ -57,19 +57,23 @@ export const Api = {
     return apiGet(`/api/lyrics?${qs.toString()}`);
   },
 
-  async getStreamUrl(videoId) {
+  async getStreamUrl(videoId, { prefetch = false } = {}) {
     if (!videoId) return null;
     const quality = getPreferredAudioQuality();
     const cacheKey = `${videoId}:${quality}`;
     const nowS = Math.floor(Date.now() / 1000);
+    const suffix = prefetch ? "?purpose=prefetch" : "";
     const cached = streamTicketCache.get(cacheKey);
     if (cached && cached.expiresAt - TICKET_MARGIN_S > nowS) {
-      return `${API_BASE}/api/s/${encodeURIComponent(cached.sid)}`;
+      return `${API_BASE}/api/s/${encodeURIComponent(cached.sid)}${suffix}`;
     }
     const ticket = await apiSend("/api/stream-ticket", "POST", { videoId, quality });
     if (!ticket?.sid) throw new Error("tiket stream kosong");
     streamTicketCache.set(cacheKey, ticket);
-    return `${API_BASE}/api/s/${encodeURIComponent(ticket.sid)}`;
+    // purpose=prefetch cuma nge-flag ke backend "ini warm-cache, bukan
+    // playback aktif" — biar gak nendang stream yang lagi didengerin user
+    // lewat claimActiveStream(). Lihat src/routes/api.js.
+    return `${API_BASE}/api/s/${encodeURIComponent(ticket.sid)}${suffix}`;
   },
 
   // Spesifikasi audio ASLI (itag, codec, bitrate, sample rate, filesize, dst)
