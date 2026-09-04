@@ -4,7 +4,6 @@ import React, {
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
 import { clamp, uid, debounce, pickBestAudioMatch } from "./lib/utils.js";
-import { detectAudioFormat } from "./lib/audioFormat.js";
 import { makeT } from "./lib/i18n.js";
 import { useDiscordActivity } from "./lib/discordActivity.js";
 
@@ -574,7 +573,7 @@ export function PlayerProvider({ children }) {
     const wantFull = settings.audioQuality === "full";
     const fullSrcFor = async (videoId) => {
       try {
-        return { src: await Api.getStreamUrl(videoId), preview: false };
+        return { src: await Api.getStreamUrl(videoId), preview: false, videoId };
       } catch { return null; }
     };
 
@@ -642,10 +641,30 @@ export function PlayerProvider({ children }) {
       const isNewSrc = audio.src !== resolved.src;
       if (isNewSrc) audio.src = resolved.src;
       setAudioFormat(null);
-      detectAudioFormat(resolved.src).then((fmt) => {
-        if (cancelled) return;
-        setAudioFormat(fmt || "unavailable");
-      });
+      // Dulu ini nge-sniff byte pertama file lewat ranged fetch (lihat
+      // audioFormat.js). Sekarang langsung pakai data yang SAMA dengan tab
+      // Detail: hasil resolve yt-dlp yang beneran dipakai buat stream ini
+      // (GET /api/track/audio-info) — lebih kuat karena bukan tebakan dari
+      // magic bytes, tapi metadata asli dari backend, dan sudah pasti akurat
+      // untuk itag/format yang benar-benar dipilih.
+      if (resolved.preview) {
+        // Preview clip selalu MP3 dari Deezer — tidak perlu fetch apa pun.
+        setAudioFormat({ label: "MP3", mimeType: "audio/mpeg", codec: "mp3", container: "MP3" });
+      } else if (resolved.videoId) {
+        Api.trackAudioInfo(resolved.videoId)
+          .then((info) => {
+            if (cancelled) return;
+            const fmt = info?.format;
+            if (!fmt) { setAudioFormat("unavailable"); return; }
+            const label = fmt.codecFamily === "opus" ? "OPUS"
+              : fmt.codecFamily === "aac" ? "AAC"
+              : (fmt.container || "unavailable").toString().toUpperCase();
+            setAudioFormat({ label, mimeType: fmt.mimeType, codec: fmt.codec, container: fmt.container });
+          })
+          .catch(() => { if (!cancelled) setAudioFormat("unavailable"); });
+      } else {
+        setAudioFormat("unavailable");
+      }
       audio.volume = muted ? 0 : volume;
       wasFadedOutRef.current = false;
       const graph = ensureAudioGraph();
