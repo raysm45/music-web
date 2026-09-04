@@ -568,12 +568,12 @@ export function PlayerProvider({ children }) {
     });
   }, []);
 
-  const resolveAudioSrc = useCallback(async (track) => {
+  const resolveAudioSrc = useCallback(async (track, { prefetch = false } = {}) => {
     if (!track) return null;
     const wantFull = settings.audioQuality === "full";
     const fullSrcFor = async (videoId) => {
       try {
-        return { src: await Api.getStreamUrl(videoId), preview: false, videoId };
+        return { src: await Api.getStreamUrl(videoId, { prefetch }), preview: false, videoId };
       } catch { return null; }
     };
 
@@ -726,7 +726,7 @@ export function PlayerProvider({ children }) {
     const nextTrack = queueList[order[nextIdx]];
     if (!nextTrack) return;
     let cancelled = false;
-    resolveAudioSrc(nextTrack).then((resolved) => {
+    resolveAudioSrc(nextTrack, { prefetch: true }).then((resolved) => {
       if (cancelled || !resolved) return;
       // Actually start buffering the file itself (not just fetching the
       // stream ticket/URL) so the real handoff in the effect above can
