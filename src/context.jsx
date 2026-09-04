@@ -1067,7 +1067,15 @@ export function PlayerProvider({ children }) {
   const seekRatio = useCallback((ratio) => {
     const audio = audioRef.current;
     if (!audio) return;
-    const dur = audio.duration || clipDuration || 0;
+    // audio.duration bisa Infinity (stream tanpa Content-Length yang jelas,
+    // masih umum kejadian sesaat sebelum metadata penuh ke-load) — Infinity
+    // itu truthy, jadi "audio.duration || clipDuration" SALAH nganggep itu
+    // durasi valid, lalu ratio * Infinity = Infinity, dan
+    // audio.currentTime = Infinity otomatis ditolak browser -> seek diam
+    // aja / ga ngefek. Makanya harus filter pakai Number.isFinite dulu, baru
+    // fallback ke clipDuration (durasi asli dari metadata track).
+    const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (clipDuration || 0);
+    if (!dur) return; // durasi belum diketahui sama sekali, jangan seek ke posisi ngasal
     const t = clamp(ratio, 0, 1) * dur;
     if (inRoom) { socketRef.current?.emit("playback-control", { roomId: room.id, action: "seek", payload: { position: t } }); return; }
     audio.currentTime = t;
@@ -1078,7 +1086,8 @@ export function PlayerProvider({ children }) {
   const seekTo = useCallback((seconds) => {
     const audio = audioRef.current;
     if (!audio) return;
-    const dur = audio.duration || clipDuration || 0;
+    // Sama seperti seekRatio: jangan biarkan Infinity lolos jadi "durasi valid".
+    const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (clipDuration || 0);
     const t = clamp(seconds, 0, dur || seconds);
     if (inRoom) { socketRef.current?.emit("playback-control", { roomId: room.id, action: "seek", payload: { position: t } }); return; }
     audio.currentTime = t;

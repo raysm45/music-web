@@ -1287,6 +1287,14 @@ function TrackDetailInfoTab({ track }) {
 
 // Cache kecil per videoId+quality biar ganti tab bolak-balik nggak nembak
 // endpoint /audio-info berkali-kali (spek audio nggak berubah selama sesi).
+//
+// PENTING: cuma hasil SUKSES yang disimpan permanen. Sebelumnya kegagalan
+// (mis. /audio-info sempat gagal sekali karena yt-dlp gagal di semua
+// player_client, atau koneksi kepotong) juga ikut ke-cache sebagai
+// "unavailable" selamanya — jadi begitu gagal sekali, badge codec-nya ga
+// akan pernah muncul lagi buat lagu itu di sesi ini walau backend-nya
+// sebenarnya udah pulih. Sekarang kegagalan dibuang dari cache biar attempt
+// berikutnya (mis. buka ulang tab Technical) nyoba fetch ulang.
 const audioInfoCache = new Map();
 function useTrackAudioInfo(track) {
   const videoId = track?.videoId || track?.id || null;
@@ -1306,7 +1314,11 @@ function useTrackAudioInfo(track) {
       .then(({ Api }) => Api.trackAudioInfo(videoId))
       .catch(() => "unavailable");
     audioInfoCache.set(videoId, promise);
-    promise.then((v) => { audioInfoCache.set(videoId, v); applyResult(v); });
+    promise.then((v) => {
+      if (v === "unavailable") audioInfoCache.delete(videoId);
+      else audioInfoCache.set(videoId, v);
+      applyResult(v);
+    });
     return () => { alive = false; };
   }, [videoId]);
   return info;
@@ -1660,6 +1672,14 @@ function AboutArtistSection({ track, onNavigate }) {
 // ArchiveTune-style: deskripsi diambil dari video YouTube asli lewat videoId
 // (backend memanggil innertube WEB client -> /next -> attributedDescription.content),
 // bukan lookup title/artist ke sumber credits terstruktur seperti sebelumnya.
+//
+// PENTING: sama seperti audioInfoCache di atas — cuma deskripsi yang
+// BERHASIL diambil yang disimpan permanen. Kalau /api/track/description
+// gagal (mis. semua player_client yt-dlp gagal buat video itu, lihat
+// getVideoDescription di backend), sebelumnya `null` itu ikut ke-cache
+// selamanya per videoId, jadi deskripsi ga akan pernah nongol lagi buat
+// lagu itu di sesi ini walau di-retry manual. Sekarang kegagalan dibuang
+// dari cache biar kunjungan berikutnya ke lagu yang sama nyoba fetch ulang.
 const descriptionFetchCache = new Map();
 function useTrackDescription(track) {
   const videoId = track?.videoId || track?.id || null;
@@ -1694,7 +1714,8 @@ function useTrackDescription(track) {
       .catch(() => null);
     descriptionFetchCache.set(videoId, promise);
     promise.then((description) => {
-      descriptionFetchCache.set(videoId, description);
+      if (description == null) descriptionFetchCache.delete(videoId);
+      else descriptionFetchCache.set(videoId, description);
       applyResult(description);
     });
 
