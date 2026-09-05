@@ -57,13 +57,13 @@ export const Api = {
     return apiGet(`/api/lyrics?${qs.toString()}`);
   },
 
-  async getStreamUrl(videoId, { prefetch = false } = {}) {
+  async getStreamUrl(videoId, { prefetch = false, forceFresh = false } = {}) {
     if (!videoId) return null;
     const quality = getPreferredAudioQuality();
     const cacheKey = `${videoId}:${quality}`;
     const nowS = Math.floor(Date.now() / 1000);
     const suffix = prefetch ? "?purpose=prefetch" : "";
-    const cached = streamTicketCache.get(cacheKey);
+    const cached = !forceFresh && streamTicketCache.get(cacheKey);
     if (cached && cached.expiresAt - TICKET_MARGIN_S > nowS) {
       return `${API_BASE}/api/s/${encodeURIComponent(cached.sid)}${suffix}`;
     }
@@ -74,6 +74,20 @@ export const Api = {
     // playback aktif" — biar gak nendang stream yang lagi didengerin user
     // lewat claimActiveStream(). Lihat src/routes/api.js.
     return `${API_BASE}/api/s/${encodeURIComponent(ticket.sid)}${suffix}`;
+  },
+
+  // Sesi stream cuma hidup di memori backend. Kalau backend sempet
+  // restart/crash, tiket lama yang masih "kelihatan valid" di cache
+  // frontend ini sebenernya udah gak eksis di server -> request beneran
+  // bakal ditolak 403 walau belum "expiresAt". Panggil ini begitu ketauan
+  // sebuah tiket ditolak, biar retry berikutnya minta tiket BARU, bukan
+  // ngulang tiket basi yang sama (itu penyebab lagu "berhenti sendiri"
+  // karena retry loop gagal terus dengan tiket yang sama).
+  invalidateStreamTicket(videoId) {
+    if (!videoId) return;
+    for (const key of streamTicketCache.keys()) {
+      if (key.startsWith(`${videoId}:`)) streamTicketCache.delete(key);
+    }
   },
 
   // Spesifikasi audio ASLI (itag, codec, bitrate, sample rate, filesize, dst)
