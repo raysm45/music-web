@@ -360,6 +360,8 @@ export function PlayerProvider({ children }) {
   const [suggestedQueue, setSuggestedQueue] = useState([]);
   const suggestedQueueRef = useRef([]);
   useEffect(() => { suggestedQueueRef.current = suggestedQueue; }, [suggestedQueue]);
+  const queueListRef = useRef([]);
+  useEffect(() => { queueListRef.current = queueList; }, [queueList]);
   const addToQueueEndRef = useRef(null);
   const socketRef = useRef(null);
 
@@ -568,12 +570,12 @@ export function PlayerProvider({ children }) {
     });
   }, []);
 
-  const resolveAudioSrc = useCallback(async (track, { prefetch = false } = {}) => {
+  const resolveAudioSrc = useCallback(async (track, { prefetch = false, forceFresh = false } = {}) => {
     if (!track) return null;
     const wantFull = settings.audioQuality === "full";
     const fullSrcFor = async (videoId) => {
       try {
-        return { src: await Api.getStreamUrl(videoId, { prefetch }), preview: false, videoId };
+        return { src: await Api.getStreamUrl(videoId, { prefetch, forceFresh }), preview: false, videoId };
       } catch { return null; }
     };
 
@@ -785,7 +787,15 @@ export function PlayerProvider({ children }) {
       recoveringRef.current = true;
       retryCountRef.current += 1;
       try {
-        const resolved = await resolveAudioSrc(currentTrack);
+        // forceFresh: WAJIB minta tiket baru di sini, bukan reuse cache.
+        // Recovery dipicu justru karena ada yang gagal (error/stalled) —
+        // salah satu penyebab paling umum adalah backend sempet
+        // restart dan sesi/tiket lama udah gak dikenal lagi (403 "sesi
+        // kedaluwarsa"). Kalau tetap pakai tiket lama dari cache, retry
+        // ini dijamin gagal lagi dengan error yang sama, retryCountRef
+        // habis dalam 3x percobaan, dan lagu berhenti total tanpa lanjut
+        // ke lagu berikutnya.
+        const resolved = await resolveAudioSrc(currentTrack, { forceFresh: true });
         if (!resolved) return;
         audio.src = resolved.src;
         audio.currentTime = resumeAt;
@@ -1028,10 +1038,7 @@ export function PlayerProvider({ children }) {
     });
   }, [currentKey, inRoom]);
 
-  const continueWithRadio = useCallback(() => {
-    const rq = suggestedQueueRef.current;
-    if (!rq.length) return false;
-    const [nextTrack, ...rest] = rq;
+  const applyRadioContinuation = useCallback((nextTrack, rest) => {
     setSuggestedQueue(rest);
     setQueueList((list) => {
       const newList = [...list, nextTrack];
@@ -1043,8 +1050,40 @@ export function PlayerProvider({ children }) {
     if (authUser && settings.historyEnabled !== false) {
       Api.addHistory(nextTrack.videoId || nextTrack.id, { title: nextTrack.title, artistName: nextTrack.artist?.name || null, thumbnail: nextTrack.cover, duration: nextTrack.duration }).catch(() => {});
     }
-    return true;
   }, [authUser, settings.historyEnabled]);
+
+  const continueWithRadio = useCallback(() => {
+    const rq = suggestedQueueRef.current;
+    if (!rq.length) return false;
+    const [nextTrack, ...rest] = rq;
+    applyRadioContinuation(nextTrack, rest);
+    return true;
+  }, [applyRadioContinuation]);
+
+  // Fallback kalau prefetch suggestedQueue belum kelar (atau gagal) tepat
+  // pas lagu abis — ini SERING kejadian di background karena request
+  // /api/similar bisa ke-throttle browser HP. Tanpa ini, lagu langsung
+  // "berhenti sendiri" gitu aja tanpa nyoba lagi. Coba fetch on-demand
+  // sekali lagi sebelum beneran nyerah.
+  const fetchRadioContinuationNow = useCallback(async (seedTrack) => {
+    if (!seedTrack) return false;
+    try {
+      const similarArgs = seedTrack.source === "deezer"
+        ? { trackId: seedTrack.id }
+        : { title: seedTrack.title, artist: seedTrack.artist?.name || "" };
+      const res = await Api.similar(similarArgs);
+      const knownIds = new Set(queueListRef.current.map((t) => String(t.id)));
+      const items = (res?.items || [])
+        .map(normalizeTrack)
+        .filter(Boolean)
+        .filter((t) => t.id !== seedTrack.id && !knownIds.has(String(t.id)));
+      if (!items.length) return false;
+      applyRadioContinuation(items[0], items.slice(1, 5));
+      return true;
+    } catch {
+      return false;
+    }
+  }, [applyRadioContinuation]);
 
   const promoteSuggestion = useCallback((track) => {
     setSuggestedQueue((rq) => rq.filter((t) => t.id !== track.id));
@@ -1066,13 +1105,23 @@ export function PlayerProvider({ children }) {
     const isLast = posInOrder >= order.length - 1;
     if (isLast) {
       if (repeat === "all" && order.length) { setPosInOrder(0); return; }
-      if (repeat !== "one" && settings.autoplay !== false && continueWithRadio()) return;
+      if (repeat !== "one" && settings.autoplay !== false) {
+        if (continueWithRadio()) return;
+        // Prefetch suggestedQueue belum siap (kena throttle background,
+        // atau belum sempet selesai) — coba on-demand sekali lagi sebelum
+        // beneran nyerah dan diem. Ini yang bikin "abis satu lagu terus
+        // berhenti sendiri" sebelumnya.
+        fetchRadioContinuationNow(currentTrack).then((ok) => {
+          if (!ok && auto) setIsPlaying(false);
+        });
+        return;
+      }
       if (!auto) return;
       setIsPlaying(false);
       return;
     }
     setPosInOrder((p) => p + 1);
-  }, [inRoom, room, order.length, posInOrder, repeat, settings.autoplay, continueWithRadio]);
+  }, [inRoom, room, order.length, posInOrder, repeat, settings.autoplay, continueWithRadio, fetchRadioContinuationNow, currentTrack]);
   const nextRef = useRef(next);
   useEffect(() => { nextRef.current = next; }, [next]);
 
