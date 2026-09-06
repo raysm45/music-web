@@ -111,6 +111,50 @@ The app silently pings the backend in the background. If the connection genuinel
 
 ---
 
+## 🙏 Credits & Open Source
+
+Aivy is built on top of the amazing work of the open-source community. Huge thanks to the authors and maintainers of the following projects:
+
+### Frontend
+
+| Project | Description | Repository |
+|---|---|---|
+| React | UI library powering the whole app | [facebook/react](https://github.com/facebook/react) |
+| Vite | Build tool & dev server | [vitejs/vite](https://github.com/vitejs/vite) |
+| @vitejs/plugin-react | Official React plugin for Vite | [vitejs/vite-plugin-react](https://github.com/vitejs/vite-plugin-react) |
+| Lit | Web components used for the lyrics view | [lit/lit](https://github.com/lit/lit) |
+| Lucide | Icon set used throughout the UI | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) |
+| Socket.IO Client | Realtime engine for Listen Together rooms | [socketio/socket.io-client](https://github.com/socketio/socket.io-client) |
+| Discord Embedded App SDK | Powers the in-Discord Activity experience | [discord/embedded-app-sdk](https://github.com/discord/embedded-app-sdk) |
+
+### Vendored
+
+| Project | Description | Repository |
+|---|---|---|
+| am-lyrics | Synced, animated lyrics web component (vendored & adapted in `src/vendor/am-lyrics`) | [binimum/am-lyrics](https://github.com/binimum/am-lyrics) |
+
+### Backend
+
+| Project | Description | Repository |
+|---|---|---|
+| Express | HTTP server framework | [expressjs/express](https://github.com/expressjs/express) |
+| Socket.IO | Realtime engine (server side) | [socketio/socket.io](https://github.com/socketio/socket.io) |
+| mysql2 | MySQL client/driver | [sidorares/node-mysql2](https://github.com/sidorares/node-mysql2) |
+| cors | CORS middleware | [expressjs/cors](https://github.com/expressjs/cors) |
+| cookie-parser | Cookie parsing middleware | [expressjs/cookie-parser](https://github.com/expressjs/cookie-parser) |
+| dotenv | Environment variable loader | [motdotla/dotenv](https://github.com/motdotla/dotenv) |
+| jsonwebtoken | JWT signing & verification for auth | [auth0/node-jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) |
+| jsdom | DOM implementation used server-side | [jsdom/jsdom](https://github.com/jsdom/jsdom) |
+| node-cache | In-memory caching | [node-cache/node-cache](https://github.com/node-cache/node-cache) |
+| p-queue | Promise queue with concurrency control | [sindresorhus/p-queue](https://github.com/sindresorhus/p-queue) |
+| sharp | Image processing (thumbnails, covers) | [lovell/sharp](https://github.com/lovell/sharp) |
+| undici | HTTP client used for outbound requests | [nodejs/undici](https://github.com/nodejs/undici) |
+| youtubei.js | YouTube InnerTube client used for search/streaming | [LuanRT/YouTube.js](https://github.com/LuanRT/YouTube.js) |
+| BgUtils (bgutils-js) | Generates PoTokens / BotGuard attestation for YouTube access | [LuanRT/BgUtils](https://github.com/LuanRT/BgUtils) |
+| yt-search | Lightweight YouTube search | [talmobi/yt-search](https://github.com/talmobi/yt-search) |
+
+> 📌 If any of these libraries are updated or swapped out, please keep this table in sync.
+
 ## 🤝 Contributing
 
 Issues and pull requests are welcome. Please open an issue first to discuss significant changes.
@@ -120,3 +164,7 @@ Issues and pull requests are welcome. Please open an issue first to discuss sign
 This project is currently unlicensed / proprietary. Contact the maintainer for usage terms.
 
 ---
+
+<div align="center">
+Made by Aivy team
+</div>
