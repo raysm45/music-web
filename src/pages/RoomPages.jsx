@@ -268,9 +268,9 @@ export function RoomPage() {
                 <div key={r.videoId} className="aivy-row">
                   <div className="meta">
                     <span className="t">{r.title}</span>
-                    {r.artist && <span className="a">{r.artist}</span>}
+                    {r.artist && <span className="a">{typeof r.artist === "string" ? r.artist : r.artist.name}</span>}
                   </div>
-                  <button className="aivy-icon-btn sm" onClick={() => { addToQueueEnd({ id: r.videoId, videoId: r.videoId, title: r.title, artist: r.artist ? { name: r.artist } : null, cover: r.thumbnail, duration: r.duration }); setSearch(""); setResults([]); }} aria-label={t("menuAddQueue")}><Plus size={16} /></button>
+                  <button className="aivy-icon-btn sm" onClick={() => { addToQueueEnd({ id: r.videoId, videoId: r.videoId, title: r.title, artist: typeof r.artist === "string" ? { name: r.artist } : (r.artist || null), cover: r.cover || r.thumbnail, duration: r.duration }); setSearch(""); setResults([]); }} aria-label={t("menuAddQueue")}><Plus size={16} /></button>
                 </div>
               ))}
             </div>
@@ -305,4 +305,4 @@ export function RoomPage() {
       )}
     </div>
   );
-}
+              }
