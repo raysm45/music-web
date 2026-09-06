@@ -1,18 +1,3 @@
-// Real audio codec / container detection.
-//
-// The technical-details panel used to just assume the container/codec from
-// which of the two playback paths served the track (proxied "full" stream
-// vs. preview clip) — e.g. "full = webm/opus, preview = mp3". That's a
-// guess, not a measurement: the backend can fall back to a different itag
-// or container depending on what's actually available for a given video,
-// so a track labelled "full" isn't guaranteed to be webm/opus.
-//
-// This sniffs the real file instead. A small ranged fetch pulls back the
-// first few KB of the actual stream — enough to read the container's magic
-// bytes, and for containers that can hold more than one codec (WebM/Ogg),
-// to find the codec-id string that sits in the header metadata near the
-// start of the file.
-
 const textDecoder = typeof TextDecoder !== "undefined" ? new TextDecoder("latin1") : null;
 
 function toAsciiWindow(bytes) {
@@ -36,12 +21,9 @@ function asciiAt(bytes, offset, str) {
   return bytesEqual(bytes, offset, seq);
 }
 
-// Large enough that a WebM/Ogg container's codec-id metadata (which sits
-// right after the file header, not scattered through the stream) is
-// virtually always inside this window.
 const SNIFF_BYTES = 8192;
 
-const detectCache = new Map(); // url -> Promise<result|null>
+const detectCache = new Map();
 
 function identify(bytes, contentType) {
   const ascii = toAsciiWindow(bytes);
@@ -53,9 +35,6 @@ function identify(bytes, contentType) {
     return { label: "WAV", mimeType: "audio/wav", codec: "pcm", container: "WAV" };
   }
   if (bytesEqual(bytes, 0, [0x1a, 0x45, 0xdf, 0xa3])) {
-    // EBML — WebM or Matroska. Both Opus and Vorbis audio can live in this
-    // container; the codec ID ("A_OPUS" / "A_VORBIS") shows up as plain
-    // ASCII in the Tracks element near the start of the file.
     if (ascii.includes("A_OPUS")) return { label: "OPUS", mimeType: "audio/webm", codec: "opus", container: "WebM" };
     if (ascii.includes("A_VORBIS")) return { label: "VORBIS", mimeType: "audio/webm", codec: "vorbis", container: "WebM" };
     return { label: "WEBM", mimeType: contentType || "audio/webm", codec: "unknown", container: "WebM" };
@@ -72,8 +51,6 @@ function identify(bytes, contentType) {
     return { label: "MP3", mimeType: "audio/mpeg", codec: "mp3", container: "MP3" };
   }
   if (contentType) {
-    // Nothing recognizable in the bytes we sniffed — fall back to whatever
-    // the server told us it is, if anything, rather than showing nothing.
     const short = contentType.split(";")[0].trim();
     const label = (short.split("/")[1] || short).toUpperCase();
     return { label, mimeType: short, codec: "unknown", container: "unknown" };
@@ -81,17 +58,6 @@ function identify(bytes, contentType) {
   return null;
 }
 
-// Detects the real container/codec of the audio file at `url` via a ranged
-// fetch. Results are cached per URL (stream URLs are per-track and
-// short-lived tickets, so this never grows unbounded in practice).
-//
-// IMPORTANT: only successful detections get cached long-term. A transient
-// failure (network blip, upstream not ready yet, aborted request) used to
-// get cached as `null` forever for that URL — since the same stream ticket
-// URL is reused for repeat plays within its ~10min TTL, one bad sniff meant
-// the codec badge silently stayed hidden for every replay of that track
-// until the ticket expired. Now a failed attempt is evicted immediately so
-// the next play (or the caller) can simply try again.
 export function detectAudioFormat(url) {
   if (!url) return Promise.resolve(null);
   if (detectCache.has(url)) return detectCache.get(url);
@@ -116,11 +82,6 @@ export function clearAudioFormatCache(url) {
   else detectCache.clear();
 }
 
-// Preferensi kualitas audio. Selalu pakai "compatible" (AAC/m4a) — bitrate-nya
-// lebih rendah dari Opus "high" (~128kbps vs ~160kbps) jadi file lebih kecil
-// dan mulai puter lebih cepat, dan didukung semua browser (termasuk Safari
-// yang nggak bisa decode WebM/Opus native), jadi nggak perlu deteksi
-// canPlayType lagi buat milih.
 export function getPreferredAudioQuality() {
   return "compatible";
-}
+    }
