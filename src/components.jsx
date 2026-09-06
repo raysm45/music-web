@@ -7,7 +7,7 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
-  Cast, Info, Copy,
+  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -1056,12 +1056,13 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
 
 export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod, onNavigate }) {
   const { navigate } = useRouter();
-  const { t, pushToast } = useUI();
-  const { promptCast } = usePlayer();
+  const { t, pushToast, openAddToPlaylist } = useUI();
+  const { promptCast, volume, muted } = usePlayer();
   const sheetRef = useRef(null);
   const [resolvingArtist, setResolvingArtist] = useState(false);
   const [resolvingAlbum, setResolvingAlbum] = useState(false);
   const closeAll = onNavigate || onClose;
+  const volumePct = Math.round((muted ? 0 : volume) * 100);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -1077,8 +1078,19 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
     const res = await promptCast();
     if (!res.ok) pushToast(res.reason === "unsupported" ? t("castUnsupported") : t("castNoDevice"));
   };
-  const handleCopyLink = () => {
-    navigator.clipboard?.writeText(buildShareUrl(track));
+  const handleAddToPlaylist = () => { onClose(); openAddToPlaylist(track); };
+  const handleShare = async () => {
+    const url = buildShareUrl(track);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: track.title, text: track.artist?.name || "", url });
+        onClose();
+        return;
+      } catch {
+        /* user cancelled share sheet, fall back to copy */
+      }
+    }
+    navigator.clipboard?.writeText(url);
     pushToast(t("linkCopied"));
     onClose();
   };
@@ -1125,42 +1137,84 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
     navigate("album", { params: { id: track.album.id } });
   };
 
-  const items = [
-    { key: "detail", icon: <Info size={18} />, label: t("npDetail"), onSelect: onOpenDetail },
-    { key: "cast", icon: <Cast size={18} />, label: t("npCast"), onSelect: handleCast },
+  const isLocal = track.source === "local";
+
+  const gridItems = [
+    !isLocal && { key: "cast", icon: <Cast size={20} />, label: t("npCast"), onSelect: handleCast },
+    { key: "playlist", icon: <ListPlus size={20} />, label: t("npAddToPlaylist"), onSelect: handleAddToPlaylist },
+    { key: "share", icon: <Share2 size={20} />, label: t("npShare"), onSelect: handleShare },
+    { key: "aod", icon: <Moon size={20} />, label: t("npAodMode"), onSelect: onOpenAod },
+  ].filter(Boolean);
+
+  const navItems = [
     track.artist?.name && { key: "artist", icon: <Music2 size={18} />, label: t("npViewArtist"), onSelect: handleArtist, busy: resolvingArtist },
     (track.album?.id || track.album?.title) && { key: "album", icon: <Music2 size={18} />, label: t("npViewAlbum"), onSelect: handleAlbum, busy: resolvingAlbum },
-    { key: "copy", icon: <Share2 size={18} />, label: t("npCopyLink"), onSelect: handleCopyLink },
-    { key: "aod", icon: <Moon size={18} />, label: t("npAodMode"), onSelect: onOpenAod },
   ].filter(Boolean);
+
+  const infoItems = [
+    { key: "detail", icon: <Info size={18} />, label: t("npDetail"), onSelect: onOpenDetail },
+    { key: "eq", icon: <SlidersHorizontal size={18} />, label: t("npEqualizer"), disabled: true },
+    { key: "tempo", icon: <Gauge size={18} />, label: t("npTempoPitch"), disabled: true },
+  ];
 
   return (
     <>
       <div className={`aivy-sheet-backdrop over-sheet ${open ? "open" : ""}`} onClick={onClose} />
-      <div ref={sheetRef} className={`aivy-actionsheet ${open ? "open" : ""}`} aria-hidden={!open}>
+      <div ref={sheetRef} className={`aivy-actionsheet aivy-optsheet ${open ? "open" : ""}`} aria-hidden={!open}>
         <div className="aivy-actionsheet-grabber" onClick={onClose} />
-        <div className="aivy-actionsheet-track">
+
+        <div className="aivy-optsheet-track">
           <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={8} style={{ width: 44, height: 44 }} />
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {track.title}{formatLabel && <span className="badge badge-opus" style={{ marginLeft: 6 }}>{formatLabel}</span>}
+            <div className="aivy-optsheet-eyebrow">{t("nowPlaying")}</div>
+            <div className="t">
+              {track.title}
+              {formatLabel && <span className="badge badge-opus" style={{ marginLeft: 6 }}>{formatLabel}</span>}
             </div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {track.artist?.name || "\u2014"}
-            </div>
+            <div className="a">{track.artist?.name || "\u2014"}</div>
           </div>
         </div>
-        {items.map((item) => (
-          <button
-            key={item.key}
-            className={`aivy-actionsheet-item ${item.busy ? "is-busy" : ""}`}
-            onClick={item.onSelect}
-            disabled={item.busy}
-          >
-            {item.icon}<span>{item.label}</span>
-            {item.busy && <span className="aivy-actionsheet-spinner" aria-hidden="true" />}
-          </button>
-        ))}
+
+        <div className="aivy-optsheet-volume">
+          <div className="row-label"><span>{t("volume")}</span><span>{volumePct}%</span></div>
+          <VolumeControl showEndIcon />
+        </div>
+
+        <div className="aivy-optsheet-grid">
+          {gridItems.map((item) => (
+            <button key={item.key} type="button" className="aivy-optsheet-gridbtn" onClick={item.onSelect}>
+              <span className="ic">{item.icon}</span>
+              <span className="lb">{item.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {navItems.length > 0 && (
+          <div className="aivy-optsheet-list">
+            {navItems.map((item) => (
+              <button
+                key={item.key} type="button"
+                className={`aivy-optsheet-listrow ${item.busy ? "is-busy" : ""}`}
+                onClick={item.onSelect} disabled={item.busy}
+              >
+                {item.icon}<span>{item.label}</span>
+                {item.busy && <span className="aivy-actionsheet-spinner" aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="aivy-optsheet-list">
+          {infoItems.map((item) => (
+            <button
+              key={item.key} type="button"
+              className="aivy-optsheet-listrow" onClick={item.onSelect} disabled={item.disabled}
+            >
+              {item.icon}<span>{item.label}</span>
+              {item.disabled && <span className="aivy-optsheet-badge">{t("comingSoon")}</span>}
+            </button>
+          ))}
+        </div>
       </div>
     </>
   );

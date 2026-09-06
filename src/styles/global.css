@@ -697,6 +697,37 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-actionsheet-spinner{ margin-left: auto; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--ink-faint); animation: aivy-spin .7s linear infinite; flex-shrink: 0; }
 @keyframes aivy-spin{ to{ transform: rotate(360deg); } }
 
+/* Redesigned Now-Playing / Lyrics "..." sheet: mini now-playing card,
+   full-width volume row, a grid of icon actions, then grouped list rows. */
+.aivy-optsheet-track{ display: flex; align-items: center; gap: 12px; padding: 4px 10px 16px; }
+.aivy-optsheet-eyebrow{ font-size: 12px; font-weight: 600; color: var(--moss-strong); margin-bottom: 2px; }
+.aivy-optsheet-track .t{ font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-optsheet-track .a{ font-size: 12.5px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aivy-optsheet-volume{ background: var(--bg-elev-2); border-radius: var(--radius-md); padding: 12px 14px; margin: 0 0 14px; }
+.aivy-optsheet-volume .row-label{ display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--ink-dim); margin-bottom: 10px; }
+.aivy-optsheet-volume .aivy-vol{ width: 100%; }
+.aivy-optsheet-volume .aivy-vol .track{ width: 100%; max-width: none; }
+.aivy-optsheet-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.aivy-optsheet-gridbtn{
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 16px 6px; border-radius: var(--radius-md); background: var(--bg-elev-2); color: var(--ink);
+  text-align: center; transition: background var(--dur-fast) var(--ease);
+}
+.aivy-optsheet-gridbtn:hover{ background: var(--bg-elev-3); }
+.aivy-optsheet-gridbtn .ic{ display: flex; color: var(--ink-dim); }
+.aivy-optsheet-gridbtn .lb{ font-size: 12px; font-weight: 500; line-height: 1.25; }
+.aivy-optsheet-list{ background: var(--bg-elev-2); border-radius: var(--radius-md); overflow: hidden; margin-bottom: 12px; }
+.aivy-optsheet-listrow{
+  width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px 16px; font-size: 14.5px;
+  text-align: left; color: var(--ink); border-bottom: 1px solid var(--line-soft);
+}
+.aivy-optsheet-listrow:last-child{ border-bottom: none; }
+.aivy-optsheet-listrow:hover{ background: var(--bg-elev-3); }
+.aivy-optsheet-listrow:disabled{ color: var(--ink-faint); pointer-events: none; }
+.aivy-optsheet-listrow svg{ flex-shrink: 0; color: var(--ink-faint); }
+.aivy-optsheet-listrow.is-busy{ opacity: .6; }
+.aivy-optsheet-badge{ margin-left: auto; font-size: 11px; font-weight: 600; color: var(--ink-faint); background: var(--bg-elev-3); padding: 3px 8px; border-radius: var(--radius-pill); flex-shrink: 0; }
+
 /* Track detail sheet — Informasi / Detail tabs (see TrackDetailSheet). */
 .aivy-detailsheet{
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 63;
