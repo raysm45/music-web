@@ -575,16 +575,17 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-tab{ flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-faint); font-size: 10.5px; font-weight: 600; min-width: 0; }
 .aivy-tab.active{ color: var(--moss-strong); }
 
-.aivy-sheet-backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,.44); z-index: 60; opacity: 0; transition: opacity var(--dur-base) var(--ease); pointer-events: none; }
+.aivy-sheet-backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,.44); z-index: 60; opacity: 0; transition: opacity var(--dur-base) var(--ease); pointer-events: none; will-change: opacity; }
 .aivy-sheet-backdrop.open{ opacity: 1; pointer-events: auto; }
 /* Stacked on top of an already-open aivy-sheet (e.g. the now-playing
    options/detail sheets opening over the full-screen player). */
 .aivy-sheet-backdrop.over-sheet{ z-index: 62; }
-.aivy-sheet{ position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; height: 100dvh; background: #16180f; display: flex; flex-direction: column; transform: translateY(100%); transition: transform var(--dur-slow) var(--ease); box-shadow: var(--shadow-sheet); overflow: hidden; --sheet-ink: #f5f5f5; --sheet-ink-dim: rgba(245,245,245,.66); --sheet-ink-faint: rgba(245,245,245,.42); --sheet-line: rgba(255,255,255,.14); --sheet-elev: rgba(255,255,255,.08); }
-.aivy-sheet.open{ transform: translateY(0); }
+.aivy-sheet{ position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; height: 100dvh; background: #16180f; display: flex; flex-direction: column; transform: translateY(100%) translateZ(0); transition: transform var(--dur-slow) var(--ease); box-shadow: var(--shadow-sheet); overflow: hidden; will-change: transform; --sheet-ink: #f5f5f5; --sheet-ink-dim: rgba(245,245,245,.66); --sheet-ink-faint: rgba(245,245,245,.42); --sheet-line: rgba(255,255,255,.14); --sheet-elev: rgba(255,255,255,.08); }
+.aivy-sheet.open{ transform: translateY(0) translateZ(0); }
 .aivy-sheet-bg{
   position: absolute; inset: -10%; z-index: 0; background-size: cover; background-position: center;
-  filter: blur(46px) saturate(1.5) brightness(.55); transform: scale(1.15); pointer-events: none;
+  filter: blur(34px) saturate(1.5) brightness(.55); transform: scale(1.15) translateZ(0); pointer-events: none;
+  will-change: transform; contain: paint;
 }
 .aivy-sheet-bg::after{ content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%); }
 .aivy-sheet-head{ position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top,0px)) 18px 6px; flex-shrink: 0; color: var(--sheet-ink); touch-action: none; }
@@ -630,6 +631,7 @@ body.aivy-resizing *{ user-select: none !important; }
   opacity: 0; transform: translateY(16px); pointer-events: none;
   flex-grow: 1; flex-shrink: 1; flex-basis: 0%;
   transition: opacity .32s var(--ease), transform .42s var(--ease);
+  will-change: opacity, transform;
   order: 2;
 }
 .npx-lyrics-wrap.is-active{
@@ -1301,6 +1303,7 @@ body.aivy-resizing *{ user-select: none !important; }
   display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: contain;
   opacity: 0; pointer-events: none; transform: translateY(18px) scale(.99);
   transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+  will-change: opacity, transform;
   --lyr-ink: #f5f5f5; --lyr-ink-dim: rgba(245,245,245,.62); --lyr-ink-faint: rgba(245,245,245,.4);
   --lyr-line: rgba(255,255,255,.12); --lyr-elev: rgba(255,255,255,.06); --lyr-elev-2: rgba(255,255,255,.12);
   font-family: var(--font-body);
