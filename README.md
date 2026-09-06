@@ -120,7 +120,3 @@ Issues and pull requests are welcome. Please open an issue first to discuss sign
 This project is currently unlicensed / proprietary. Contact the maintainer for usage terms.
 
 ---
-
-<div align="center">
-Made with 🍃 by the Aivy team
-</div>
