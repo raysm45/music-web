@@ -330,8 +330,47 @@ export function UIProvider({ children }) {
 const PlayerCtx = createContext(null);
 export function usePlayer() { return useContext(PlayerCtx); }
 
+const LOCAL_AUDIO_EXT_RE = /\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|wma|alac|aiff|aif)$/i;
+const LOCAL_MIN_DURATION_SECONDS = 60;
+
+function localExtOf(name) {
+  const m = /\.([a-z0-9]+)$/i.exec(name || "");
+  return m ? m[1].toLowerCase() : "";
+}
+
+function probeLocalAudioDuration(url) {
+  return new Promise((resolve) => {
+    if (typeof Audio === "undefined") { resolve(null); return; }
+    const probe = new Audio();
+    let done = false;
+    const finish = (duration) => {
+      if (done) return;
+      done = true;
+      probe.removeEventListener("loadedmetadata", onMeta);
+      probe.removeEventListener("error", onError);
+      resolve(duration);
+    };
+    const onMeta = () => finish(isFinite(probe.duration) ? probe.duration : null);
+    const onError = () => finish(null);
+    probe.addEventListener("loadedmetadata", onMeta);
+    probe.addEventListener("error", onError);
+    probe.preload = "metadata";
+    probe.src = url;
+    setTimeout(() => finish(null), 8000);
+  });
+}
+
 function normalizeTrack(raw) {
   if (!raw) return null;
+  if (raw.source === "local") {
+    return {
+      id: raw.id, videoId: null, title: raw.title,
+      artist: raw.artist || { name: "Perangkat saya" },
+      album: null, cover: raw.cover || null,
+      duration: raw.duration || null, preview: null,
+      source: "local", localUrl: raw.localUrl, fileExt: raw.fileExt || null,
+    };
+  }
   if (raw.videoId && !raw.artist?.id) {
     return {
       id: raw.videoId, videoId: raw.videoId, title: raw.title,
@@ -368,6 +407,11 @@ export function PlayerProvider({ children }) {
   const [playlists, setPlaylists] = useState([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [playSource, setPlaySource] = useState(null);
+
+  const [localTracks, setLocalTracks] = useState([]);
+  const [localScan, setLocalScan] = useState({ scanning: false, checked: 0, total: 0, found: 0 });
+  const localObjectUrlsRef = useRef([]);
+  useEffect(() => () => { localObjectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u)); }, []);
 
   const audioGraphRef = useRef(null);
   const fadeTimerRef = useRef(null);
@@ -604,6 +648,10 @@ export function PlayerProvider({ children }) {
 
   const resolveAudioSrc = useCallback(async (track, { prefetch = false, forceFresh = false } = {}) => {
     if (!track) return null;
+    if (track.source === "local") {
+      if (!track.localUrl) return null;
+      return { src: track.localUrl, preview: false, local: true };
+    }
     const wantFull = settings.audioQuality === "full";
     const fullSrcFor = async (videoId) => {
       try {
@@ -676,7 +724,10 @@ export function PlayerProvider({ children }) {
         pendingResumeTimeRef.current = 0;
       }
       setAudioFormat(null);
-      if (resolved.preview) {
+      if (resolved.local) {
+        const ext = (currentTrack.fileExt || "").toUpperCase();
+        setAudioFormat(ext ? { label: ext, mimeType: `audio/${currentTrack.fileExt}`, codec: ext.toLowerCase(), container: ext } : "unavailable");
+      } else if (resolved.preview) {
         setAudioFormat({ label: "MP3", mimeType: "audio/mpeg", codec: "mp3", container: "MP3" });
       } else if (resolved.videoId) {
         Api.trackAudioInfo(resolved.videoId)
@@ -897,6 +948,55 @@ export function PlayerProvider({ children }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [writeProgress, clipDuration]);
+
+  const scanLocalFiles = useCallback(async (fileList) => {
+    const files = Array.from(fileList || []).filter((f) => {
+      if (f.type && f.type.startsWith("audio/")) return true;
+      return LOCAL_AUDIO_EXT_RE.test(f.name);
+    });
+    if (!files.length) {
+      pushToast(t("toastNoAudioFilesFound") || "Nggak ada file audio ditemukan di folder itu.");
+      return;
+    }
+    setLocalScan({ scanning: true, checked: 0, total: files.length, found: 0 });
+    const results = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const url = URL.createObjectURL(file);
+      const duration = await probeLocalAudioDuration(url);
+      if (duration && duration >= LOCAL_MIN_DURATION_SECONDS) {
+        localObjectUrlsRef.current.push(url);
+        const ext = localExtOf(file.name);
+        const nameNoExt = file.name.replace(/\.[a-z0-9]+$/i, "");
+        results.push({
+          id: `local-${file.name}-${file.size}-${file.lastModified}`,
+          title: nameNoExt || file.name,
+          artist: { name: "Perangkat saya" },
+          cover: null,
+          duration,
+          localUrl: url,
+          fileExt: ext,
+          source: "local",
+        });
+      } else {
+        URL.revokeObjectURL(url);
+      }
+      setLocalScan((s) => ({ ...s, checked: i + 1, found: results.length }));
+    }
+    setLocalTracks((prev) => {
+      const knownIds = new Set(prev.map((tr) => tr.id));
+      return [...prev, ...results.filter((r) => !knownIds.has(r.id))];
+    });
+    setLocalScan((s) => ({ ...s, scanning: false }));
+    pushToast(`${results.length} lagu ditemukan (di atas 1 menit)`);
+  }, [pushToast, t]);
+
+  const clearLocalLibrary = useCallback(() => {
+    localObjectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    localObjectUrlsRef.current = [];
+    setLocalTracks([]);
+    setLocalScan({ scanning: false, checked: 0, total: 0, found: 0 });
+  }, []);
 
   const buildOrder = useCallback((len, startIndex, shuf) => {
     const idxs = Array.from({ length: len }, (_, i) => i);
@@ -1504,6 +1604,7 @@ export function PlayerProvider({ children }) {
     room, publicRooms, roomError, refreshPublicRooms, createRoom, joinRoom, leaveRoom,
     chatMessages, sendChatMessage, voteSkip,
     promptCast, getAudioSrc,
+    localTracks, localScan, scanLocalFiles, clearLocalLibrary,
   };
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;
 }

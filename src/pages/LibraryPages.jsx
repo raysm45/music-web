@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle, ImagePlus, X, RotateCcw, Pencil, MoreHorizontal, Shuffle, Share2, Globe, Lock, Search, ListPlus } from "lucide-react";
+import React, { useMemo, useRef } from "react";
+import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle, ImagePlus, X, RotateCcw, Pencil, MoreHorizontal, Shuffle, Share2, Globe, Lock, Search, ListPlus, FolderSearch, Trash2, FolderOpen } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
 import { TrackRow, ViewNotFound, ConfirmDialog, CustomSelect } from "../components.jsx";
@@ -13,7 +13,10 @@ export function LibraryPage() {
     <div className="aivy-view-enter">
       <div className="aivy-greet" style={{ paddingBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <h1 className="font-display" style={{ fontSize: "clamp(22px,3vw,28px)" }}>{t("yourLibrary")}</h1>
-        <Link to="libraryImport" className="aivy-btn-ghost"><Youtube size={15} /> Import dari YouTube</Link>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link to="libraryLocal" className="aivy-btn-ghost"><FolderSearch size={15} /> Lokal</Link>
+          <Link to="libraryImport" className="aivy-btn-ghost"><Youtube size={15} /> Import dari YouTube</Link>
+        </div>
       </div>
       <div className="aivy-grid">
         <Link to="liked" className="aivy-card" style={{ textAlign: "left" }}>
@@ -362,6 +365,92 @@ export function PlaylistPage() {
         )
       ) : (
         <div className="aivy-empty"><div className="title">{t("playlistEmpty")}</div><div className="sub">{t("playlistEmptySub")}</div></div>
+      )}
+    </div>
+  );
+}
+
+export function LibraryLocalPage() {
+  const { localTracks, localScan, scanLocalFiles, clearLocalLibrary, playList } = usePlayer();
+  const { t } = useUI();
+  const fileInputRef = useRef(null);
+
+  const handlePick = () => fileInputRef.current?.click();
+  const handleChange = (e) => {
+    const files = e.target.files;
+    if (files && files.length) scanLocalFiles(files);
+    e.target.value = "";
+  };
+  const totalDurationLabel = useMemo(() => {
+    const secs = localTracks.reduce((sum, tr) => sum + (tr.duration || 0), 0);
+    const mins = Math.round(secs / 60);
+    return `${mins} menit`;
+  }, [localTracks]);
+
+  return (
+    <div className="aivy-view-enter">
+      <Link to="library" className="aivy-import-back"><ArrowLeft size={14} /> Balik ke Koleksi</Link>
+      <div className="aivy-greet" style={{ paddingBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h1 className="font-display" style={{ fontSize: "clamp(20px,3vw,26px)" }}>Lagu Lokal</h1>
+          <div className="sub" style={{ color: "var(--ink-faint)", fontSize: 13 }}>
+            {localTracks.length > 0
+              ? `${localTracks.length} lagu \u00b7 ${totalDurationLabel} \u00b7 dari perangkat ini`
+              : "Pindai folder musik di perangkatmu (file di atas 1 menit dianggap lagu)"}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {localTracks.length > 0 && (
+            <button className="aivy-btn-ghost" onClick={clearLocalLibrary} disabled={localScan.scanning}>
+              <Trash2 size={15} /> Hapus
+            </button>
+          )}
+          <button className="aivy-btn-primary" onClick={handlePick} disabled={localScan.scanning}>
+            {localScan.scanning ? <><Loader2 size={15} className="aivy-spin" /> Memindai...</> : <><FolderSearch size={15} /> {localTracks.length ? "Pindai ulang" : "Pindai folder musik"}</>}
+          </button>
+        </div>
+      </div>
+
+      <input
+        ref={(el) => {
+          fileInputRef.current = el;
+          if (el) { el.setAttribute("webkitdirectory", ""); el.setAttribute("directory", ""); }
+        }}
+        type="file"
+        accept="audio/*"
+        multiple
+        style={{ display: "none" }}
+        onChange={handleChange}
+      />
+
+      {localScan.scanning && (
+        <div className="aivy-import-tutorial" style={{ marginBottom: 16 }}>
+          <div className="head"><Loader2 size={15} className="aivy-spin" color="var(--moss-strong)" /> Memindai {localScan.checked} / {localScan.total} file...</div>
+          <div className="sub" style={{ fontSize: 13, marginTop: 4 }}>{localScan.found} lagu ditemukan sejauh ini (file di bawah 1 menit dilewati).</div>
+        </div>
+      )}
+
+      {!localScan.scanning && localTracks.length === 0 && (
+        <div className="aivy-empty">
+          <FolderOpen size={32} color="var(--ink-faint)" style={{ marginBottom: 8 }} />
+          <div className="title">Belum ada lagu lokal</div>
+          <div className="sub">Ketuk "Pindai folder musik", lalu pilih folder tempat lagu-lagumu disimpan. Aivy akan otomatis melewati file di bawah 1 menit.</div>
+        </div>
+      )}
+
+      {localTracks.length > 0 && (
+        <>
+          <div className="aivy-import-actions" style={{ marginBottom: 8 }}>
+            <button className="aivy-btn-ghost" onClick={() => playList(localTracks, 0, { type: "local", label: "Lagu Lokal" })}>
+              <Play size={15} /> Putar semua
+            </button>
+          </div>
+          <div>
+            {localTracks.map((tr, i) => (
+              <TrackRow key={tr.id} track={tr} index={i} list={localTracks} queueMode="context" source={{ type: "local", label: "Lagu Lokal" }} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

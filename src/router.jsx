@@ -7,6 +7,7 @@ const ROUTES = [
   ["search", "/cari"],
   ["library", "/koleksi"],
   ["libraryImport", "/koleksi/import"],
+  ["libraryLocal", "/koleksi/lokal"],
   ["liked", "/liked"],
   ["shorts", "/shorts"],
   ["settings", "/setting"],
