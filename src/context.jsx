@@ -51,6 +51,15 @@ export const RIGHTPANEL_MAX_W = 440;
 export const RIGHTPANEL_COLLAPSED_W = 56;
 export const RIGHTPANEL_PEEK_W = 52;
 const PANEL_PREFS_KEY = "aivy_panel_prefs";
+const PLAYBACK_STATE_KEY = "aivy_playback_state_v1";
+// Kalau tab-nya di-discard/reclaim OS (umum di Android Chrome pas app
+// dikeluarin/idle lama) React kehilangan SEMUA state di memori — antrian,
+// lagu yang lagi diputer, posisi, shuffle/repeat — karena sebelumnya nggak
+// ada yang disimpen ke localStorage sama sekali. Sengaja nggak disimpen
+// selama-lamanya: kalau kebuka lagi seminggu kemudian, ngelanjutin dari lagu
+// random minggu lalu lebih nyebelin daripada mulai bersih, makanya ada batas
+// umur di bawah ini.
+const PLAYBACK_STATE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_PANEL_PREFS = {
   sidebarWidth: 236,
   sidebarCollapsed: false,
@@ -69,6 +78,36 @@ function loadPanelPrefs() {
       rightPanelCollapsed: !!parsed.rightPanelCollapsed,
     };
   } catch { return DEFAULT_PANEL_PREFS; }
+}
+
+// Simpan/pulihkan sesi pemutaran (antrian, posisi lagu, shuffle, repeat) ke
+// localStorage. Dipanggil tiap kali app di-background (visibilitychange /
+// pagehide) dan berkala selagi lagu diputer, jadi kalau tab-nya kena
+// discard/reclaim OS, begitu dibuka lagi sesi terakhir bisa dipulihkan —
+// bukan mulai dari kosong lagi. TIDAK menyimpan status auth/room (itu sudah
+// ditangani jalur lain) dan sengaja TIDAK auto-play hasil pulihannya (lihat
+// pemakaian pendingResumeTimeRef) karena browser modern blokir autoplay
+// tanpa gesture user.
+function savePlaybackState(state) {
+  try {
+    localStorage.setItem(PLAYBACK_STATE_KEY, JSON.stringify({ ...state, savedAt: Date.now() }));
+  } catch { /* localStorage penuh/diblokir — nggak fatal, cuma sesi nggak kepulihkan */ }
+}
+
+function loadPlaybackState() {
+  try {
+    const raw = localStorage.getItem(PLAYBACK_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.queueList) || !parsed.queueList.length) return null;
+    if (!Array.isArray(parsed.order) || !parsed.order.length) return null;
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > PLAYBACK_STATE_MAX_AGE_MS) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function clearPlaybackState() {
+  try { localStorage.removeItem(PLAYBACK_STATE_KEY); } catch { /* ignore */ }
 }
 
 const DEFAULT_SETTINGS = {
@@ -209,6 +248,7 @@ export function UIProvider({ children }) {
     loggingOutRef.current = true;
     setLoggingOut(true);
     setAuthUser(null);
+    clearPlaybackState();
     const withTimeout = (promise, ms) => Promise.race([
       promise,
       new Promise((resolve) => setTimeout(resolve, ms)),
@@ -418,6 +458,67 @@ export function PlayerProvider({ children }) {
   const recoveringRef = useRef(false);
   const retryCountRef = useRef(0);
   const isPlayingRef = useRef(false);
+  // Diisi sekali dari sesi yang dipulihkan (lihat effect restore di bawah),
+  // lalu dipakai & dikosongin lagi begitu track pertama pasca-pulihan
+  // selesai di-load ke elemen <audio> (lihat effect [currentKey]).
+  const pendingResumeTimeRef = useRef(0);
+  const restoredOnceRef = useRef(false);
+
+  // Pulihkan sesi pemutaran terakhir (kalau ada & belum kedaluwarsa) SEKALI
+  // pas provider pertama kali mount — nutup celah "app di-idle/di-keluarin
+  // lalu session-nya ilang" karena Android/browser reclaim tab yang lama gak
+  // aktif dan ngereset semua state React. Sengaja TIDAK nyalain isPlaying —
+  // biarin browser policy autoplay yang nentuin, restore cuma ngembaliin
+  // antrian + posisi supaya user tinggal pencet play lagi dari titik
+  // terakhir, bukan mulai ulang dari nol.
+  useEffect(() => {
+    if (restoredOnceRef.current) return;
+    restoredOnceRef.current = true;
+    const saved = loadPlaybackState();
+    if (!saved) return;
+    setQueueList(saved.queueList);
+    setOrder(saved.order);
+    setPosInOrder(Math.min(Math.max(saved.posInOrder || 0, 0), saved.order.length - 1));
+    if (saved.shuffle) setShuffle(true);
+    if (saved.repeat === "all" || saved.repeat === "one") setRepeat(saved.repeat);
+    if (typeof saved.volume === "number") setVolumeState(clamp(saved.volume, 0, 1));
+    if (saved.muted) setMuted(true);
+    if (saved.playSource) setPlaySource(saved.playSource);
+    pendingResumeTimeRef.current = typeof saved.currentTime === "number" ? saved.currentTime : 0;
+  }, []);
+
+  // Snapshot ringan buat persistence — di-update tiap kali struktur
+  // antrian/mode berubah, dibaca lagi pas beneran mau disimpan (bukan tiap
+  // render) supaya listener visibilitychange/interval di bawah nggak perlu
+  // di-attach ulang tiap detik.
+  const playbackSnapshotRef = useRef(null);
+  useEffect(() => {
+    playbackSnapshotRef.current = { queueList, order, posInOrder, shuffle, repeat, volume, muted, playSource };
+  }, [queueList, order, posInOrder, shuffle, repeat, volume, muted, playSource]);
+
+  const savePlaybackSnapshotNow = useCallback(() => {
+    const snap = playbackSnapshotRef.current;
+    if (!snap || !snap.queueList?.length || !snap.order?.length) { clearPlaybackState(); return; }
+    savePlaybackState({ ...snap, currentTime: audioRef.current?.currentTime || 0 });
+  }, []);
+
+  // Simpan sesi begitu app di-background/idle (visibilitychange ke
+  // "hidden", atau pagehide pas tab beneran ditutup/di-swipe) — dua momen
+  // paling umum SEBELUM Android/browser reclaim tab dan bikin "session
+  // hilang" yang dikeluhkan. Ditambah safety-net interval 20 detik selama
+  // ada lagu jalan, buat jaga-jaga kalau OS kill proses tanpa sempet fire
+  // event apa pun (jarang, tapi bisa kejadian di RAM kecil).
+  useEffect(() => {
+    const onVisibility = () => { if (document.visibilityState === "hidden") savePlaybackSnapshotNow(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", savePlaybackSnapshotNow);
+    const interval = setInterval(() => { if (isPlayingRef.current) savePlaybackSnapshotNow(); }, 20000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", savePlaybackSnapshotNow);
+      clearInterval(interval);
+    };
+  }, [savePlaybackSnapshotNow]);
 
   const ensureAudioGraph = useCallback(() => {
     if (audioGraphRef.current) return audioGraphRef.current;
@@ -642,6 +743,10 @@ export function PlayerProvider({ children }) {
       setIsPreviewClip(resolved.preview);
       const isNewSrc = audio.src !== resolved.src;
       if (isNewSrc) audio.src = resolved.src;
+      if (pendingResumeTimeRef.current > 0) {
+        audio.currentTime = pendingResumeTimeRef.current;
+        pendingResumeTimeRef.current = 0;
+      }
       setAudioFormat(null);
       // Dulu ini nge-sniff byte pertama file lewat ranged fetch (lihat
       // audioFormat.js). Sekarang langsung pakai data yang SAMA dengan tab
