@@ -1,87 +1,127 @@
-const textDecoder = typeof TextDecoder !== "undefined" ? new TextDecoder("latin1") : null;
+import { getPreferredAudioQuality } from "./audioFormat.js";
 
-function toAsciiWindow(bytes) {
-  if (textDecoder) return textDecoder.decode(bytes);
-  let out = "";
-  for (let i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
-  return out;
+export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.cosmicx.fun";
+
+async function throwApiError(res) {
+  let message = `${res.status} ${res.statusText}`;
+  try {
+    const data = await res.json();
+    if (data?.error) message = data.error;
+  } catch { }
+  throw new Error(message);
 }
 
-function bytesEqual(bytes, offset, sequence) {
-  if (offset < 0 || offset + sequence.length > bytes.length) return false;
-  for (let i = 0; i < sequence.length; i++) {
-    if (bytes[offset + i] !== sequence[i]) return false;
-  }
-  return true;
+async function apiGet(path) {
+  const res = await fetch(`${API_BASE}${path}`, { credentials: "include" });
+  if (!res.ok) await throwApiError(res);
+  return res.json();
+}
+async function apiSend(path, method, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    credentials: "include",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) await throwApiError(res);
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
-function asciiAt(bytes, offset, str) {
-  const seq = [];
-  for (let i = 0; i < str.length; i++) seq.push(str.charCodeAt(i));
-  return bytesEqual(bytes, offset, seq);
-}
+const streamTicketCache = new Map();
+const TICKET_MARGIN_S = 30;
 
-const SNIFF_BYTES = 8192;
+export const Api = {
+  discover: (seed, cursor, limit, type) =>
+    apiGet(`/api/discover?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 20}${type ? `&type=${encodeURIComponent(type)}` : ""}`),
+  search: async (q, cursor) => {
+    const res = await apiGet(`/api/search?q=${encodeURIComponent(q)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+    const songs = Array.isArray(res) ? res : res?.songs || [];
+    const mapped = songs.map((s) => ({
+      ...s,
+      artist: s.artist?.name ?? (typeof s.artist === "string" ? s.artist : null),
+      thumbnail: s.thumbnail ?? s.cover ?? null,
+    }));
+    mapped.nextCursor = Array.isArray(res) ? null : res?.nextCursor ?? null;
+    return mapped;
+  },
+  artist: (q) => apiGet(`/api/artist?q=${encodeURIComponent(q)}`),
+  artistQuick: (q) => apiGet(`/api/artist/quick?q=${encodeURIComponent(q)}`),
+  album: (id) => apiGet(`/api/album/${id}`),
+  track: (id) => apiGet(`/api/track/${id}`),
+  trackDescription: (videoId) =>
+    apiGet(`/api/track/description?videoId=${encodeURIComponent(videoId || "")}`),
+  similar: (args) =>
+    apiGet(`/api/similar?${args.trackId ? `trackId=${encodeURIComponent(args.trackId)}` : `title=${encodeURIComponent(args.title)}&artist=${encodeURIComponent(args.artist || "")}`}`),
 
-const detectCache = new Map();
+  lyrics: ({ title, artist, album, duration }) => {
+    const qs = new URLSearchParams({ title: title || "" });
+    if (artist) qs.set("artist", artist);
+    if (album) qs.set("album", album);
+    if (duration) qs.set("duration", String(Math.round(duration)));
+    return apiGet(`/api/lyrics?${qs.toString()}`);
+  },
 
-function identify(bytes, contentType) {
-  const ascii = toAsciiWindow(bytes);
+  async getStreamUrl(videoId, { prefetch = false, forceFresh = false } = {}) {
+    if (!videoId) return null;
+    const quality = getPreferredAudioQuality();
+    const cacheKey = `${videoId}:${quality}`;
+    const nowS = Math.floor(Date.now() / 1000);
+    const suffix = prefetch ? "?purpose=prefetch" : "";
+    const cached = !forceFresh && streamTicketCache.get(cacheKey);
+    if (cached && cached.expiresAt - TICKET_MARGIN_S > nowS) {
+      return `${API_BASE}/api/s/${encodeURIComponent(cached.sid)}${suffix}`;
+    }
+    const ticket = await apiSend("/api/stream-ticket", "POST", { videoId, quality });
+    if (!ticket?.sid) throw new Error("tiket stream kosong");
+    streamTicketCache.set(cacheKey, ticket);
+    return `${API_BASE}/api/s/${encodeURIComponent(ticket.sid)}${suffix}`;
+  },
 
-  if (asciiAt(bytes, 0, "fLaC")) {
-    return { label: "FLAC", mimeType: "audio/flac", codec: "flac", container: "FLAC" };
-  }
-  if (asciiAt(bytes, 0, "RIFF") && asciiAt(bytes, 8, "WAVE")) {
-    return { label: "WAV", mimeType: "audio/wav", codec: "pcm", container: "WAV" };
-  }
-  if (bytesEqual(bytes, 0, [0x1a, 0x45, 0xdf, 0xa3])) {
-    if (ascii.includes("A_OPUS")) return { label: "OPUS", mimeType: "audio/webm", codec: "opus", container: "WebM" };
-    if (ascii.includes("A_VORBIS")) return { label: "VORBIS", mimeType: "audio/webm", codec: "vorbis", container: "WebM" };
-    return { label: "WEBM", mimeType: contentType || "audio/webm", codec: "unknown", container: "WebM" };
-  }
-  if (asciiAt(bytes, 0, "OggS")) {
-    if (ascii.includes("OpusHead")) return { label: "OPUS", mimeType: "audio/ogg", codec: "opus", container: "Ogg" };
-    if (ascii.includes("vorbis")) return { label: "VORBIS", mimeType: "audio/ogg", codec: "vorbis", container: "Ogg" };
-    return { label: "OGG", mimeType: contentType || "audio/ogg", codec: "unknown", container: "Ogg" };
-  }
-  if (asciiAt(bytes, 4, "ftyp")) {
-    return { label: "AAC", mimeType: "audio/mp4", codec: "aac", container: "MP4" };
-  }
-  if (asciiAt(bytes, 0, "ID3") || (bytes.length > 1 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)) {
-    return { label: "MP3", mimeType: "audio/mpeg", codec: "mp3", container: "MP3" };
-  }
-  if (contentType) {
-    const short = contentType.split(";")[0].trim();
-    const label = (short.split("/")[1] || short).toUpperCase();
-    return { label, mimeType: short, codec: "unknown", container: "unknown" };
-  }
-  return null;
-}
+  invalidateStreamTicket(videoId) {
+    if (!videoId) return;
+    for (const key of streamTicketCache.keys()) {
+      if (key.startsWith(`${videoId}:`)) streamTicketCache.delete(key);
+    }
+  },
 
-export function detectAudioFormat(url) {
-  if (!url) return Promise.resolve(null);
-  if (detectCache.has(url)) return detectCache.get(url);
+  trackAudioInfo: (videoId) =>
+    apiGet(`/api/track/audio-info?videoId=${encodeURIComponent(videoId || "")}&quality=${getPreferredAudioQuality()}`),
 
-  const promise = fetch(url, { headers: { Range: `bytes=0-${SNIFF_BYTES - 1}` } })
-    .then(async (res) => {
-      if (!res.ok && res.status !== 206) { detectCache.delete(url); return null; }
-      const contentType = res.headers.get("content-type");
-      const buf = new Uint8Array(await res.arrayBuffer());
-      const result = identify(buf, contentType);
-      if (!result) detectCache.delete(url);
-      return result;
-    })
-    .catch(() => { detectCache.delete(url); return null; });
+  me: () => apiGet("/auth/me"),
+  logout: () => apiSend("/auth/logout", "POST"),
+  discordLoginUrl: () => `${API_BASE}/auth/discord`,
+  googleLoginUrl: () => `${API_BASE}/auth/google`,
 
-  detectCache.set(url, promise);
-  return promise;
-}
+  likes: () => apiGet("/api/me/likes"),
+  like: (videoId, meta) => apiSend(`/api/me/likes/${encodeURIComponent(videoId)}`, "POST", meta),
+  unlike: (videoId) => apiSend(`/api/me/likes/${encodeURIComponent(videoId)}`, "DELETE"),
+  history: (limit) => apiGet(`/api/me/history?limit=${limit || 50}`),
+  addHistory: (videoId, meta) => apiSend("/api/me/history", "POST", { videoId, ...meta }),
 
-export function clearAudioFormatCache(url) {
-  if (url) detectCache.delete(url);
-  else detectCache.clear();
-}
+  recentSearches: (limit) => apiGet(`/api/me/search-history/recent?limit=${limit || 10}`),
+  suggestSearches: (q) => apiGet(`/api/me/search-history/suggest?q=${encodeURIComponent(q)}`),
+  recordSearch: (query) => apiSend("/api/me/search-history", "POST", { query }),
+  deleteSearch: (query) => apiSend(`/api/me/search-history/one?query=${encodeURIComponent(query)}`, "DELETE"),
+  clearSearchHistory: () => apiSend("/api/me/search-history", "DELETE"),
 
-export function getPreferredAudioQuality() {
-  return "compatible";
-}
+  getSettings: () => apiGet("/api/me/settings"),
+  putSettings: (patch) => apiSend("/api/me/settings", "PUT", patch),
+  resetSettings: () => apiSend("/api/me/settings/reset", "POST"),
+
+  playlists: () => apiGet("/api/playlists"),
+  createPlaylist: (body) => apiSend("/api/playlists", "POST", body),
+  playlist: (id) => apiGet(`/api/playlists/${id}`),
+  updatePlaylist: (id, body) => apiSend(`/api/playlists/${id}`, "PATCH", body),
+  addSong: (id, videoId, meta) => apiSend(`/api/playlists/${id}/songs`, "POST", { videoId, ...meta }),
+  removeSong: (id, videoId) => apiSend(`/api/playlists/${id}/songs/${encodeURIComponent(videoId)}`, "DELETE"),
+  deletePlaylist: (id) => apiSend(`/api/playlists/${id}`, "DELETE"),
+
+  resolveYoutubeImport: (url) => apiSend("/api/import/youtube/resolve", "POST", { url }),
+  commitYoutubeImport: (body) => apiSend("/api/import/youtube/commit", "POST", body),
+
+  publicRooms: () => apiGet("/api/rooms"),
+
+  discordActivityToken: (code) => apiSend("/api/discord-activity/token", "POST", { code }),
+};
+      
