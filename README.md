@@ -113,47 +113,42 @@ The app silently pings the backend in the background. If the connection genuinel
 
 ## 🙏 Credits & Open Source
 
-Aivy is built on top of the amazing work of the open-source community. Huge thanks to the authors and maintainers of the following projects:
+Aivy is built on top of the amazing work of the open-source community. Huge thanks to the authors and maintainers of these projects — click any badge to visit the repository:
 
 ### Frontend
 
-| Project | Description | Repository |
-|---|---|---|
-| React | UI library powering the whole app | [facebook/react](https://github.com/facebook/react) |
-| Vite | Build tool & dev server | [vitejs/vite](https://github.com/vitejs/vite) |
-| @vitejs/plugin-react | Official React plugin for Vite | [vitejs/vite-plugin-react](https://github.com/vitejs/vite-plugin-react) |
-| Lit | Web components used for the lyrics view | [lit/lit](https://github.com/lit/lit) |
-| Lucide | Icon set used throughout the UI | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) |
-| Socket.IO Client | Realtime engine for Listen Together rooms | [socketio/socket.io-client](https://github.com/socketio/socket.io-client) |
-| Discord Embedded App SDK | Powers the in-Discord Activity experience | [discord/embedded-app-sdk](https://github.com/discord/embedded-app-sdk) |
+[![React](https://img.shields.io/badge/React-facebook%2Freact-61DAFB?logo=react&logoColor=white)](https://github.com/facebook/react)
+[![Vite](https://img.shields.io/badge/Vite-vitejs%2Fvite-646CFF?logo=vite&logoColor=white)](https://github.com/vitejs/vite)
+[![vite-plugin-react](https://img.shields.io/badge/plugin--react-vitejs%2Fvite--plugin--react-646CFF?logo=vite&logoColor=white)](https://github.com/vitejs/vite-plugin-react)
+[![Lit](https://img.shields.io/badge/Lit-lit%2Flit-324FFF?logo=lit&logoColor=white)](https://github.com/lit/lit)
+[![Lucide](https://img.shields.io/badge/Lucide-lucide--icons%2Flucide-F56565?logo=lucide&logoColor=white)](https://github.com/lucide-icons/lucide)
+[![Socket.IO Client](https://img.shields.io/badge/Socket.IO_Client-socketio%2Fsocket.io--client-black?logo=socket.io&logoColor=white)](https://github.com/socketio/socket.io-client)
+[![Discord Embedded App SDK](https://img.shields.io/badge/Embedded_App_SDK-discord%2Fembedded--app--sdk-5865F2?logo=discord&logoColor=white)](https://github.com/discord/embedded-app-sdk)
 
 ### Vendored
 
-| Project | Description | Repository |
-|---|---|---|
-| am-lyrics | Synced, animated lyrics web component (vendored & adapted in `src/vendor/am-lyrics`) | [binimum/am-lyrics](https://github.com/binimum/am-lyrics) |
+[![am-lyrics](https://img.shields.io/badge/am--lyrics-binimum%2Fam--lyrics-FA243C?logo=apple-music&logoColor=white)](https://github.com/binimum/am-lyrics)
+> Synced, animated lyrics web component — vendored & adapted in `src/vendor/am-lyrics`.
 
 ### Backend
 
-| Project | Description | Repository |
-|---|---|---|
-| Express | HTTP server framework | [expressjs/express](https://github.com/expressjs/express) |
-| Socket.IO | Realtime engine (server side) | [socketio/socket.io](https://github.com/socketio/socket.io) |
-| mysql2 | MySQL client/driver | [sidorares/node-mysql2](https://github.com/sidorares/node-mysql2) |
-| cors | CORS middleware | [expressjs/cors](https://github.com/expressjs/cors) |
-| cookie-parser | Cookie parsing middleware | [expressjs/cookie-parser](https://github.com/expressjs/cookie-parser) |
-| dotenv | Environment variable loader | [motdotla/dotenv](https://github.com/motdotla/dotenv) |
-| jsonwebtoken | JWT signing & verification for auth | [auth0/node-jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) |
-| jsdom | DOM implementation used server-side | [jsdom/jsdom](https://github.com/jsdom/jsdom) |
-| node-cache | In-memory caching | [node-cache/node-cache](https://github.com/node-cache/node-cache) |
-| p-queue | Promise queue with concurrency control | [sindresorhus/p-queue](https://github.com/sindresorhus/p-queue) |
-| sharp | Image processing (thumbnails, covers) | [lovell/sharp](https://github.com/lovell/sharp) |
-| undici | HTTP client used for outbound requests | [nodejs/undici](https://github.com/nodejs/undici) |
-| youtubei.js | YouTube InnerTube client used for search/streaming | [LuanRT/YouTube.js](https://github.com/LuanRT/YouTube.js) |
-| BgUtils (bgutils-js) | Generates PoTokens / BotGuard attestation for YouTube access | [LuanRT/BgUtils](https://github.com/LuanRT/BgUtils) |
-| yt-search | Lightweight YouTube search | [talmobi/yt-search](https://github.com/talmobi/yt-search) |
+[![Express](https://img.shields.io/badge/Express-expressjs%2Fexpress-black?logo=express&logoColor=white)](https://github.com/expressjs/express)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-socketio%2Fsocket.io-black?logo=socket.io&logoColor=white)](https://github.com/socketio/socket.io)
+[![mysql2](https://img.shields.io/badge/mysql2-sidorares%2Fnode--mysql2-4479A1?logo=mysql&logoColor=white)](https://github.com/sidorares/node-mysql2)
+[![cors](https://img.shields.io/badge/cors-expressjs%2Fcors-black?logo=express&logoColor=white)](https://github.com/expressjs/cors)
+[![cookie-parser](https://img.shields.io/badge/cookie--parser-expressjs%2Fcookie--parser-black?logo=express&logoColor=white)](https://github.com/expressjs/cookie-parser)
+[![dotenv](https://img.shields.io/badge/dotenv-motdotla%2Fdotenv-ECD53F?logo=dotenv&logoColor=black)](https://github.com/motdotla/dotenv)
+[![jsonwebtoken](https://img.shields.io/badge/jsonwebtoken-auth0%2Fnode--jsonwebtoken-000000?logo=jsonwebtokens&logoColor=white)](https://github.com/auth0/node-jsonwebtoken)
+[![jsdom](https://img.shields.io/badge/jsdom-jsdom%2Fjsdom-yellow?logo=javascript&logoColor=black)](https://github.com/jsdom/jsdom)
+[![node-cache](https://img.shields.io/badge/node--cache-node--cache%2Fnode--cache-339933?logo=node.js&logoColor=white)](https://github.com/node-cache/node-cache)
+[![p-queue](https://img.shields.io/badge/p--queue-sindresorhus%2Fp--queue-339933?logo=node.js&logoColor=white)](https://github.com/sindresorhus/p-queue)
+[![sharp](https://img.shields.io/badge/sharp-lovell%2Fsharp-99CC00?logo=sharp&logoColor=white)](https://github.com/lovell/sharp)
+[![undici](https://img.shields.io/badge/undici-nodejs%2Fundici-339933?logo=node.js&logoColor=white)](https://github.com/nodejs/undici)
+[![youtubei.js](https://img.shields.io/badge/youtubei.js-LuanRT%2FYouTube.js-FF0000?logo=youtube&logoColor=white)](https://github.com/LuanRT/YouTube.js)
+[![BgUtils](https://img.shields.io/badge/BgUtils-LuanRT%2FBgUtils-FF0000?logo=youtube&logoColor=white)](https://github.com/LuanRT/BgUtils)
+[![yt-search](https://img.shields.io/badge/yt--search-talmobi%2Fyt--search-FF0000?logo=youtube&logoColor=white)](https://github.com/talmobi/yt-search)
 
-> 📌 If any of these libraries are updated or swapped out, please keep this table in sync.
+> 📌 If any of these libraries are updated or swapped out, please keep this section in sync.
 
 ## 🤝 Contributing
 
@@ -166,5 +161,5 @@ This project is currently unlicensed / proprietary. Contact the maintainer for u
 ---
 
 <div align="center">
-Made by Aivy team
+Made by the Aivy team
 </div>
