@@ -303,31 +303,27 @@ export function SearchPage() {
               <button className={`aivy-icon-btn sm ${listening ? "active" : ""}`} onClick={handleVoiceSearch} aria-label={listening ? t("stopVoiceSearch") : t("searchWithVoice")}><Mic size={16} /></button>
             )}
           </div>
-
-          {focused && query.trim() && suggestions.length > 0 && (
-            <div className="aivy-suggest-drop">
-              {suggestions.map((s) => (
-                <button key={s.query} className="aivy-suggest-item" onMouseDown={() => runSearch(s.query)}>
-                  <TrendingUp size={13} color="var(--ink-faint)" /><span>{s.query}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
       {query.trim() && !hasSearched && (
         <div className="aivy-live-title-list">
+          {suggestions.map((s) => (
+            <button key={`sg-${s.query}`} className="aivy-live-title-row" onMouseDown={() => runSearch(s.query)}>
+              <TrendingUp size={15} color="var(--ink-faint)" />
+              <span>{s.query}</span>
+            </button>
+          ))}
           {liveLoading ? (
             <span className="eyebrow">{t("searching")}</span>
-          ) : liveTitles.length > 0 ? (
+          ) : (
             liveTitles.map((item) => (
               <button key={item.id} className="aivy-live-title-row" onClick={() => runSearch(item.title)}>
                 <Search size={15} color="var(--ink-faint)" />
                 <span>{item.title}</span>
               </button>
             ))
-          ) : null}
+          )}
         </div>
       )}
 

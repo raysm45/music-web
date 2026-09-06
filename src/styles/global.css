@@ -816,9 +816,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-search-box > svg:first-child{ position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); pointer-events: none; }
 .aivy-search-box input{ padding-left: 40px; padding-right: 36px; margin-bottom: 0; }
 .aivy-search-clear{ position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
-.aivy-suggest-drop{ position: absolute; top: calc(100% + 6px); left: 0; right: 0; width: auto; max-width: none; margin-top: 0; background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.18); z-index: 5; }
-.aivy-suggest-item{ width: 100%; display: flex; align-items: center; gap: 9px; padding: 9px 14px; font-size: 13px; text-align: left; }
-.aivy-suggest-item:hover{ background: var(--bg-elev-3); }
 .aivy-recent-list{ display: flex; flex-wrap: wrap; gap: 8px; }
 .aivy-recent-chip{ display: inline-flex; align-items: center; gap: 7px; padding: 7px 8px 7px 13px; border-radius: var(--radius-pill); border: 1px solid var(--line); font-size: 12.5px; color: var(--ink-dim); }
 .aivy-recent-chip:hover{ border-color: var(--ink-faint); color: var(--ink); }
