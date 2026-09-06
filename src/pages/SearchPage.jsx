@@ -246,30 +246,32 @@ export function SearchPage() {
       <div className="aivy-search-head-v2">
         <button className="aivy-icon-btn" onClick={() => back()} aria-label={t("previous")}><ArrowLeft size={18} /></button>
 
-        <div className="aivy-search-box-v2">
-          <Search size={16} />
-          <input
-            ref={inputRef} className="aivy-input" placeholder={t("searchPlaceholder")}
-            value={query} onChange={(e) => onChangeQuery(e.target.value)}
-            onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)}
-            onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) runSearch(query.trim()); }}
-          />
-          {query ? (
-            <button className="aivy-icon-btn sm" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={15} /></button>
-          ) : (
-            <button className={`aivy-icon-btn sm ${listening ? "active" : ""}`} onClick={handleVoiceSearch} aria-label={listening ? t("stopVoiceSearch") : t("searchWithVoice")}><Mic size={16} /></button>
+        <div className="aivy-search-box-wrap-v2">
+          <div className="aivy-search-box-v2">
+            <Search size={16} />
+            <input
+              ref={inputRef} className="aivy-input" placeholder={t("searchPlaceholder")}
+              value={query} onChange={(e) => onChangeQuery(e.target.value)}
+              onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)}
+              onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) runSearch(query.trim()); }}
+            />
+            {query ? (
+              <button className="aivy-icon-btn sm" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={15} /></button>
+            ) : (
+              <button className={`aivy-icon-btn sm ${listening ? "active" : ""}`} onClick={handleVoiceSearch} aria-label={listening ? t("stopVoiceSearch") : t("searchWithVoice")}><Mic size={16} /></button>
+            )}
+          </div>
+
+          {focused && query.trim() && suggestions.length > 0 && (
+            <div className="aivy-suggest-drop">
+              {suggestions.map((s) => (
+                <button key={s.query} className="aivy-suggest-item" onMouseDown={() => runSearch(s.query)}>
+                  <TrendingUp size={13} color="var(--ink-faint)" /><span>{s.query}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
-
-        {focused && query.trim() && suggestions.length > 0 && (
-          <div className="aivy-suggest-drop">
-            {suggestions.map((s) => (
-              <button key={s.query} className="aivy-suggest-item" onMouseDown={() => runSearch(s.query)}>
-                <TrendingUp size={13} color="var(--ink-faint)" /><span>{s.query}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {showBrowse && (
