@@ -2089,7 +2089,7 @@ export function RoomChat() {
 
   const sendSong = (r) => {
     sendChatMessage("", {
-      song: { videoId: r.videoId, title: r.title, artist: r.artist || null, cover: r.thumbnail || null, duration: r.duration || null },
+      song: { videoId: r.videoId, title: r.title, artist: typeof r.artist === "string" ? r.artist : (r.artist?.name || null), cover: r.cover || r.thumbnail || null, duration: r.duration || null },
     });
     setSongQuery("");
     setSongResults([]);
