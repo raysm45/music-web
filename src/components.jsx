@@ -1040,6 +1040,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         onClose={() => setMoreOpen(false)}
         onOpenDetail={() => { setMoreOpen(false); setDetailOpen(true); }}
         onOpenAod={() => { setMoreOpen(false); setAodOpen(true); }}
+        onNavigate={() => { setMoreOpen(false); if (lyricsMode) closeLyrics(); onClose(); }}
       />
       <TrackDetailSheet
         open={detailOpen}
@@ -1056,13 +1057,14 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   );
 }
 
-export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod }) {
+export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod, onNavigate }) {
   const { navigate } = useRouter();
   const { t, pushToast } = useUI();
   const { promptCast } = usePlayer();
   const sheetRef = useRef(null);
   const [resolvingArtist, setResolvingArtist] = useState(false);
   const [resolvingAlbum, setResolvingAlbum] = useState(false);
+  const closeAll = onNavigate || onClose;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -1086,13 +1088,13 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
 
   const handleArtist = async () => {
     if (!track.artist?.name) return;
-    if (track.artist?.id) { onClose(); navigate("artist", { params: { id: track.artist.id } }); return; }
+    if (track.artist?.id) { closeAll(); navigate("artist", { params: { id: track.artist.id } }); return; }
     setResolvingArtist(true);
     try {
       const { Api } = await import("./lib/api.js");
       const res = await Api.artist(track.artist.name);
       if (res?.name && isRelevantArtistMatch(res.name, track.artist.name)) {
-        onClose();
+        closeAll();
         navigate("artist", { params: { id: track.artist.id || track.artist.name } });
       } else {
         pushToast(t("artistNotFound"));
@@ -1113,7 +1115,7 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
         const q = `${track.album.title} ${track.artist?.name || ""}`.trim();
         const results = await Api.search(q);
         const hit = (results || []).find((r) => r.album?.id && isRelevantArtistMatch(r.album.title || "", track.album.title));
-        if (hit) { onClose(); navigate("album", { params: { id: hit.album.id } }); }
+        if (hit) { closeAll(); navigate("album", { params: { id: hit.album.id } }); }
         else pushToast(t("albumNotFound"));
       } catch {
         pushToast(t("albumNotFound"));
@@ -1122,7 +1124,7 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
       }
       return;
     }
-    onClose();
+    closeAll();
     navigate("album", { params: { id: track.album.id } });
   };
 
