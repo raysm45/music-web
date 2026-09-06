@@ -2261,8 +2261,8 @@ export function Sidebar() {
           ))}
         </nav>
         <div className="aivy-side-footer aivy-side-footer-rail">
-          <button className="aivy-theme-btn" onClick={toggleTheme} title={theme === "dark" ? t("navLightMode") : t("navDarkMode")} aria-label={theme === "dark" ? t("navLightMode") : t("navDarkMode")}>
-            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          <button className="aivy-theme-btn" onClick={toggleTheme} title={theme === "black" ? t("navLightMode") : t("navDarkMode")} aria-label={theme === "black" ? t("navLightMode") : t("navDarkMode")}>
+            {theme === "black" ? <Sun size={15} /> : <Moon size={15} />}
           </button>
           {authUser ? (
             <Link to="settings" className="aivy-user-chip aivy-user-chip-rail" title={authUser.username} aria-label={authUser.username}>
@@ -2313,7 +2313,7 @@ export function Sidebar() {
       <div className="aivy-side-footer">
         {}
         <Link to="settings" className="aivy-theme-btn"><SettingsIcon size={15} />{t("navSettings")}</Link>
-        <button className="aivy-theme-btn" onClick={toggleTheme}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}{theme === "dark" ? t("navLightMode") : t("navDarkMode")}</button>
+        <button className="aivy-theme-btn" onClick={toggleTheme}>{theme === "black" ? <Sun size={15} /> : <Moon size={15} />}{theme === "black" ? t("navLightMode") : t("navDarkMode")}</button>
         {authUser ? (
           <Link to="settings" className="aivy-user-chip">
             <span className="aivy-avatar">{authUser.username?.slice(0, 1).toUpperCase()}</span>
@@ -2377,7 +2377,7 @@ export function TopBar({ isMobile }) {
       {isMobile && (
         <>
           {}
-          <button className="aivy-navbtn" onClick={toggleTheme} aria-label={t("navSettings")} title={t("navSettings")}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
+          <button className="aivy-navbtn" onClick={toggleTheme} aria-label={t("navSettings")} title={t("navSettings")}>{theme === "black" ? <Sun size={15} /> : <Moon size={15} />}</button>
           {}
           {!authUser && <Link to="settings" className="aivy-navbtn" aria-label={t("navSettings")} title={t("navSettings")}><SettingsIcon size={15} /></Link>}
         </>

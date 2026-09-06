@@ -1582,12 +1582,14 @@ body.aivy-resizing *{ user-select: none !important; }
   --bg:#000000; --bg-elev:#0C0C0C; --bg-elev-2:#141414; --bg-elev-3:#1C1C1C;
   --line:#242424; --line-soft:#191919; --ink:#F2F2F0; --ink-dim:#A6A6A2; --ink-faint:#666663;
   --moss:#FFFFFF; --moss-strong:#FFFFFF; --moss-ink:#000000;
+  --berry:#8A8A8A; --berry-strong:#B5B5B5; --gold:#C9C9C9;
   color-scheme: dark;
 }
 :root[data-theme="white"]{
   --bg:#FAFAF7; --bg-elev:#FFFFFF; --bg-elev-2:#F0F0EC; --bg-elev-3:#E7E7E1;
   --line:#E1E1DA; --line-soft:#EBEBE4; --ink:#141414; --ink-dim:#55554F; --ink-faint:#93938B;
   --moss:#141414; --moss-strong:#000000; --moss-ink:#FFFFFF;
+  --berry:#6E6E6E; --berry-strong:#454545; --gold:#8C8C8C;
   color-scheme: light;
 }
 :root[data-theme="ocean"]{

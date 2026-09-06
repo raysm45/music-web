@@ -66,9 +66,9 @@ export function IvyFallLoader({ size = 48, color = "var(--moss-strong)", label }
 }
 
 const DUOTONES = [
-  ["#37452F", "#B7C7A3"], ["#2E3A28", "#8CA37C"], ["#4A2F2A", "#C97B6B"],
-  ["#33362A", "#D3C08C"], ["#243026", "#7FA88F"], ["#3B2E3B", "#B98FA0"],
-  ["#2B3630", "#A7B88C"],
+  ["#2E2E2E", "#B8B8B8"], ["#242424", "#9C9C9C"], ["#363636", "#C7C7C7"],
+  ["#2A2A2A", "#D6D6D6"], ["#202020", "#A6A6A6"], ["#333333", "#BEBEBE"],
+  ["#272727", "#AEAEAE"],
 ];
 
 export function CoverArt({ seed, size = 160, radius = 14, style = {} }) {

@@ -100,7 +100,7 @@ const DEFAULT_SETTINGS = {
   autoplay: true,
   crossfadeSeconds: 0,
   volumeDefault: 0.7,
-  theme: "dark",
+  theme: "black",
   language: "id",
   explicitContent: true,
   normalizeVolume: true,
@@ -122,7 +122,7 @@ export function UIProvider({ children }) {
   const [authUser, setAuthUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("black");
   const [toasts, setToasts] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
@@ -146,17 +146,17 @@ export function UIProvider({ children }) {
   useEffect(() => {
     if (!authUser) return;
     Api.getSettings()
-      .then((s) => { setSettings(s); setTheme(typeof s.theme === "string" && s.theme ? s.theme : "dark"); })
+      .then((s) => { setSettings(s); setTheme(typeof s.theme === "string" && s.theme ? s.theme : "black"); })
       .catch(() => {});
   }, [authUser]);
 
   useEffect(() => {
     if (theme !== "system") {
-      document.documentElement.dataset.theme = theme || "dark";
+      document.documentElement.dataset.theme = theme || "black";
       return undefined;
     }
     const mq = window.matchMedia("(prefers-color-scheme: light)");
-    const apply = () => { document.documentElement.dataset.theme = mq.matches ? "light" : "dark"; };
+    const apply = () => { document.documentElement.dataset.theme = mq.matches ? "white" : "black"; };
     apply();
     if (mq.addEventListener) {
       mq.addEventListener("change", apply);
@@ -264,12 +264,12 @@ export function UIProvider({ children }) {
 
   const resetSettings = useCallback(async () => {
     setSettings(DEFAULT_SETTINGS);
-    setTheme("dark");
+    setTheme("black");
     try { await Api.resetSettings(); } catch {  }
   }, []);
 
   const toggleTheme = useCallback(() => {
-    updateSettings({ theme: theme === "dark" ? "light" : "dark" });
+    updateSettings({ theme: theme === "black" ? "white" : "black" });
   }, [theme, updateSettings]);
 
   const openContextMenu = useCallback((x, y, items) => setContextMenu({ x, y, items }), []);

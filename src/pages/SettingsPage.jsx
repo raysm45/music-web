@@ -12,7 +12,7 @@ const SHORTCUTS_KEY = "aivy_shortcut_overrides";
 const FOLDER_KEY = "aivy_last_download_folder";
 
 const THEME_SWATCHES = {
-  system: ["#171a12", "#ece8d9", "#ece8d9"],
+  system: ["#000000", "#ffffff", "#f2f2f0"],
   black: ["#000000", "#ffffff", "#f2f2f0"],
   white: ["#ffffff", "#141414", "#141414"],
   dark: ["#12140f", "#ece8d9", "#ece8d9"],
@@ -461,7 +461,7 @@ export function SettingsPage() {
     updateSettings({ theme: "custom", customThemeCss: css });
   };
   const unapplyCommunityTheme = () => {
-    updateSettings({ theme: "dark", customThemeCss: "" });
+    updateSettings({ theme: "black", customThemeCss: "" });
   };
 
   const communityThemes = [
