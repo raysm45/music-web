@@ -31,6 +31,9 @@ export function SearchPage() {
   const [artistHit, setArtistHit] = useState(null);
   const [genresOpen, setGenresOpen] = useState(false);
   const [listening, setListening] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef(null);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -78,12 +81,13 @@ export function SearchPage() {
 
   const doSearch = async (q) => {
     const trimmed = q.trim();
-    if (!trimmed) { setResults([]); setHasSearched(false); setSearching(false); setArtistHit(null); return; }
+    if (!trimmed) { setResults([]); setHasSearched(false); setSearching(false); setArtistHit(null); setNextCursor(null); return; }
     const seq = ++requestSeqRef.current;
     setSearching(true);
     setHasSearched(true);
     setSearchedQuery(trimmed);
     setArtistHit(null);
+    setNextCursor(null);
 
     Api.artistQuick(trimmed).then((res) => {
       if (seq !== requestSeqRef.current) return;
@@ -98,6 +102,7 @@ export function SearchPage() {
       if (seq !== requestSeqRef.current)
         return;
       setResults(res || []);
+      setNextCursor(res?.nextCursor || null);
       if (res && res[0] && res[0].videoId) {
         saveRecentSearchThumb(trimmed, res[0]);
         setRecentThumbs(getRecentSearchThumbs());
@@ -105,10 +110,36 @@ export function SearchPage() {
     } catch {
       if (seq !== requestSeqRef.current) return;
       setResults([]);
+      setNextCursor(null);
     } finally {
       if (seq === requestSeqRef.current) setSearching(false);
     }
   };
+
+  const loadMoreResults = async () => {
+    if (loadingMore || !nextCursor || searching) return;
+    const seq = requestSeqRef.current;
+    setLoadingMore(true);
+    try {
+      const more = await Api.search(searchedQuery, nextCursor);
+      if (seq !== requestSeqRef.current) return;
+      setResults((prev) => [...prev, ...(more || [])]);
+      setNextCursor(more?.nextCursor || null);
+    } catch {
+      if (seq !== requestSeqRef.current) return;
+      setNextCursor(null);
+    } finally {
+      if (seq === requestSeqRef.current) setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) loadMoreResults(); }, { rootMargin: "600px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [nextCursor, loadingMore, searching, searchedQuery]);
 
   const onChangeQuery = (val) => {
     setQuery(val);
@@ -322,7 +353,13 @@ export function SearchPage() {
 
       {hasSearched && (
         (searching || checkingLyrics) ? <SkeletonList count={8} /> : (
-          sortedList.length ? <div>{sortedList.map((tr, i) => <TrackRow key={`${tr.id}-${i}`} track={tr} index={i} list={sortedList} queueMode="radio" source={{ type: "search" }} />)}</div> : (
+          sortedList.length ? (
+            <div>
+              {sortedList.map((tr, i) => <TrackRow key={`${tr.id}-${i}`} track={tr} index={i} list={sortedList} queueMode="radio" source={{ type: "search" }} />)}
+              {nextCursor && <div ref={sentinelRef} style={{ height: 1 }} />}
+              {loadingMore && <SkeletonList count={4} />}
+            </div>
+          ) : (
             <div className="aivy-empty"><Search size={34} color="var(--ink-faint)" /><div className="title">{t("noResults")}</div><div className="sub">{t("noResultsSub")}</div></div>
           )
         )
@@ -348,3 +385,4 @@ export function SearchPage() {
     </div>
   );
 }
+
