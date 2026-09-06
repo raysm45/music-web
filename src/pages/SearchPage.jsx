@@ -49,6 +49,31 @@ export function SearchPage() {
 
   const requestSeqRef = useRef(0);
 
+  const liveTitleSearch = async (q) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    const seq = ++requestSeqRef.current;
+    setSearching(true);
+    setHasSearched(true);
+    setSearchedQuery(trimmed);
+    setArtistHit(null);
+    setNextCursor(null);
+    try {
+      const res = await Api.search(trimmed);
+      if (seq !== requestSeqRef.current) return;
+      const needle = trimmed.toLowerCase();
+      const titleOnly = (res || []).filter((r) => (r.title || "").toLowerCase().includes(needle));
+      setResults(titleOnly);
+    } catch {
+      if (seq !== requestSeqRef.current) return;
+      setResults([]);
+    } finally {
+      if (seq === requestSeqRef.current) setSearching(false);
+    }
+  };
+
+  const debouncedLiveSearch = useRef(debounce((q) => { liveTitleSearch(q); }, 350)).current;
+
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => () => { try { recognitionRef.current?.stop(); } catch { } }, []);
   useEffect(() => {
@@ -141,8 +166,13 @@ export function SearchPage() {
 
   const onChangeQuery = (val) => {
     setQuery(val);
-    if (!val.trim()) { debouncedSuggest.cancel?.(); setSuggestions([]); setResults([]); setHasSearched(false); return; }
+    if (!val.trim()) {
+      debouncedSuggest.cancel?.(); debouncedLiveSearch.cancel?.();
+      setSuggestions([]); setResults([]); setHasSearched(false); setNextCursor(null);
+      return;
+    }
     debouncedSuggest(val.trim());
+    debouncedLiveSearch(val);
   };
 
   const runSearch = (q) => {
