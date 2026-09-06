@@ -1306,6 +1306,7 @@ export function PlayerProvider({ children }) {
       videoId: s.video_id,
       title: s.title,
       artist: s.artist_name ? { name: s.artist_name } : null,
+      album: s.album || null,
       cover: s.thumbnail,
       duration: s.duration,
     }));

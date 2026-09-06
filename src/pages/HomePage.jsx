@@ -79,6 +79,7 @@ function mapHistoryRow(row) {
   return {
     id: row.video_id, videoId: row.video_id, title: row.title,
     artist: row.artist_name ? { name: row.artist_name } : null,
+    album: row.album || null,
     cover: row.thumbnail || null, duration: row.duration || null,
   };
 }

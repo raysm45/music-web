@@ -58,6 +58,7 @@ export function LikedPage() {
     videoId: r.video_id,
     title: r.title,
     artist: r.artist_name ? { name: r.artist_name } : null,
+    album: r.album || null,
     cover: r.thumbnail,
     duration: r.duration,
   }));
