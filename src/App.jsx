@@ -91,10 +91,7 @@ function AppInner() {
       {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
       {isMobile && <LyricsPrefetch />}
       {isMobile && !isImmersiveShorts && <MobileTabBar />}
-      {/* Closing here intentionally leaves `lyricsOpen` untouched (no closeLyrics()) so
-          that dismissing the sheet while lyrics are showing — by swipe or tap — and
-          reopening it (mini player tap/swipe-up) brings the user right back to lyrics
-          instead of resetting to the cover view. */}
+      { }
       {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} />}
       {isMobile && <QueueSheet open={mobileQueueOpen} onClose={closeMobileQueue} />}
 
@@ -107,25 +104,13 @@ function AppInner() {
   );
 }
 
-//MODE MAINTENANCE ON/OFF — override manual, buat maintenance TERJADWAL
-// (nge-flag true walau backend sebenarnya masih hidup, mis. lagi migrasi DB).
 const MANUAL_MAINTENANCE_MODE = false;
 
 export default function App() {
-  // Deteksi OTOMATIS (frontend only, nggak butuh endpoint apa pun di
-  // backend): ping backend tiap beberapa detik. Kalau backend nggak
-  // kebalas sama sekali (down, crash, network putus, dst), tampilin
-  // ServerDownPage — statis, simpel, beda dari MaintenancePage yang penuh
-  // animasi buat maintenance TERJADWAL. Terus jalan mantau di background
-  // walau lagi nampilin halaman ini, jadi begitu backend hidup lagi,
-  // otomatis balik ke app normal.
   const { down: backendDown, retryInSeconds, retryNow } = useBackendHealth();
 
   if (MANUAL_MAINTENANCE_MODE) {
     return <MaintenancePage />;
-  }
-  if (backendDown) {
-    return <ServerDownPage retryInSeconds={retryInSeconds} onRetryNow={retryNow} />;
   }
 
   return (
@@ -134,6 +119,9 @@ export default function App() {
         <UIProvider>
           <PlayerProvider>
             <AppInner />
+            {backendDown && (
+              <ServerDownPage retryInSeconds={retryInSeconds} onRetryNow={retryNow} />
+            )}
           </PlayerProvider>
         </UIProvider>
       </RouterProvider>

@@ -59,14 +59,6 @@ function usePanelResize({ width, setWidth, min, max, side }) {
   return { onDragStart, isDragging };
 }
 
-// Drag-to-dismiss / drag-to-open for mobile sheets (now playing, lyrics,
-// track detail, queue) and swipe-up-to-expand for the mini player.
-// `direction` is the gesture direction that should trigger `onTrigger`
-// ("down" to close a sheet, "up" to expand the mini player). We only start
-// tracking a drag once the finger has moved a few pixels, so ordinary taps
-// on buttons inside the drag area (play/pause, grabber, etc.) keep working
-// exactly as before. While dragging, `dragRef`'s element (if provided) is
-// given a live translateY so the sheet visually follows the finger.
 function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scrollRef, threshold = 90, velocityThreshold = 0.45 }) {
   const stRef = useRef({ pointerId: null, dragging: false, startY: 0, startTime: 0, dragStartTime: 0, delta: 0, blocked: false });
 
@@ -74,11 +66,6 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
 
   const onPointerDown = useCallback((e) => {
     if (!active) return;
-    // `scrollRef`, when given, lets this same gesture live on a larger,
-    // otherwise-scrollable area (e.g. the whole sheet body) instead of just
-    // a thin dedicated handle: we only arm the close/expand drag while that
-    // area is already scrolled to its start, so an ordinary scroll doesn't
-    // get hijacked into closing the sheet.
     const blocked = direction === "down" && !!scrollRef?.current && scrollRef.current.scrollTop > 0;
     stRef.current = { pointerId: e.pointerId, dragging: false, startY: e.clientY, startTime: Date.now(), dragStartTime: 0, delta: 0, blocked };
   }, [active, direction, scrollRef]);
@@ -91,24 +78,12 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
     const signed = direction === "down" ? raw : -raw;
     if (!st.dragging) {
       if (Math.abs(raw) < 6) return;
-      if (signed < 0) { reset(); return; } // moving the wrong way — not our gesture
+      if (signed < 0) { reset(); return; }
       st.dragging = true;
-      // Velocity should reflect how fast the *swipe* was, not how long the
-      // finger sat still before the swipe started — measuring from
-      // pointerdown made a normal "rest thumb, then flick" swipe read as
-      // artificially slow and fail the velocity check, on top of the
-      // separately-too-high distance threshold. Both together meant the
-      // sheet would visibly follow the finger but almost always snap back
-      // instead of closing.
       st.dragStartTime = Date.now();
       if (dragRef?.current) dragRef.current.style.transition = "none";
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     }
-    // Once we've committed to this gesture, stop the event from also being
-    // read as a native scroll/pull-to-refresh (or, inside a Discord
-    // Activity webview, a host-level swipe-to-dismiss) — without this the
-    // drag can visually "let go" mid-swipe and the surrounding page/app
-    // reloads instead of the sheet closing.
     if (st.dragging) { try { e.preventDefault(); } catch {} }
     st.delta = Math.max(0, signed);
     if (dragRef?.current) {
@@ -710,7 +685,7 @@ export function SkeletonHeroPage({ round = false, rows = 6 }) {
 export function TransportButtons({ big = false, minimal = false }) {
   const { isPlaying, togglePlay, next, prev, shuffle, toggleShuffle, repeat, cycleRepeat, currentTrack, room } = usePlayer();
   const { authUser, t } = useUI();
-  const [pulse, setPulse] = useState(null); // "prev" | "next" | null
+  const [pulse, setPulse] = useState(null);
   const RepeatIcon = repeat === "one" ? Repeat1 : Repeat;
   const isHost = !room || !authUser || room.hostId === authUser.id;
   const controlLocked = room && room.hostOnlyControl && !isHost;
@@ -827,22 +802,9 @@ export function MobileNowPlayingIconRow({ lyricsActive, onToggleLyrics, lyricsDi
   );
 }
 
-// ---- Shared-element (FLIP) transition for the cover + title/artist block ----
-// First / Last / Invert / Play: we measure the cover & title-block's rendered
-// rect right before the mode flips (First), let React re-render into the new
-// layout (Last), then apply an inverse transform so the element still *looks*
-// like it's in its old spot/size, and finally clear that transform so the
-// browser's own transition animates it smoothly back to identity. Because
-// this operates on live rendered rects, it works no matter how different the
-// "player" and "lyrics" CSS layouts are (column vs row, 320px vs 44px, etc.)
-// without us having to hand-author matching keyframes for every breakpoint.
 const HERO_FLIP_MS = 520;
 
 function useHeroFlip(mode, targets) {
-  // `targets` is a stable array of { ref, uniform? } — uniform locks x/y
-  // scaling together (for text/controls blocks where independent x/y
-  // scaling would stretch/squash content; only a plain cover image wants
-  // true non-uniform scaling).
   const firstRects = useRef(null);
   const cleanupTimer = useRef(null);
 
@@ -866,17 +828,13 @@ function useHeroFlip(mode, targets) {
       let sx = firstRect.width / last.width;
       let sy = firstRect.height / last.height;
       if (uniform) {
-        // Text/control blocks: scaling x/y independently stretches or
-        // squashes the content (the container's aspect ratio can change a
-        // lot more than its "font-size-equivalent" should look like). Use
-        // one factor for both axes, driven by the height ratio.
         sx = sy;
       }
       el.style.willChange = "transform";
       el.style.transition = "none";
       el.style.transformOrigin = "top left";
       el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
-      void el.offsetWidth; // force reflow so the "invert" paints before we play
+      void el.offsetWidth;
       el.style.transition = `transform ${HERO_FLIP_MS}ms cubic-bezier(.22,.85,.32,1)`;
       el.style.transform = "translate(0px, 0px) scale(1, 1)";
     };
@@ -896,7 +854,6 @@ function useHeroFlip(mode, targets) {
     }, HERO_FLIP_MS + 40);
 
     return () => clearTimeout(cleanupTimer.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   return capture;
@@ -912,8 +869,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
-  // Real detected codec label ("OPUS", "MP3", "AAC", ...) — null while
-  // still sniffing the file, "unavailable" if detection failed.
   const formatLabel = audioFormat && audioFormat !== "unavailable" ? audioFormat.label : null;
   const [moreOpen, setMoreOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -935,21 +890,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     { ref: controlsRef, uniform: true },
   ]).current;
   const captureHeroFlip = useHeroFlip(lyricsMode, flipTargets);
-  // Swiping down (from the grabber handle) always dismisses the whole sheet
-  // in one gesture, whether or not lyrics are showing — unlike tapping the
-  // grabber, which steps out of lyrics mode first. `onClose` here is the
-  // parent's handler and intentionally does NOT reset `lyricsOpen` (see
-  // App.jsx), so swiping down out of lyrics and reopening (mini player tap
-  // or swipe-up) lands back on lyrics instead of resetting to the cover.
   const bodyScrollRef = useRef(null);
   const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: onClose, dragRef: sheetRef, scrollRef: bodyScrollRef });
 
   const trackKey = currentTrack?.id;
-  // NOTE: don't unmount AppleLyricsPane on track change — it already
-  // refreshes itself internally (its own effect is keyed on track?.id).
-  // Unmounting here previously left lyrics stuck blank after a skip,
-  // because this effect only remounts on `lyricsOpen` changing, not on
-  // `trackKey` changing, so `lyricsMounted` never flipped back to true.
   useEffect(() => { setSingMode(false); setLyricsUnsynced(false); }, [trackKey]);
   useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
 
@@ -962,23 +906,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const scrollToActiveLyric = () => {
     const el = document.getElementById("aivy-am-lyrics-mobile");
     if (!el) return;
-    // `resumeAutoScroll` is marked `private` only in am-lyrics' TypeScript
-    // source — at runtime it's an ordinary instance method we can reach
-    // from here. It clears the manual-scroll flag and jumps back to the
-    // active line in one go.
     if (typeof el.resumeAutoScroll === "function") {
       el.resumeAutoScroll();
     }
     setLyricsUnsynced(false);
   };
 
-  // Tampilkan pill "Sync" selama lirik masih di-scroll manual oleh user.
-  // am-lyrics sudah mendeteksi scroll manual sendiri (lewat wheel/touchmove
-  // di dalam shadow DOM-nya) dan menambah class "user-scrolling" ke
-  // container-nya selama itu, dan class itu TIDAK lagi otomatis hilang
-  // setelah beberapa detik — hanya hilang saat user menekan tombol Sync
-  // (lihat scrollToActiveLyric di atas). Kita cuma numpang lihat class itu
-  // lewat MutationObserver untuk tahu kapan pill-nya harus muncul.
   useEffect(() => {
     if (!lyricsMounted) return undefined;
     let observer;
@@ -1151,10 +1084,6 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
     onClose();
   };
 
-  // Most YouTube-sourced tracks only carry an artist *name*, not the id
-  // ArtistPage needs — but the artist endpoint (see useArtistAbout above)
-  // already accepts a plain name as its lookup key, so we can go straight
-  // there instead of hiding the option whenever an id is missing.
   const handleArtist = async () => {
     if (!track.artist?.name) return;
     if (track.artist?.id) { onClose(); navigate("artist", { params: { id: track.artist.id } }); return; }
@@ -1175,9 +1104,6 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
     }
   };
 
-  // Albums have no name-based lookup endpoint, so we fall back to
-  // searching for the track again and taking the album id off whichever
-  // result actually matches this album's title.
   const handleAlbum = async () => {
     if (!track.album?.id) {
       if (!track.album?.title) return;
@@ -1285,20 +1211,10 @@ function TrackDetailInfoTab({ track }) {
   );
 }
 
-// Cache kecil per videoId+quality biar ganti tab bolak-balik nggak nembak
-// endpoint /audio-info berkali-kali (spek audio nggak berubah selama sesi).
-//
-// PENTING: cuma hasil SUKSES yang disimpan permanen. Sebelumnya kegagalan
-// (mis. /audio-info sempat gagal sekali karena yt-dlp gagal di semua
-// player_client, atau koneksi kepotong) juga ikut ke-cache sebagai
-// "unavailable" selamanya — jadi begitu gagal sekali, badge codec-nya ga
-// akan pernah muncul lagi buat lagu itu di sesi ini walau backend-nya
-// sebenarnya udah pulih. Sekarang kegagalan dibuang dari cache biar attempt
-// berikutnya (mis. buka ulang tab Technical) nyoba fetch ulang.
 const audioInfoCache = new Map();
 function useTrackAudioInfo(track) {
   const videoId = track?.videoId || track?.id || null;
-  const [info, setInfo] = useState(null); // null = loading, "unavailable", atau objek
+  const [info, setInfo] = useState(null);
   useEffect(() => {
     setInfo(null);
     if (!videoId) { setInfo("unavailable"); return undefined; }
@@ -1328,9 +1244,6 @@ function TrackDetailTechnicalTab({ track, isPreviewClip }) {
   const { t, pushToast } = useUI();
   const copy = (value) => { if (!value) return; navigator.clipboard?.writeText(String(value)); pushToast(t("copiedToClipboard")); };
 
-  // Spesifikasi audio asli — langsung dari hasil resolve yt-dlp yang beneran
-  // dipakai buat men-stream track ini (lihat GET /api/track/audio-info di
-  // backend), bukan ditebak dari ranged-fetch/byte-sniffing di browser lagi.
   const audioInfo = useTrackAudioInfo(track);
   const loadingInfo = audioInfo === null;
   const info = audioInfo && audioInfo !== "unavailable" ? audioInfo : null;
@@ -1669,17 +1582,6 @@ function AboutArtistSection({ track, onNavigate }) {
     </div>
   );
 }
-// ArchiveTune-style: deskripsi diambil dari video YouTube asli lewat videoId
-// (backend memanggil innertube WEB client -> /next -> attributedDescription.content),
-// bukan lookup title/artist ke sumber credits terstruktur seperti sebelumnya.
-//
-// PENTING: sama seperti audioInfoCache di atas — cuma deskripsi yang
-// BERHASIL diambil yang disimpan permanen. Kalau /api/track/description
-// gagal (mis. semua player_client yt-dlp gagal buat video itu, lihat
-// getVideoDescription di backend), sebelumnya `null` itu ikut ke-cache
-// selamanya per videoId, jadi deskripsi ga akan pernah nongol lagi buat
-// lagu itu di sesi ini walau di-retry manual. Sekarang kegagalan dibuang
-// dari cache biar kunjungan berikutnya ke lagu yang sama nyoba fetch ulang.
 const descriptionFetchCache = new Map();
 function useTrackDescription(track) {
   const videoId = track?.videoId || track?.id || null;
@@ -2447,26 +2349,11 @@ const LYRICS_FONT_SIZES = {
   lg: "clamp(23px, 4.4vw, 32px)",
 };
 
-// <am-lyrics> internally uses CSS *container queries* on its own
-// `.lyrics-container` element, and those queries re-assign
-// `--lyplus-font-size-base` themselves based on the element's width:
-//   @container (max-width: 519px) -> --lyplus-font-size-base: var(--am-lyrics-compact-font-size, 28px)
-//   @container (min-width: 900px) -> --lyplus-font-size-base: var(--am-lyrics-wide-font-size, 48px)
-// So simply setting `--lyplus-font-size-base` from outside gets silently
-// clobbered the moment the panel is narrower than 519px or wider than
-// 900px (which is most of the time). We have to set all three variables —
-// the compact/wide overrides *and* the mid-range base — so the size we
-// pick actually sticks no matter how wide the lyrics panel is.
 const AM_LYRICS_FONT_SIZES = {
   sm: { "--am-lyrics-compact-font-size": "22px", "--lyplus-font-size-base": "26px", "--am-lyrics-wide-font-size": "34px" },
   md: { "--am-lyrics-compact-font-size": "28px", "--lyplus-font-size-base": "34px", "--am-lyrics-wide-font-size": "48px" },
   lg: { "--am-lyrics-compact-font-size": "34px", "--lyplus-font-size-base": "42px", "--am-lyrics-wide-font-size": "58px" },
 };
-// am-lyrics already resolves lyrics through its own internal provider chain
-// (BiniLyrics/LyricsPlus first, then Unison/YouLyPlus, then LRCLIB, then
-// Genius as a last resort) whenever it's given song-title/song-artist — so
-// we don't fetch or pre-build anything ourselves; we just feed it clean
-// metadata and let it do the searching, matching, and syncing natively.
 function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize, id }) {
   const elRef = useRef(null);
 
@@ -2482,42 +2369,26 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize,
       const durationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
       const query = [cleanedTitle, track.artist?.name].filter(Boolean).join(" ");
       if (forceRetrigger) {
-        // The very first fetch to these lyrics providers occasionally fails
-        // on a cold connection (fresh DNS/TLS to a domain the browser
-        // hasn't touched yet) even though a retry with the exact same
-        // title/artist succeeds moments later. Lit only re-fetches when a
-        // property actually *changes*, so re-assigning the identical string
-        // wouldn't retrigger anything — nudge it through a throwaway value
-        // first so the real value change still fires.
         el.songTitle = `${cleanedTitle}\u200b`;
       }
       el.songTitle = cleanedTitle;
       el.songArtist = track.artist?.name || "";
-      // NOTE: the reactive JS property is `songDurationMs`, NOT `songDuration`
-      // — only the HTML *attribute* is called `song-duration`. Setting
-      // `el.songDuration` silently sets an untracked stray property and never
-      // reaches the component.
       el.songDurationMs = durationMs;
       el.query = query;
-      // Same story here: the property is `autoScroll` (camelCase), the
-      // attribute is `autoscroll`.
       el.autoScroll = true;
       el.interpolate = true;
     };
 
     const watchForFailureAndRetryOnce = () => {
       let attempts = 0;
-      const maxAttempts = Math.ceil(9000 / 300); // ~9s, a hair over am-lyrics' own 8s fetch timeout
+      const maxAttempts = Math.ceil(9000 / 300);
       pollId = setInterval(() => {
         attempts++;
         if (cancelled) { clearInterval(pollId); return; }
-        // `isLoading`/`lyricsSource` are TS `private` on AmLyrics, which
-        // only affects compile-time type-checking — at runtime they're
-        // ordinary instance properties we can read from outside.
         if (el.isLoading === false) {
           clearInterval(pollId);
           if (!el.lyricsSource && !el.ttml) {
-            applyMetadata(true); // one silent retry
+            applyMetadata(true);
           }
           return;
         }
@@ -2525,13 +2396,6 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize,
       }, 300);
     };
 
-    // <am-lyrics> is loaded from a separate <script type="module"> tag (CDN)
-    // rather than bundled with the app. If that tag hasn't finished
-    // registering the custom element yet the very first time this mounts,
-    // setting properties on the not-yet-upgraded element can silently miss
-    // Lit's reactive pipeline — nothing fires and no fetch happens. Waiting
-    // for the definition first guarantees we're always setting properties
-    // on the real, upgraded element.
     if (typeof customElements !== "undefined" && customElements.get("am-lyrics")) {
       applyMetadata(false);
     } else if (typeof customElements !== "undefined") {
@@ -2541,7 +2405,6 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize,
     }
     watchForFailureAndRetryOnce();
 
-    // Sembunyikan tombol "Download Lyrics" bawaan am-lyrics (shadow DOM).
     let hideDlTimer = null;
     let hideDlTries = 0;
     const injectHideDownload = () => {
@@ -2591,12 +2454,6 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize,
   );
 }
 
-// Silently primes <am-lyrics>' own result cache (see AmLyrics.ts) for
-// whatever's up next in the queue, so that when the user actually skips to
-// it, AppleLyricsPane finds the lyrics already resolved instead of running
-// the full provider fallback chain from scratch. Renders a fully hidden,
-// off-screen <am-lyrics> instance — same component, same fetch path, just
-// nothing the user ever sees.
 export function LyricsPrefetch() {
   const { upNext } = usePlayer();
   const nextTrack = upNext?.[0] || null;
@@ -2710,9 +2567,6 @@ export function LyricsOverlay() {
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
   const [lyricsUnsynced, setLyricsUnsynced] = useState(false);
-  // Warna highlight mengikuti tema TER-RESOLVE (light/white/latte = terang),
-  // bukan cuma setting "light" — dan di mobile selalu putih karena
-  // background-nya blur sampul yang gelap.
   const resolvedTheme = (typeof document !== "undefined" && document.documentElement?.dataset?.theme) || "dark";
   const isLightResolved = ["light", "white", "latte"].includes(resolvedTheme);
   const trackKey = currentTrack?.id;
@@ -2741,19 +2595,12 @@ export function LyricsOverlay() {
   const scrollToActiveLyric = () => {
     const el = document.getElementById("aivy-am-lyrics-desktop");
     if (!el) return;
-    // `resumeAutoScroll` is marked `private` only in am-lyrics' TypeScript
-    // source — at runtime it's an ordinary instance method we can reach
-    // from here. It clears the manual-scroll flag and jumps back to the
-    // active line in one go.
     if (typeof el.resumeAutoScroll === "function") {
       el.resumeAutoScroll();
     }
     setLyricsUnsynced(false);
   };
 
-  // Tampilkan pill "Sync" selama lirik masih di-scroll manual oleh user.
-  // am-lyrics menandai itu lewat class "user-scrolling" pada container-nya,
-  // dan class itu cuma hilang saat scrollToActiveLyric() dipanggil di atas.
   useEffect(() => {
     if (!lyricsOpen) return undefined;
     let observer;
@@ -2780,12 +2627,6 @@ export function LyricsOverlay() {
     };
   }, [lyricsOpen, trackKey]);
 
-  // No manual lyrics fetch here anymore — <am-lyrics> (AppleLyricsPane)
-  // resolves everything itself against its own provider chain (BiniLyrics/
-  // LyricsPlus first, then LRCLIB and a couple of other fallbacks) as soon
-  // as it's given song-title/song-artist. We just show the track title as
-  // the "active line" placeholder for the share/save-image panel, since
-  // am-lyrics keeps its parsed lines inside its own shadow DOM.
   const activeLineText = currentTrack?.title || "";
 
   const handleSaveImage = useCallback(() => {
@@ -2827,9 +2668,6 @@ export function LyricsOverlay() {
 
   if (!lyricsOpen) return null;
 
-  // Mobile now renders its now-playing <-> lyrics transition as a single
-  // morphing sheet — see NowPlayingSheet. This component only handles the
-  // desktop side-panel layout from here on.
   if (isMobile) return null;
 
   return (
@@ -2838,9 +2676,7 @@ export function LyricsOverlay() {
 
       <div className="aivy-lyrics-float">
         <button className="aivy-lyrics-fbtn primary" onClick={closeLyrics} aria-label={t("close")}><X size={19} /></button>
-        {/* These three are hidden on desktop (>=860px) because the side panel
-            below already shows the same like/share/font-size actions there —
-            keeping both visible was creating duplicate buttons. */}
+        { }
         <button
           className={`aivy-lyrics-fbtn aivy-lyrics-fbtn-dup ${isLiked ? "active" : ""}`}
           onClick={() => currentTrack && toggleLike(currentTrack)}

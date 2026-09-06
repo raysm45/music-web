@@ -99,7 +99,6 @@ function PlaylistCoverModal({ pl, onClose }) {
   const { setPlaylistCover } = usePlayer();
   const { t } = useUI();
 
-  // unique thumbnails available across the playlist's songs
   const options = useMemo(() => {
     const seen = new Set();
     const out = [];

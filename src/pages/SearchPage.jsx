@@ -50,12 +50,11 @@ export function SearchPage() {
   const requestSeqRef = useRef(0);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
-  useEffect(() => () => { try { recognitionRef.current?.stop(); } catch { /* ignore */ } }, []);
+  useEffect(() => () => { try { recognitionRef.current?.stop(); } catch { } }, []);
   useEffect(() => {
     if (authUser && settings.searchHistoryEnabled !== false) Api.recentSearches(8).then(setRecent).catch(() => {});
   }, [authUser, settings.searchHistoryEnabled]);
 
-  // Sync search box with ?q= from the URL (e.g. deep link or browser back/forward)
   useEffect(() => {
     const initialQ = new URLSearchParams(window.location.search).get("q");
     if (initialQ && initialQ.trim()) {
@@ -69,7 +68,6 @@ export function SearchPage() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const syncUrlQuery = (q) => {
@@ -204,7 +202,7 @@ export function SearchPage() {
   };
 
   const stopVoiceSearch = () => {
-    try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    try { recognitionRef.current?.stop(); } catch { }
     setListening(false);
   };
 
@@ -238,9 +236,6 @@ export function SearchPage() {
     return () => { cancelled = true; };
   }, [results]);
 
-  // Urutan final (lirik duluan) baru dipakai setelah pengecekan lirik selesai,
-  // supaya hasil pencarian yang sudah tampil tidak tiba-tiba lompat/geser
-  // posisinya saat data lirik baru masuk belakangan.
   const sortedList = useMemo(() => {
     if (checkingLyrics) return list;
     return [...list].sort((a, b) => (lyricsMap[a.id] ? 0 : 1) - (lyricsMap[b.id] ? 0 : 1));

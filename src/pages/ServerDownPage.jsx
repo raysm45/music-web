@@ -9,9 +9,8 @@ function seededRandom(seed) {
 
 export function ServerDownPage() {
   const totalDots = 200;
-  const errorCount = 5; // jumlah titik merah (1-5)
+  const errorCount = 5;
 
-  // State untuk menyimpan posisi titik merah yang sedang aktif
   const [errorIndices, setErrorIndices] = useState(() => {
     const rand = seededRandom(42);
     const indices = new Set();
@@ -21,7 +20,6 @@ export function ServerDownPage() {
     return Array.from(indices);
   });
 
-  // Ubah posisi titik merah setiap 2 detik secara acak
   useEffect(() => {
     const interval = setInterval(() => {
       const newIndices = new Set();
@@ -33,7 +31,6 @@ export function ServerDownPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Buat array dots statis tanpa isError (hanya untuk render)
   const dots = useMemo(() => {
     const rand = seededRandom(42);
     return Array.from({ length: totalDots }, () => ({

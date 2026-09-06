@@ -52,13 +52,6 @@ export const RIGHTPANEL_COLLAPSED_W = 56;
 export const RIGHTPANEL_PEEK_W = 52;
 const PANEL_PREFS_KEY = "aivy_panel_prefs";
 const PLAYBACK_STATE_KEY = "aivy_playback_state_v1";
-// Kalau tab-nya di-discard/reclaim OS (umum di Android Chrome pas app
-// dikeluarin/idle lama) React kehilangan SEMUA state di memori — antrian,
-// lagu yang lagi diputer, posisi, shuffle/repeat — karena sebelumnya nggak
-// ada yang disimpen ke localStorage sama sekali. Sengaja nggak disimpen
-// selama-lamanya: kalau kebuka lagi seminggu kemudian, ngelanjutin dari lagu
-// random minggu lalu lebih nyebelin daripada mulai bersih, makanya ada batas
-// umur di bawah ini.
 const PLAYBACK_STATE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_PANEL_PREFS = {
   sidebarWidth: 236,
@@ -80,18 +73,10 @@ function loadPanelPrefs() {
   } catch { return DEFAULT_PANEL_PREFS; }
 }
 
-// Simpan/pulihkan sesi pemutaran (antrian, posisi lagu, shuffle, repeat) ke
-// localStorage. Dipanggil tiap kali app di-background (visibilitychange /
-// pagehide) dan berkala selagi lagu diputer, jadi kalau tab-nya kena
-// discard/reclaim OS, begitu dibuka lagi sesi terakhir bisa dipulihkan —
-// bukan mulai dari kosong lagi. TIDAK menyimpan status auth/room (itu sudah
-// ditangani jalur lain) dan sengaja TIDAK auto-play hasil pulihannya (lihat
-// pemakaian pendingResumeTimeRef) karena browser modern blokir autoplay
-// tanpa gesture user.
 function savePlaybackState(state) {
   try {
     localStorage.setItem(PLAYBACK_STATE_KEY, JSON.stringify({ ...state, savedAt: Date.now() }));
-  } catch { /* localStorage penuh/diblokir — nggak fatal, cuma sesi nggak kepulihkan */ }
+  } catch { }
 }
 
 function loadPlaybackState() {
@@ -107,7 +92,7 @@ function loadPlaybackState() {
 }
 
 function clearPlaybackState() {
-  try { localStorage.removeItem(PLAYBACK_STATE_KEY); } catch { /* ignore */ }
+  try { localStorage.removeItem(PLAYBACK_STATE_KEY); } catch { }
 }
 
 const DEFAULT_SETTINGS = {
@@ -374,9 +359,6 @@ export function PlayerProvider({ children }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [clipDuration, setClipDuration] = useState(0);
   const [isPreviewClip, setIsPreviewClip] = useState(true);
-  // Real detected container/codec of the file currently loaded into the
-  // <audio> element — null while unknown/detecting, "unavailable" if
-  // sniffing failed, or { label, mimeType, codec, container }.
   const [audioFormat, setAudioFormat] = useState(null);
   const [volume, setVolumeState] = useState(0.7);
   const [muted, setMuted] = useState(false);
@@ -411,12 +393,6 @@ export function PlayerProvider({ children }) {
     a.crossOrigin = "anonymous";
     return a;
   })());
-  // A second, silent <audio> element used purely to warm the browser's
-  // (and any CDN's) cache for the *next* queued track's audio file while
-  // the current one is still playing — see the prefetch effect below. It
-  // never plays; it just sits there buffering so that when we actually
-  // switch `audioRef`'s src to this same URL, playback can start from
-  // cache instead of a cold network fetch.
   const preloadAudioRef = useRef((() => {
     if (typeof Audio === "undefined") return null;
     const a = new Audio();
@@ -428,10 +404,6 @@ export function PlayerProvider({ children }) {
   const promptCast = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) return { ok: false, reason: "unsupported" };
-    // Remote Playback API — supported by Chromium-based browsers for
-    // casting an individual <audio>/<video> element to a Chromecast or
-    // similar receiver. Not implemented everywhere, so this degrades
-    // gracefully when unavailable rather than throwing.
     if (!audio.remote || typeof audio.remote.prompt !== "function") {
       return { ok: false, reason: "unsupported" };
     }
@@ -439,15 +411,10 @@ export function PlayerProvider({ children }) {
       await audio.remote.prompt();
       return { ok: true };
     } catch (err) {
-      // User dismissed the device picker, or no devices were found —
-      // either way there's nothing actionable to surface as an error.
       return { ok: false, reason: "cancelled" };
     }
   }, []);
 
-  // Exposes the exact URL currently loaded into the <audio> element, so
-  // callers (e.g. the track detail sheet) can measure real file size /
-  // bitrate via a ranged fetch instead of guessing at numbers.
   const getAudioSrc = useCallback(() => {
     const audio = audioRef.current;
     return audio?.currentSrc || audio?.src || null;
@@ -458,19 +425,9 @@ export function PlayerProvider({ children }) {
   const recoveringRef = useRef(false);
   const retryCountRef = useRef(0);
   const isPlayingRef = useRef(false);
-  // Diisi sekali dari sesi yang dipulihkan (lihat effect restore di bawah),
-  // lalu dipakai & dikosongin lagi begitu track pertama pasca-pulihan
-  // selesai di-load ke elemen <audio> (lihat effect [currentKey]).
   const pendingResumeTimeRef = useRef(0);
   const restoredOnceRef = useRef(false);
 
-  // Pulihkan sesi pemutaran terakhir (kalau ada & belum kedaluwarsa) SEKALI
-  // pas provider pertama kali mount — nutup celah "app di-idle/di-keluarin
-  // lalu session-nya ilang" karena Android/browser reclaim tab yang lama gak
-  // aktif dan ngereset semua state React. Sengaja TIDAK nyalain isPlaying —
-  // biarin browser policy autoplay yang nentuin, restore cuma ngembaliin
-  // antrian + posisi supaya user tinggal pencet play lagi dari titik
-  // terakhir, bukan mulai ulang dari nol.
   useEffect(() => {
     if (restoredOnceRef.current) return;
     restoredOnceRef.current = true;
@@ -487,10 +444,6 @@ export function PlayerProvider({ children }) {
     pendingResumeTimeRef.current = typeof saved.currentTime === "number" ? saved.currentTime : 0;
   }, []);
 
-  // Snapshot ringan buat persistence — di-update tiap kali struktur
-  // antrian/mode berubah, dibaca lagi pas beneran mau disimpan (bukan tiap
-  // render) supaya listener visibilitychange/interval di bawah nggak perlu
-  // di-attach ulang tiap detik.
   const playbackSnapshotRef = useRef(null);
   useEffect(() => {
     playbackSnapshotRef.current = { queueList, order, posInOrder, shuffle, repeat, volume, muted, playSource };
@@ -502,12 +455,6 @@ export function PlayerProvider({ children }) {
     savePlaybackState({ ...snap, currentTime: audioRef.current?.currentTime || 0 });
   }, []);
 
-  // Simpan sesi begitu app di-background/idle (visibilitychange ke
-  // "hidden", atau pagehide pas tab beneran ditutup/di-swipe) — dua momen
-  // paling umum SEBELUM Android/browser reclaim tab dan bikin "session
-  // hilang" yang dikeluhkan. Ditambah safety-net interval 20 detik selama
-  // ada lagu jalan, buat jaga-jaga kalau OS kill proses tanpa sempet fire
-  // event apa pun (jarang, tapi bisa kejadian di RAM kecil).
   useEffect(() => {
     const onVisibility = () => { if (document.visibilityState === "hidden") savePlaybackSnapshotNow(); };
     document.addEventListener("visibilitychange", onVisibility);
@@ -556,16 +503,6 @@ export function PlayerProvider({ children }) {
 
       const graph = { ctx, source, preamp, bands, compressor, fadeGain };
       audioGraphRef.current = graph;
-      // Mobile browsers (iOS Safari in particular, also Chrome/Android in
-      // some cases) suspend — or mark "interrupted" — the AudioContext
-      // whenever the page is backgrounded/locked, a call comes in, etc.
-      // Because the <audio> element's output is routed entirely through
-      // this graph (createMediaElementSource redirects it, it can no
-      // longer play straight to the speaker), a suspended context means
-      // total silence even though the element itself is still technically
-      // "playing" and its currentTime keeps advancing. Resuming as soon as
-      // the state changes — instead of only when the tab becomes visible
-      // again — closes most of that gap.
       ctx.addEventListener("statechange", () => {
         if (ctx.state !== "running" && isPlayingRef.current) ctx.resume().catch(() => {});
       });
@@ -661,12 +598,6 @@ export function PlayerProvider({ children }) {
     progressElsRef.current.forEach((mode, el) => {
       if (!el) return;
       if (mode === "left") el.style.left = `${pct}%`;
-      // "fill" bars (mode === "width") dipakai buat progress bar yang di-update
-      // 60x/detik lewat requestAnimationFrame selama lagu main (lihat useEffect
-      // "tick" di bawah). Pakai transform: scaleX() alih-alih width supaya
-      // browser cuma perlu compositing di GPU, bukan hitung ulang layout tiap
-      // frame — animasi lain (scroll, transisi halaman) jadi nggak keteteran
-      // pas lagu diputar. Visualnya sama persis, cuma jalurnya lebih murah.
       else el.style.transform = `scaleX(${pct / 100})`;
     });
   }, []);
@@ -689,9 +620,6 @@ export function PlayerProvider({ children }) {
           try {
             const q = `${track.title} ${track.artist?.name || ""}`.trim();
             const results = await Api.search(q);
-            // Jangan langsung ambil hasil pertama — pilih kandidat yang paling
-            // mendekati rekaman official (lihat komentar di pickBestAudioMatch),
-            // supaya timing lirik synced tidak telat karena beda versi.
             const best = pickBestAudioMatch(results, track);
             videoId = best?.videoId || results?.[0]?.videoId || null;
             resolvedFullCache.current.set(track.id, videoId);
@@ -748,14 +676,7 @@ export function PlayerProvider({ children }) {
         pendingResumeTimeRef.current = 0;
       }
       setAudioFormat(null);
-      // Dulu ini nge-sniff byte pertama file lewat ranged fetch (lihat
-      // audioFormat.js). Sekarang langsung pakai data yang SAMA dengan tab
-      // Detail: hasil resolve yt-dlp yang beneran dipakai buat stream ini
-      // (GET /api/track/audio-info) — lebih kuat karena bukan tebakan dari
-      // magic bytes, tapi metadata asli dari backend, dan sudah pasti akurat
-      // untuk itag/format yang benar-benar dipilih.
       if (resolved.preview) {
-        // Preview clip selalu MP3 dari Deezer — tidak perlu fetch apa pun.
         setAudioFormat({ label: "MP3", mimeType: "audio/mpeg", codec: "mp3", container: "MP3" });
       } else if (resolved.videoId) {
         Api.trackAudioInfo(resolved.videoId)
@@ -821,11 +742,6 @@ export function PlayerProvider({ children }) {
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { retryCountRef.current = 0; }, [currentKey]);
 
-  // Siapkan (prefetch) sumber lagu berikutnya di antrian selagi lagu sekarang
-  // masih main. Tanpa ini, saat lagu habis, sistem baru mulai minta tiket
-  // stream dari server SETELAH "ended" terjadi — dan di HP saat aplikasi
-  // ada di background, network request semacam itu sering ditunda/lambat
-  // oleh browser, jadi lagu berikutnya nggak kunjung mulai (kayak "berhenti").
   useEffect(() => {
     if (!currentTrack || inRoom || repeat === "one") return;
     const nextIdx = posInOrder + 1;
@@ -835,9 +751,6 @@ export function PlayerProvider({ children }) {
     let cancelled = false;
     resolveAudioSrc(nextTrack, { prefetch: true }).then((resolved) => {
       if (cancelled || !resolved) return;
-      // Actually start buffering the file itself (not just fetching the
-      // stream ticket/URL) so the real handoff in the effect above can
-      // start from a warm cache instead of a cold connection.
       const pre = preloadAudioRef.current;
       if (pre && pre.src !== resolved.src) {
         pre.src = resolved.src;
@@ -880,10 +793,6 @@ export function PlayerProvider({ children }) {
     let stalledTimer = null;
     const clearStalledTimer = () => { if (stalledTimer) { clearTimeout(stalledTimer); stalledTimer = null; } };
 
-    // Sumber audio (tiket stream) kadang kedaluwarsa atau koneksi putus di
-    // tengah pemutaran, terutama di HP saat jaringan berpindah/di-throttle
-    // di background. Kalau ini terjadi, coba ambil ulang src dan lanjutkan
-    // dari posisi terakhir, bukan langsung diam/berhenti.
     const recoverPlayback = async () => {
       if (recoveringRef.current) return;
       if (retryCountRef.current >= 3) return;
@@ -892,14 +801,6 @@ export function PlayerProvider({ children }) {
       recoveringRef.current = true;
       retryCountRef.current += 1;
       try {
-        // forceFresh: WAJIB minta tiket baru di sini, bukan reuse cache.
-        // Recovery dipicu justru karena ada yang gagal (error/stalled) —
-        // salah satu penyebab paling umum adalah backend sempet
-        // restart dan sesi/tiket lama udah gak dikenal lagi (403 "sesi
-        // kedaluwarsa"). Kalau tetap pakai tiket lama dari cache, retry
-        // ini dijamin gagal lagi dengan error yang sama, retryCountRef
-        // habis dalam 3x percobaan, dan lagu berhenti total tanpa lanjut
-        // ke lagu berikutnya.
         const resolved = await resolveAudioSrc(currentTrack, { forceFresh: true });
         if (!resolved) return;
         audio.src = resolved.src;
@@ -909,7 +810,6 @@ export function PlayerProvider({ children }) {
           await audio.play().catch(() => {});
         }
       } catch {
-        // biarkan, akan dicoba lagi kalau stalled/error muncul lagi
       } finally {
         recoveringRef.current = false;
       }
@@ -957,9 +857,6 @@ export function PlayerProvider({ children }) {
       const audio = audioRef.current;
       if (!audio) return;
       if (document.visibilityState !== "visible") return;
-      // Balik dari background: pastikan AudioContext (dipakai untuk EQ/fade)
-      // tidak nyangkut "suspended" oleh browser HP, kalau tidak lagu jadi
-      // seperti berhenti padahal <audio> masih "playing".
       resumeAudioCtx();
       setCurrentTime(audio.currentTime);
       writeProgress(audio.currentTime, audio.duration || clipDuration);
@@ -969,15 +866,6 @@ export function PlayerProvider({ children }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [writeProgress, clipDuration, resumeAudioCtx]);
 
-  // Watchdog buat playback di background: statechange & visibilitychange
-  // kadang tidak cukup cepat (atau tidak fire sama sekali di sebagian
-  // browser HP) buat nangkep AudioContext yang di-suspend/di-"interrupt"
-  // pas layar dikunci / app dipindah ke belakang. Timer ini ngecek tiap
-  // beberapa detik selama status play masih true: kalau context-nya tidak
-  // "running", coba resume lagi; kalau elemen <audio>-nya sendiri ke-pause
-  // (misal OS ngerebut audio focus sebentar), coba play() lagi juga. Dicek
-  // juga saat balik ke foreground/tab fokus buat jaga-jaga race dengan
-  // listener lain di atas.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return undefined;
@@ -1165,11 +1053,6 @@ export function PlayerProvider({ children }) {
     return true;
   }, [applyRadioContinuation]);
 
-  // Fallback kalau prefetch suggestedQueue belum kelar (atau gagal) tepat
-  // pas lagu abis — ini SERING kejadian di background karena request
-  // /api/similar bisa ke-throttle browser HP. Tanpa ini, lagu langsung
-  // "berhenti sendiri" gitu aja tanpa nyoba lagi. Coba fetch on-demand
-  // sekali lagi sebelum beneran nyerah.
   const fetchRadioContinuationNow = useCallback(async (seedTrack) => {
     if (!seedTrack) return false;
     try {
@@ -1212,10 +1095,6 @@ export function PlayerProvider({ children }) {
       if (repeat === "all" && order.length) { setPosInOrder(0); return; }
       if (repeat !== "one" && settings.autoplay !== false) {
         if (continueWithRadio()) return;
-        // Prefetch suggestedQueue belum siap (kena throttle background,
-        // atau belum sempet selesai) — coba on-demand sekali lagi sebelum
-        // beneran nyerah dan diem. Ini yang bikin "abis satu lagu terus
-        // berhenti sendiri" sebelumnya.
         fetchRadioContinuationNow(currentTrack).then((ok) => {
           if (!ok && auto) setIsPlaying(false);
         });
@@ -1240,15 +1119,8 @@ export function PlayerProvider({ children }) {
   const seekRatio = useCallback((ratio) => {
     const audio = audioRef.current;
     if (!audio) return;
-    // audio.duration bisa Infinity (stream tanpa Content-Length yang jelas,
-    // masih umum kejadian sesaat sebelum metadata penuh ke-load) — Infinity
-    // itu truthy, jadi "audio.duration || clipDuration" SALAH nganggep itu
-    // durasi valid, lalu ratio * Infinity = Infinity, dan
-    // audio.currentTime = Infinity otomatis ditolak browser -> seek diam
-    // aja / ga ngefek. Makanya harus filter pakai Number.isFinite dulu, baru
-    // fallback ke clipDuration (durasi asli dari metadata track).
     const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (clipDuration || 0);
-    if (!dur) return; // durasi belum diketahui sama sekali, jangan seek ke posisi ngasal
+    if (!dur) return;
     const t = clamp(ratio, 0, 1) * dur;
     if (inRoom) { socketRef.current?.emit("playback-control", { roomId: room.id, action: "seek", payload: { position: t } }); return; }
     audio.currentTime = t;
@@ -1259,7 +1131,6 @@ export function PlayerProvider({ children }) {
   const seekTo = useCallback((seconds) => {
     const audio = audioRef.current;
     if (!audio) return;
-    // Sama seperti seekRatio: jangan biarkan Infinity lolos jadi "durasi valid".
     const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (clipDuration || 0);
     const t = clamp(seconds, 0, dur || seconds);
     if (inRoom) { socketRef.current?.emit("playback-control", { roomId: room.id, action: "seek", payload: { position: t } }); return; }

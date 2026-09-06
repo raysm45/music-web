@@ -177,7 +177,7 @@ export function RoomPage() {
   const shareRoom = async () => {
     const text = `${t("shareRoomText")} ${room.id}`;
     if (navigator.share) {
-      try { await navigator.share({ title: room.name, text, url: window.location.href }); return; } catch { /* dibatalkan user */ }
+      try { await navigator.share({ title: room.name, text, url: window.location.href }); return; } catch { }
     }
     navigator.clipboard?.writeText(`${text} — ${window.location.href}`);
     pushToast(t("roomCodeCopied"));
