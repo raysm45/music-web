@@ -49,7 +49,7 @@ const PAGE_BY_ROUTE = {
 
 function AppInner() {
   const { name, params } = useRouter();
-  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek, mobileQueueOpen, openMobileQueue, closeMobileQueue, closeLyrics } = useUI();
+  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek, mobileQueueOpen, openMobileQueue, closeMobileQueue } = useUI();
   const { currentTrack } = usePlayer();
   const isMobile = useIsMobile(860);
   const isPanelCompact = useIsMobile(1240);
@@ -92,7 +92,7 @@ function AppInner() {
       {isMobile && <LyricsPrefetch />}
       {isMobile && !isImmersiveShorts && <MobileTabBar />}
       { }
-      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => { setNowPlayingOpen(false); closeLyrics(); }} onOpenQueue={() => { setNowPlayingOpen(false); closeLyrics(); openMobileQueue(); }} />}
+      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} />}
       {isMobile && <QueueSheet open={mobileQueueOpen} onClose={closeMobileQueue} />}
 
       <AddToPlaylistModal />

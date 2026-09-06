@@ -865,7 +865,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     liked, toggleLike, loadingAudio, currentTrackHasLyrics,
   } = usePlayer();
   const { navigate } = useRouter();
-  const { t, lyricsOpen, toggleLyrics, closeLyrics } = useUI();
+  const { t, lyricsOpen, toggleLyrics } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
@@ -891,10 +891,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   ]).current;
   const captureHeroFlip = useHeroFlip(lyricsMode, flipTargets);
   const bodyScrollRef = useRef(null);
-  const handleGrabberTap = () => {
-    if (lyricsMode) { captureHeroFlip(); closeLyrics(); }
-    else onClose();
-  };
+  const handleGrabberTap = () => onClose();
   const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: handleGrabberTap, dragRef: sheetRef, scrollRef: bodyScrollRef });
 
   const trackKey = currentTrack?.id;
@@ -1040,7 +1037,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         onClose={() => setMoreOpen(false)}
         onOpenDetail={() => { setMoreOpen(false); setDetailOpen(true); }}
         onOpenAod={() => { setMoreOpen(false); setAodOpen(true); }}
-        onNavigate={() => { setMoreOpen(false); if (lyricsMode) closeLyrics(); onClose(); }}
+        onNavigate={() => { setMoreOpen(false); onClose(); }}
       />
       <TrackDetailSheet
         open={detailOpen}
@@ -2574,9 +2571,10 @@ export function LyricsOverlay() {
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (!lyricsOpen) return;
+    if (!lyricsOpen || isMobile) return;
     const scrollEl = document.getElementById("aivy-content-scroll");
     const prevOverflow = scrollEl ? scrollEl.style.overflow : "";
     if (scrollEl) scrollEl.style.overflow = "hidden";
@@ -2592,7 +2590,7 @@ export function LyricsOverlay() {
       if (scrollEl) scrollEl.style.overflow = prevOverflow;
       document.removeEventListener("touchmove", onTouchMove);
     };
-  }, [lyricsOpen]);
+  }, [lyricsOpen, isMobile]);
 
   const scrollToActiveLyric = () => {
     const el = document.getElementById("aivy-am-lyrics-desktop");
@@ -2663,7 +2661,6 @@ export function LyricsOverlay() {
 
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime: scrubTime, duration: scrubDuration } = useScrubberBinding();
   const cycleFontSize = () => setFontSize((s) => (s === "sm" ? "md" : s === "md" ? "lg" : "sm"));
-  const isMobile = useIsMobile();
   const highlightColor = isMobile || !isLightResolved ? "#f5f5f5" : "#14150f";
   const lyricsMenuItems = useTrackMenuItems(currentTrack || {});
   const handleLyricsMore = (e) => { if (!currentTrack) return; openContextMenu(e.clientX, e.clientY, lyricsMenuItems); };
