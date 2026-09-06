@@ -895,8 +895,8 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-artist-hero .art{ border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,.35); border: 3px solid var(--bg); }
 .aivy-artist-hero .art img, .aivy-artist-hero .art svg{ border-radius: 50%; }
 @media (max-width: 860px){
-  .aivy-artist-banner{ margin: -6px -16px 0; height: 270px; }
-  .aivy-artist-hero{ margin-top: -158px; }
+  .aivy-artist-banner{ margin: -6px -16px 0; height: 320px; }
+  .aivy-artist-hero{ margin-top: -256px; }
 }
 
 .aivy-playlist-banner{ position: relative; margin: -6px -28px 0; height: clamp(220px, 34vw, 380px); overflow: hidden; background: var(--bg-elev-2); }
