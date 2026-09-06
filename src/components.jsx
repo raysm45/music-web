@@ -891,17 +891,17 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   ]).current;
   const captureHeroFlip = useHeroFlip(lyricsMode, flipTargets);
   const bodyScrollRef = useRef(null);
-  const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: onClose, dragRef: sheetRef, scrollRef: bodyScrollRef });
+  const handleGrabberTap = () => {
+    if (lyricsMode) { captureHeroFlip(); closeLyrics(); }
+    else onClose();
+  };
+  const swipeDown = useVerticalSwipe({ active: open, direction: "down", onTrigger: handleGrabberTap, dragRef: sheetRef, scrollRef: bodyScrollRef });
 
   const trackKey = currentTrack?.id;
   useEffect(() => { setSingMode(false); setLyricsUnsynced(false); }, [trackKey]);
   useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
 
   const handleLyricsToggle = () => { captureHeroFlip(); toggleLyrics(); };
-  const handleGrabberTap = () => {
-    if (lyricsMode) { captureHeroFlip(); closeLyrics(); }
-    else onClose();
-  };
 
   const scrollToActiveLyric = () => {
     const el = document.getElementById("aivy-am-lyrics-mobile");
