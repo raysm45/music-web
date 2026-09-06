@@ -347,7 +347,7 @@ export function SearchPage() {
       )}
 
       {hasSearched && (
-        (searching || checkingLyrics) ? <SkeletonList count={8} /> : (
+        searching ? <SkeletonList count={8} /> : (
           sortedList.length ? (
             <div>
               {sortedList.map((tr, i) => <TrackRow key={`${tr.id}-${i}`} track={tr} index={i} list={sortedList} queueMode="radio" source={{ type: "search" }} />)}
@@ -381,3 +381,5 @@ export function SearchPage() {
   );
 }
 
+
+      
