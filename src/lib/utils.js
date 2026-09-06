@@ -149,7 +149,7 @@ export function pickBestAudioMatch(results, track) {
 
   const scored = results.map((r, index) => {
     let score = 0;
-    if (artistName && isRelevantArtistMatch(r.artist || "", artistName)) score += 5;
+    if (artistName && isRelevantArtistMatch(typeof r.artist === "string" ? r.artist : (r.artist?.name || ""), artistName)) score += 5;
 
     if (LYRIC_VIDEO_RE.test(r.title || "")) {
       score += 8;
@@ -232,11 +232,12 @@ export function saveRecentSearchThumb(query, track) {
   const q = (query || "").trim();
   if (!q || !track || !track.videoId) return;
   const key = q.toLowerCase();
+  const artistName = typeof track.artist === "string" ? track.artist : (track.artist?.name || "");
   const entry = {
     query: q,
     videoId: track.videoId,
     title: track.title || "",
-    artist: track.artist || "",
+    artist: artistName,
     thumbnail: track.thumbnail || track.cover || "",
     ts: Date.now(),
   };
@@ -252,3 +253,5 @@ export function removeRecentSearchThumb(query) {
 export function clearRecentSearchThumbs() {
   writeRecentSearchThumbs([]);
 }
+
+    
