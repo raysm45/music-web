@@ -835,6 +835,11 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-search-box-v2 input:focus-visible{ background: none; border: none; outline: none; box-shadow: none; }
 
 .aivy-search-subtitle{ font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ink-dim); margin: 4px 2px 6px; }
+.aivy-live-title-list{ display: flex; flex-direction: column; padding: 2px 0 8px; }
+.aivy-live-title-row{ display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 4px; text-align: left; font-size: 14px; color: var(--ink); border-bottom: 1px solid var(--line-soft); }
+.aivy-live-title-row:last-child{ border-bottom: none; }
+.aivy-live-title-row:hover{ color: var(--moss-strong); }
+.aivy-live-title-row span{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aivy-search-recent-v2{ margin-bottom: 6px; }
 .aivy-recent-thumbs{ display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 12px; margin: 0 -2px; }
 .aivy-recent-thumb-card{ position: relative; flex: 0 0 110px; width: 110px; display: flex; flex-direction: column; gap: 6px; text-align: left; }

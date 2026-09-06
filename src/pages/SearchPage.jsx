@@ -49,26 +49,35 @@ export function SearchPage() {
 
   const requestSeqRef = useRef(0);
 
+  const [liveTitles, setLiveTitles] = useState([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const liveSeqRef = useRef(0);
+
   const liveTitleSearch = async (q) => {
     const trimmed = q.trim();
-    if (!trimmed) return;
-    const seq = ++requestSeqRef.current;
-    setSearching(true);
-    setHasSearched(true);
-    setSearchedQuery(trimmed);
-    setArtistHit(null);
-    setNextCursor(null);
+    if (!trimmed) { setLiveTitles([]); setLiveLoading(false); return; }
+    const seq = ++liveSeqRef.current;
+    setLiveLoading(true);
     try {
       const res = await Api.search(trimmed);
-      if (seq !== requestSeqRef.current) return;
+      if (seq !== liveSeqRef.current) return;
       const needle = trimmed.toLowerCase();
-      const titleOnly = (res || []).filter((r) => (r.title || "").toLowerCase().includes(needle));
-      setResults(titleOnly);
+      const seen = new Set();
+      const titlesOnly = [];
+      for (const r of (res || [])) {
+        const title = r.title || "";
+        const key = title.toLowerCase();
+        if (!title || !key.includes(needle) || seen.has(key)) continue;
+        seen.add(key);
+        titlesOnly.push({ id: r.videoId || title, title });
+        if (titlesOnly.length >= 20) break;
+      }
+      setLiveTitles(titlesOnly);
     } catch {
-      if (seq !== requestSeqRef.current) return;
-      setResults([]);
+      if (seq !== liveSeqRef.current) return;
+      setLiveTitles([]);
     } finally {
-      if (seq === requestSeqRef.current) setSearching(false);
+      if (seq === liveSeqRef.current) setLiveLoading(false);
     }
   };
 
@@ -169,6 +178,7 @@ export function SearchPage() {
     if (!val.trim()) {
       debouncedSuggest.cancel?.(); debouncedLiveSearch.cancel?.();
       setSuggestions([]); setResults([]); setHasSearched(false); setNextCursor(null);
+      setLiveTitles([]); setLiveLoading(false);
       return;
     }
     debouncedSuggest(val.trim());
@@ -179,6 +189,8 @@ export function SearchPage() {
     setQuery(q);
     setFocused(false);
     setSuggestions([]);
+    setLiveTitles([]);
+    debouncedLiveSearch.cancel?.();
     syncUrlQuery(q);
     if (authUser && settings.searchHistoryEnabled !== false) {
       Api.recordSearch(q).then(() => Api.recentSearches(8).then(setRecent)).catch(() => {});
@@ -286,7 +298,7 @@ export function SearchPage() {
               onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) runSearch(query.trim()); }}
             />
             {query ? (
-              <button className="aivy-icon-btn sm" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={15} /></button>
+              <button className="aivy-icon-btn sm" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); setLiveTitles([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={15} /></button>
             ) : (
               <button className={`aivy-icon-btn sm ${listening ? "active" : ""}`} onClick={handleVoiceSearch} aria-label={listening ? t("stopVoiceSearch") : t("searchWithVoice")}><Mic size={16} /></button>
             )}
@@ -303,6 +315,21 @@ export function SearchPage() {
           )}
         </div>
       </div>
+
+      {query.trim() && !hasSearched && (
+        <div className="aivy-live-title-list">
+          {liveLoading ? (
+            <span className="eyebrow">{t("searching")}</span>
+          ) : liveTitles.length > 0 ? (
+            liveTitles.map((item) => (
+              <button key={item.id} className="aivy-live-title-row" onClick={() => runSearch(item.title)}>
+                <Search size={15} color="var(--ink-faint)" />
+                <span>{item.title}</span>
+              </button>
+            ))
+          ) : null}
+        </div>
+      )}
 
       {showBrowse && (
         <>
