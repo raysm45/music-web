@@ -759,21 +759,14 @@ export function MiniPlayer({ onExpand }) {
   const { t } = useUI();
   const [pulsing, setPulsing] = useState(false);
   const miniRef = useRef(null);
-  const coverWrapRef = useRef(null);
-  const handleExpand = () => {
-    const coverRect = coverWrapRef.current?.getBoundingClientRect() || null;
-    onExpand?.({ coverRect });
-  };
-  const swipe = useVerticalSwipe({ active: !!currentTrack, direction: "up", onTrigger: handleExpand, dragRef: miniRef, threshold: 36, velocityThreshold: 0.35 });
+  const swipe = useVerticalSwipe({ active: !!currentTrack, direction: "up", onTrigger: onExpand, dragRef: miniRef, threshold: 36, velocityThreshold: 0.35 });
   if (!currentTrack) return null;
   return (
     <div
-      className="aivy-mini-player" ref={miniRef} onClick={handleExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
+      className="aivy-mini-player" ref={miniRef} onClick={onExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
       onPointerDown={swipe.onPointerDown} onPointerMove={swipe.onPointerMove} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
     >
-      <div className="mini-cover-wrap" ref={coverWrapRef}>
-        <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={6} />
-      </div>
+      <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={6} />
       <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
@@ -810,30 +803,6 @@ export function MobileNowPlayingIconRow({ lyricsActive, onToggleLyrics, lyricsDi
 }
 
 const HERO_FLIP_MS = 520;
-
-function runShapeFlip(el, firstRect, { durationMs = HERO_FLIP_MS, uniform = false } = {}) {
-  if (!el || !firstRect || !firstRect.width || !firstRect.height) return;
-  const last = el.getBoundingClientRect();
-  if (!last.width || !last.height) return;
-  const dx = firstRect.left - last.left;
-  const dy = firstRect.top - last.top;
-  let sx = firstRect.width / last.width;
-  let sy = firstRect.height / last.height;
-  if (uniform) sx = sy;
-  el.style.willChange = "transform";
-  el.style.transition = "none";
-  el.style.transformOrigin = "top left";
-  el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
-  void el.offsetWidth;
-  el.style.transition = `transform ${durationMs}ms cubic-bezier(.22,.85,.32,1)`;
-  el.style.transform = "translate(0px, 0px) scale(1, 1)";
-  setTimeout(() => {
-    el.style.transition = "";
-    el.style.transform = "";
-    el.style.transformOrigin = "";
-    el.style.willChange = "";
-  }, durationMs + 40);
-}
 
 function useHeroFlip(mode, targets) {
   const firstRects = useRef(null);
@@ -890,7 +859,7 @@ function useHeroFlip(mode, targets) {
   return capture;
 }
 
-export function NowPlayingSheet({ open, onClose, onOpenQueue, expandOrigin }) {
+export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const {
     currentTrack, currentTime: playerTime, seekTo, isPreviewClip, audioFormat,
     liked, toggleLike, loadingAudio, currentTrackHasLyrics,
@@ -921,28 +890,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue, expandOrigin }) {
     { ref: controlsRef, uniform: true },
   ]).current;
   const captureHeroFlip = useHeroFlip(lyricsMode, flipTargets);
-
-  const prevOpenForFlipRef = useRef(false);
-  useLayoutEffect(() => {
-    const wasOpen = prevOpenForFlipRef.current;
-    prevOpenForFlipRef.current = open;
-    if (open && !wasOpen && expandOrigin?.coverRect) {
-      const sheetEl = sheetRef.current;
-      if (sheetEl) {
-        // Snap the sheet straight to its open position (no slide) so the
-        // cover's measured end position is accurate, and the flip becomes
-        // the visible "opening" motion instead of competing with a slide.
-        sheetEl.style.transition = "none";
-        sheetEl.style.opacity = "0";
-        void sheetEl.offsetWidth;
-        sheetEl.style.transition = `opacity ${HERO_FLIP_MS * 0.5}ms ${"ease"}`;
-        sheetEl.style.opacity = "1";
-        const t = setTimeout(() => { if (sheetEl) { sheetEl.style.transition = ""; sheetEl.style.opacity = ""; } }, HERO_FLIP_MS * 0.5 + 40);
-        void t;
-      }
-      runShapeFlip(coverRef.current, expandOrigin.coverRect);
-    }
-  }, [open, expandOrigin]);
 
   const bodyScrollRef = useRef(null);
   const handleGrabberTap = () => onClose();

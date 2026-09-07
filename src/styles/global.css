@@ -565,7 +565,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-room-chat-standalone .aivy-chat-messages{ max-height: 380px; }
 
 .aivy-mini-player{ position: fixed; left: 8px; right: 8px; z-index: 40; bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px); background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-md); display: flex; align-items: center; gap: 10px; padding: 7px 8px; min-width: 0; }
-.aivy-mini-player .mini-cover-wrap{ flex-shrink: 0; display: flex; }
 .aivy-mini-player .meta{ min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0; }
 .aivy-mini-player .meta .t{ font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aivy-mini-player .meta .a{ font-size: 11.5px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

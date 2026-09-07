@@ -55,7 +55,6 @@ function AppInner() {
   const isMobile = useIsMobile(860);
   const isPanelCompact = useIsMobile(1240);
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
-  const [expandOrigin, setExpandOrigin] = useState(null);
 
   if (!authChecked) return <div className="aivy-boot"><ViewLoading /></div>;
   if (name === "landing") return <LandingPage />;
@@ -90,11 +89,11 @@ function AppInner() {
       {!isMobile && <PlayerBar />}
       {!isMobile && <RightPanel />}
 
-      {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={(origin) => { setExpandOrigin(origin); setNowPlayingOpen(true); }} />}
+      {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
       {isMobile && <LyricsPrefetch />}
       {isMobile && !isImmersiveShorts && <MobileTabBar />}
       { }
-      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} expandOrigin={expandOrigin} />}
+      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} />}
       {isMobile && <QueueSheet open={mobileQueueOpen} onClose={closeMobileQueue} />}
 
       <AddToPlaylistModal />
