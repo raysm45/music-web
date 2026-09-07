@@ -471,7 +471,7 @@ export function ServerDownPage() {
         </div>
 
         <div className="footer">
-          &copy; 2025 Aivy Music &mdash; Semua hak dilindungi
+          &copy; 2025 Cosmicx Music &mdash; Semua hak dilindungi
         </div>
       </div>
     </>

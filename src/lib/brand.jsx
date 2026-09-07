@@ -1,17 +1,6 @@
 import { useState, useEffect } from "react";
 import { hashStr } from "./utils.js";
 
-export const LEAF_PATH =
-  "M16,28 C13.4,25.3 9.6,23.6 7,20.4 C4.6,17.5 4.3,13.2 6.6,10.2 " +
-  "C8.5,7.7 11.6,7.3 13.9,9.1 C14.9,9.9 15.5,11 15.9,12.1 " +
-  "C16,9.6 16.7,7 18.4,5 C20.3,2.7 23.4,2.1 25.6,3.8 " +
-  "C27.7,5.4 28,8.3 26.4,11 C24.9,13.5 22.2,14.8 20.3,13.7 " +
-  "C21.4,15 23.6,16.1 25.8,16.6 C28.7,17.3 30.6,19.8 29.9,22.5 " +
-  "C29.3,24.9 26.7,26.3 24.2,25.5 C21.9,24.8 20.3,22.8 19.6,20.6 " +
-  "C19.3,23.1 18.3,25.6 16.6,27.5 Z";
-export const LEAF_VEINS =
-  "M16,26 C16.2,21 16.6,16.5 16.3,12.5 M16,20 C13.8,18.4 11.4,16.9 9.3,15.4 " +
-  "M16.6,16.5 C19.2,15 21.9,13.7 24,12.2 M16.4,12.8 C18.6,10.6 20.8,8.7 22.6,6.6";
 export const TENDRIL_PATH =
   "M17.15,16.06 C17.4,16.09 17.75,16.25 17.86,16.33 C18.07,16.51 18.26,16.72 18.41,16.98 " +
   "C18.54,17.27 18.62,17.58 18.66,17.92 C18.66,18.27 18.61,18.63 18.5,19 " +
@@ -29,11 +18,13 @@ export const TENDRIL_PATH =
   "C10.12,26.43 8.99,25.8 7.94,25.01 C6.95,24.13 6.08,23.13 5.34,22.01 " +
   "C4.69,20.81 4.21,19.55 3.9,18.2 C3.71,16.83 3.7,15.44 3.87,14.04";
 
-export function LeafMark({ size = 22, color = "currentColor", className = "" }) {
+export const STAR_PATH =
+  "M16 2 C16 10 10 16 2 16 C10 16 16 22 16 30 C16 22 22 16 30 16 C22 16 16 10 16 2 Z";
+
+export function StarMark({ size = 22, color = "currentColor", className = "" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">
-      <path d={LEAF_PATH} fill={color} />
-      <path d={LEAF_VEINS} fill="none" stroke="var(--bg)" strokeWidth="0.55" strokeLinecap="round" opacity="0.45" />
+      <path d={STAR_PATH} fill={color} />
     </svg>
   );
 }
@@ -46,18 +37,18 @@ export function TendrilSpinner({ size = 28, color = "currentColor", spin = true 
   );
 }
 
-export function IvyFallLoader({ size = 48, color = "var(--moss-strong)", label }) {
-  const leaves = [
-    { x: 3, delay: "0s", scale: 0.52 },
-    { x: 13, delay: "-0.9s", scale: 0.4 },
-    { x: 22, delay: "-1.8s", scale: 0.46 },
+export function StarLoader({ size = 48, color = "var(--moss-strong)", label }) {
+  const stars = [
+    { x: 3, y: 5, delay: "0s", scale: 0.36 },
+    { x: 16, y: 2, delay: "-0.45s", scale: 0.52 },
+    { x: 9, y: 17, delay: "-0.9s", scale: 0.42 },
   ];
   return (
-    <div className="aivy-ivyloader" style={{ width: size, height: size }} role="status" aria-label={label || "Memuat"}>
+    <div className="aivy-starloader" style={{ width: size, height: size }} role="status" aria-label={label || "Memuat"}>
       <svg viewBox="0 0 32 32" width={size} height={size} style={{ overflow: "visible" }} aria-hidden="true" focusable="false">
-        {leaves.map((leaf, i) => (
-          <g key={i} className="aivy-ivyleaf" style={{ animationDelay: leaf.delay }}>
-            <path d={LEAF_PATH} fill={color} opacity="0.92" transform={`translate(${leaf.x},-6) scale(${leaf.scale})`} />
+        {stars.map((s, i) => (
+          <g key={i} className="aivy-twinkle" style={{ animationDelay: s.delay }}>
+            <path d={STAR_PATH} fill={color} transform={`translate(${s.x},${s.y}) scale(${s.scale})`} />
           </g>
         ))}
       </svg>
@@ -85,7 +76,7 @@ export function CoverArt({ seed, size = 160, radius = 14, style = {} }) {
       <rect width="32" height="32" fill={bg} />
       {variant === 0 && (
         <g transform={`translate(${tx},${ty}) rotate(${rot}) scale(${scale})`} transformOrigin="16 16">
-          <path d={LEAF_PATH} fill={fg} opacity="0.92" transform="translate(-16,-16)" />
+          <path d={STAR_PATH} fill={fg} opacity="0.92" transform="translate(-16,-16)" />
         </g>
       )}
       {variant === 1 && (
@@ -96,10 +87,10 @@ export function CoverArt({ seed, size = 160, radius = 14, style = {} }) {
       {variant === 2 && (
         <g fill={fg} opacity="0.9">
           <g transform={`translate(${tx - 9},${ty - 6}) rotate(${rot}) scale(${scale * 0.6})`} transformOrigin="16 16">
-            <path d={LEAF_PATH} transform="translate(-16,-16)" />
+            <path d={STAR_PATH} transform="translate(-16,-16)" />
           </g>
           <g transform={`translate(${tx + 6},${ty + 7}) rotate(${rot + 40}) scale(${scale * 0.42})`} transformOrigin="16 16">
-            <path d={LEAF_PATH} transform="translate(-16,-16)" />
+            <path d={STAR_PATH} transform="translate(-16,-16)" />
           </g>
         </g>
       )}

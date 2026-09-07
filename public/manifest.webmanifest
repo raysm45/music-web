@@ -1,7 +1,7 @@
 {
-  "name": "AIVY Music",
-  "short_name": "AIVY",
-  "description": "AIVY Music \u2014 streaming musik favoritmu",
+  "name": "cosmicx Music",
+  "short_name": "cosmicx",
+  "description": "cosmicx Music \u2014 streaming musik favoritmu",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",

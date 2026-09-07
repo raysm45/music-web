@@ -2613,7 +2613,7 @@ export class AmLyrics extends LitElement {
   private static getDisplaySourceLabel(sourceLabel: string): string {
     const lower = sourceLabel.toLowerCase();
     if (lower.includes('lyricsplus')) return 'QQ';
-    if (lower.includes('bini')) return 'Aivy-Lyrics';
+    if (lower.includes('bini')) return 'Cosmicx-Lyrics';
     return sourceLabel;
   }
 

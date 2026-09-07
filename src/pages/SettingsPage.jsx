@@ -630,7 +630,7 @@ export function SettingsPage() {
         <ToggleRow soon label={tt("Tautan Tentang", "About link")} checked={!!settings.showSideAbout} onChange={set("showSideAbout")} />
         <ToggleRow soon label="Discord" checked={!!settings.showSideDiscord} onChange={set("showSideDiscord")} />
         <ToggleRow soon label="GitHub" checked={!!settings.showSideGithub} onChange={set("showSideGithub")} />
-        <ToggleRow soon label={tt("Pengingat donasi", "Donation Reminders")} hint={tt("Kadang muncul notifikasi ajakan dukung Aivy", "Occasionally show a notification inviting you to support Aivy")} checked={!!settings.donationReminders} onChange={set("donationReminders")} />
+        <ToggleRow soon label={tt("Pengingat donasi", "Donation Reminders")} hint={tt("Kadang muncul notifikasi ajakan dukung Cosmicx", "Occasionally show a notification inviting you to support Cosmicx")} checked={!!settings.donationReminders} onChange={set("donationReminders")} />
       </SettingSection>
 
       <SettingSection title={tt("Perilaku Navigasi", "Navigation Behavior")}>

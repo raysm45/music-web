@@ -3,7 +3,7 @@ import { Heart, Plus, VolumeX, Volume2, Music2, ArrowLeft } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { SmartCover, IvyFallLoader } from "../lib/brand.jsx";
+import { SmartCover, StarLoader } from "../lib/brand.jsx";
 import { uid } from "../lib/utils.js";
 import { filterExplicit } from "../components.jsx";
 
@@ -163,7 +163,7 @@ export function ShortsPage() {
       <div className="aivy-shorts-scroller aivy-scroll" ref={scrollerRef}>
         {items.map((tr) => <ShortCard key={tr.id} track={tr} muted={muted} onToggleMute={() => setMuted((m) => !m)} />)}
         <div ref={sentinelRef} className="aivy-shorts-sentinel">
-          {loading && <IvyFallLoader size={28} />}
+          {loading && <StarLoader size={28} />}
         </div>
       </div>
     </div>

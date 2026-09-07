@@ -434,7 +434,7 @@ export function LibraryLocalPage() {
         <div className="aivy-empty">
           <FolderOpen size={32} color="var(--ink-faint)" style={{ marginBottom: 8 }} />
           <div className="title">Belum ada lagu lokal</div>
-          <div className="sub">Ketuk "Pindai folder musik", lalu pilih folder tempat lagu-lagumu disimpan. Aivy akan otomatis melewati file di bawah 1 menit.</div>
+          <div className="sub">Ketuk "Pindai folder musik", lalu pilih folder tempat lagu-lagumu disimpan. Cosmicx akan otomatis melewati file di bawah 1 menit.</div>
         </div>
       )}
 

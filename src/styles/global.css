@@ -1295,16 +1295,13 @@ body.aivy-resizing *{ user-select: none !important; }
 @media (max-width: 1240px){ :root{ --rightpanel-w: 0px; } .aivy-shell{ grid-template-columns: var(--sidebar-w) 1fr; grid-template-areas: "side main"; } .aivy-rightpanel{ display: none; } }
 @media (max-width: 1080px){ :root{ --sidebar-w: 208px; } .aivy-grid{ grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); } }
 
-.aivy-ivyloader{ position: relative; display: inline-block; }
-.aivy-ivyleaf{ animation: aivy-leaf-fall 2.6s ease-in infinite; transform-origin: 16px 16px; opacity: 0; }
-@keyframes aivy-leaf-fall{
-  0%{ transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
-  10%{ opacity: 1; }
-  50%{ transform: translateY(15px) translateX(-3px) rotate(150deg); }
-  85%{ opacity: 1; }
-  100%{ transform: translateY(30px) translateX(2px) rotate(300deg); opacity: 0; }
+.aivy-starloader{ position: relative; display: inline-block; }
+.aivy-twinkle{ animation: aivy-star-twinkle 1.5s ease-in-out infinite; transform-origin: 16px 16px; opacity: 0.3; }
+@keyframes aivy-star-twinkle{
+  0%, 100%{ transform: scale(0.55); opacity: 0.25; }
+  50%{ transform: scale(1); opacity: 1; }
 }
-@media (prefers-reduced-motion: reduce){ .aivy-ivyleaf{ animation: none; opacity: .85; } }
+@media (prefers-reduced-motion: reduce){ .aivy-twinkle{ animation: none; opacity: .85; } }
 
 .aivy-skeleton{ position: relative; overflow: hidden; background: var(--bg-elev-2); }
 .aivy-skeleton::after{

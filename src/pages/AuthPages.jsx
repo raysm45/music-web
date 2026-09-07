@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Users, ShieldCheck, Music2, AlertTriangle, ChevronRight } from "lucide-react";
-import { LeafMark, IvyFallLoader } from "../lib/brand.jsx";
+import { StarMark, StarLoader } from "../lib/brand.jsx";
 import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
 
@@ -145,7 +145,7 @@ export function LoginPage() {
 
       <div className="aivy-login-visual" aria-hidden="true">
         <div className="aivy-login-visual-top">
-          <div className="aivy-brand"><LeafMark size={24} color="var(--moss-strong)" /><span className="word font-display">AIVY</span></div>
+          <div className="aivy-brand"><StarMark size={24} color="var(--moss-strong)" /><span className="word font-display">cosmicx</span></div>
         </div>
         <div className="aivy-login-visual-bottom">
           <p className="aivy-login-visual-quote">{"\u201cMusik yang tumbuh perlahan bersama seleramu, bukan yang dipaksakan kepadamu.\u201d"}</p>
@@ -171,8 +171,8 @@ export function LoginPage() {
             <div className="aivy-login-card-spotlight" aria-hidden="true" />
             <div className="aivy-login-card-glow" aria-hidden="true" />
 
-            <div className="aivy-login-mark"><LeafMark size={26} color="var(--moss-strong)" /></div>
-            <h1 className="font-display">Masuk ke AIVY</h1>
+            <div className="aivy-login-mark"><StarMark size={26} color="var(--moss-strong)" /></div>
+            <h1 className="font-display">Masuk ke cosmicx</h1>
             <p className="aivy-login-sub">Pilih salah satu akun untuk menyimpan lagu, membuat playlist, dan mendengarkan bersama teman di ruang.</p>
 
             {errorCode && (
@@ -183,12 +183,12 @@ export function LoginPage() {
             )}
 
             {!authChecked ? (
-              <div style={{ padding: "18px 0" }}><IvyFallLoader size={30} /></div>
+              <div style={{ padding: "18px 0" }}><StarLoader size={30} /></div>
             ) : (
               <div className="aivy-auth-providers">
                 <button className="aivy-auth-btn google" style={{ animationDelay: "60ms" }} onClick={handleGoogle} disabled={!!pending}>
                   <span className="shine" aria-hidden="true" />
-                  <span className="icon-wrap">{pending === "google" ? <IvyFallLoader size={18} /> : <GoogleGlyph size={18} />}</span>
+                  <span className="icon-wrap">{pending === "google" ? <StarLoader size={18} /> : <GoogleGlyph size={18} />}</span>
                   <span className="label-wrap">
                     <span>Lanjutkan dengan Google</span>
                   </span>
@@ -202,7 +202,7 @@ export function LoginPage() {
                   <span className="aivy-auth-alt-hint"><DiscordGlyph size={12} color="#5865F2" /> Discord</span>
                 </div>
                 <button className="aivy-auth-btn discord" style={{ animationDelay: "130ms" }} onClick={handleDiscord} disabled={!!pending}>
-                  <span className="icon-wrap">{pending === "discord" ? <IvyFallLoader size={18} /> : <DiscordGlyph size={18} color="#5865F2" />}</span>
+                  <span className="icon-wrap">{pending === "discord" ? <StarLoader size={18} /> : <DiscordGlyph size={18} color="#5865F2" />}</span>
                   <span className="label-wrap">
                     <span>Lanjutkan dengan Discord</span>
                   </span>

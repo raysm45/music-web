@@ -14,7 +14,7 @@ import {
   SIDEBAR_MIN_W, SIDEBAR_MAX_W, RIGHTPANEL_MIN_W, RIGHTPANEL_MAX_W,
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
-import { CoverArt, SmartCover, LeafMark, IvyFallLoader } from "./lib/brand.jsx";
+import { CoverArt, SmartCover, StarMark, StarLoader } from "./lib/brand.jsx";
 import { formatTime, formatDuration, relativeTime, formatClockTime, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "./lib/utils.js";
 function usePanelResize({ width, setWidth, min, max, side }) {
   const draggingRef = useRef(false);
@@ -120,12 +120,12 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
 export class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
-  componentDidCatch(error, info) { console.error("AIVY crashed:", error, info); }
+  componentDidCatch(error, info) { console.error("cosmicx crashed:", error, info); }
   render() {
     if (!this.state.error) return this.props.children;
     return (
       <div className="aivy-crash">
-        <LeafMark size={40} color="var(--ink-faint)" />
+        <StarMark size={40} color="var(--ink-faint)" />
         <div className="title">Ada yang salah di halaman ini</div>
         <div className="sub">Coba muat ulang. Kalau masih kejadian, kabarin ke kami ya.</div>
         <button className="aivy-btn-primary" onClick={() => { this.setState({ error: null }); window.location.href = "/beranda"; }}>
@@ -730,7 +730,7 @@ export function PlayerBar() {
         ) : (
           <>
             <div style={{ width: 52, height: 52, borderRadius: 8, background: "var(--bg-elev-2)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <LeafMark size={22} color="var(--ink-faint)" />
+              <StarMark size={22} color="var(--ink-faint)" />
             </div>
             <span className="placeholder">{t("nothingPlaying")}</span>
           </>
@@ -1926,7 +1926,7 @@ export function QueueBody() {
   const { t } = useUI();
 
   if (!currentTrack) {
-    return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("queueEmpty")}</div><div className="sub">{t("queueEmptySub")}</div></div>;
+    return <div className="aivy-empty"><StarMark size={34} color="var(--ink-faint)" /><div className="title">{t("queueEmpty")}</div><div className="sub">{t("queueEmptySub")}</div></div>;
   }
 
   return (
@@ -1975,7 +1975,7 @@ export function QueueHistoryBody() {
   const recent = history.slice().reverse();
 
   if (recent.length === 0) {
-    return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("playedLabel")}</div><div className="sub">{t("noRecentlyPlayed")}</div></div>;
+    return <div className="aivy-empty"><StarMark size={34} color="var(--ink-faint)" /><div className="title">{t("playedLabel")}</div><div className="sub">{t("noRecentlyPlayed")}</div></div>;
   }
 
   return (
@@ -1992,7 +1992,7 @@ export function QueueHistoryBody() {
 function NowPlayingPane() {
   const { currentTrack, isPreviewClip } = usePlayer();
   const { t } = useUI();
-  if (!currentTrack) return <div className="aivy-empty"><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>;
+  if (!currentTrack) return <div className="aivy-empty"><StarMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>;
   return (
     <div className="aivy-nowplaying-pane">
       <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={240} radius={16} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
@@ -2288,7 +2288,7 @@ export function Sidebar() {
         >
           <PanelLeft size={18} />
         </button>
-        <Link to="home" className="aivy-brand"><LeafMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">AIVY<small>{t("appTagline")}</small></div></Link>
+        <Link to="home" className="aivy-brand"><StarMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">cosmicx<small>{t("appTagline")}</small></div></Link>
       </div>
       <nav className="aivy-nav">
         {visibleNavItems.map(({ route, labelKey, icon: Icon }) => (
@@ -2365,7 +2365,7 @@ export function TopBar({ isMobile }) {
     <div className={`aivy-topbar ${scrolled ? "scrolled" : ""}`}>
       {isMobile ? (
         <>
-          {name !== "home" ? <button className="aivy-navbtn" onClick={back} aria-label={t("previous")}><ArrowLeft size={16} /></button> : <LeafMark size={20} color="var(--moss-strong)" />}
+          {name !== "home" ? <button className="aivy-navbtn" onClick={back} aria-label={t("previous")}><ArrowLeft size={16} /></button> : <StarMark size={20} color="var(--moss-strong)" />}
           <span className="aivy-topbar-title font-display" style={{ fontSize: 15 }}>{titleMap[name] ?? ""}</span>
         </>
       ) : (
@@ -2390,11 +2390,11 @@ export function TopBar({ isMobile }) {
 }
 
 export function ViewLoading() {
-  return <div className="aivy-empty" style={{ paddingTop: 90 }}><IvyFallLoader size={40} /></div>;
+  return <div className="aivy-empty" style={{ paddingTop: 90 }}><StarLoader size={40} /></div>;
 }
 export function ViewNotFound({ label }) {
   const { t } = useUI();
-  return <div className="aivy-empty" style={{ paddingTop: 90 }}><LeafMark size={40} color="var(--ink-faint)" /><div className="title">{label} {t("notFoundLabel")}</div></div>;
+  return <div className="aivy-empty" style={{ paddingTop: 90 }}><StarMark size={40} color="var(--ink-faint)" /><div className="title">{label} {t("notFoundLabel")}</div></div>;
 }
 
 const LYRICS_FONT_SIZES = {
@@ -2835,7 +2835,7 @@ export function LyricsOverlay() {
       )}
 
       {!currentTrack && (
-        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><LeafMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>
+        <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><StarMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>
       )}
     </div>
   );

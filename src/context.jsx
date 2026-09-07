@@ -182,9 +182,9 @@ export function UIProvider({ children }) {
     let faceEl = document.getElementById("aivy-custom-font-face");
     if (customUrl) {
       if (!faceEl) { faceEl = document.createElement("style"); faceEl.id = "aivy-custom-font-face"; document.head.appendChild(faceEl); }
-      faceEl.textContent = `@font-face{font-family:"Aivy Custom";src:url("${customUrl}");font-display:swap;}`;
+      faceEl.textContent = `@font-face{font-family:"Cosmicx Custom";src:url("${customUrl}");font-display:swap;}`;
     } else if (faceEl) faceEl.remove();
-    const stack = customUrl ? "'Aivy Custom', sans-serif" : (FONT_STACKS[settings.fontFamily] ?? FONT_STACKS.default);
+    const stack = customUrl ? "'Cosmicx Custom', sans-serif" : (FONT_STACKS[settings.fontFamily] ?? FONT_STACKS.default);
     if (stack) {
       root.style.setProperty("--font-display", stack);
       root.style.setProperty("--font-body", stack);
