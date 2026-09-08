@@ -57,20 +57,23 @@ export function ServerDownPage() {
       box-sizing: border-box;
     }
 
-    body {
+    .cx-serverdown-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
       background-color: var(--bg);
       color: var(--text-primary);
       font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
+      overflow-y: auto;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
-    body::before {
+    .cx-serverdown-overlay::before {
       content: '';
       position: fixed;
       inset: 0;
@@ -378,7 +381,7 @@ export function ServerDownPage() {
   `;
 
   return (
-    <>
+    <div className="cx-serverdown-overlay">
       <style>{styles}</style>
       <div className="container">
         <div className="server-icon">
@@ -474,6 +477,6 @@ export function ServerDownPage() {
           &copy; 2025 Cosmicx Music &mdash; Semua hak dilindungi
         </div>
       </div>
-    </>
+    </div>
   );
 }
