@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Users, ShieldCheck, Music2, AlertTriangle, ChevronRight } from "lucide-react";
-import { StarMark, StarLoader } from "../lib/brand.jsx";
+import { AlertTriangle } from "lucide-react";
+import { StarLoader } from "../lib/brand.jsx";
 import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
 
@@ -12,104 +12,159 @@ const LOGIN_ERRORS = {
   login_failed: "Terjadi gangguan saat menghubungkan akunmu. Silakan coba lagi sebentar lagi.",
 };
 
-function useCardSpotlight(ref) {
+function GoogleGlyph({ size = 18 }) {
+  return (
+    <svg className="cx-btn-icon" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M21.35 11.1H12.18v2.83h6.51c-.33 2.99-2.98 5.15-6.51 5.15-3.87 0-7.02-3.15-7.02-7.08s3.15-7.08 7.02-7.08c1.99 0 3.68.72 4.98 1.9l2.14-2.14C17.83 2.99 15.27 2 12.18 2 6.85 2 2.52 6.33 2.52 11.66c0 5.33 4.33 9.66 9.66 9.66 5.58 0 9.28-3.92 9.28-9.44 0-.63-.07-1.11-.11-1.58Z"/>
+    </svg>
+  );
+}
+
+function DiscordGlyph({ size = 18 }) {
+  return (
+    <svg className="cx-btn-icon" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20.32 4.49a19.8 19.8 0 0 0-4.89-1.49.08.08 0 0 0-.08.04c-.21.37-.44.86-.61 1.25a18.3 18.3 0 0 0-5.49 0c-.17-.4-.4-.88-.62-1.25a.08.08 0 0 0-.08-.04c-1.7.29-3.33.8-4.89 1.49a.07.07 0 0 0-.03.03C.53 9.09-.32 13.56.1 17.96a.08.08 0 0 0 .03.05 19.9 19.9 0 0 0 5.99 3.03.08.08 0 0 0 .09-.03c.46-.63.87-1.3 1.23-1.99a.08.08 0 0 0-.04-.11 13.1 13.1 0 0 1-1.87-.89.08.08 0 0 1-.01-.13c.13-.09.25-.19.37-.29a.07.07 0 0 1 .08-.01c3.93 1.79 8.18 1.79 12.06 0a.07.07 0 0 1 .08.01c.12.1.25.2.37.29a.08.08 0 0 1-.01.13c-.6.35-1.22.64-1.87.89a.08.08 0 0 0-.04.11c.37.69.78 1.35 1.23 1.99a.08.08 0 0 0 .09.03 19.84 19.84 0 0 0 6-3.03.08.08 0 0 0 .03-.05c.5-5.18-.84-9.6-3.55-13.44a.06.06 0 0 0-.03-.03ZM8.02 15.28c-1.18 0-2.16-1.07-2.16-2.38s.96-2.38 2.16-2.38c1.21 0 2.18 1.08 2.16 2.38 0 1.31-.95 2.38-2.16 2.38Zm7.97 0c-1.18 0-2.16-1.07-2.16-2.38s.96-2.38 2.16-2.38c1.21 0 2.18 1.08 2.16 2.38 0 1.31-.95 2.38-2.16 2.38Z"/>
+    </svg>
+  );
+}
+
+// Animated bars <-> sparkle logo mark, with a letter-by-letter wordmark reveal,
+// driven by a single shared "blend" clock (ported from the cosmicx design).
+function CosmicMark() {
+  const barsRef = useRef(null);
+  const starGroupRef = useRef(null);
+  const starPathRef = useRef(null);
+  const gooBlurRef = useRef(null);
+  const letterRefs = useRef([]);
+  const word = "cosmicx";
+
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const onMove = (e) => {
-      const r = el.getBoundingClientRect();
-      el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-      el.style.setProperty("--my", `${e.clientY - r.top}px`);
-    };
-    el.addEventListener("pointermove", onMove);
-    return () => el.removeEventListener("pointermove", onMove);
-  }, [ref]);
-}
+    const NS = "http://www.w3.org/2000/svg";
+    const barsGroup = barsRef.current;
+    const starGroup = starGroupRef.current;
+    const starPath = starPathRef.current;
+    const gooBlur = gooBlurRef.current;
+    const letters = letterRefs.current.filter(Boolean);
+    if (!barsGroup || !starGroup || !starPath || !gooBlur) return;
 
-function spawnRipple(e) {
-  const btn = e.currentTarget;
-  const rect = btn.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height) * 1.4;
-  const ripple = document.createElement("span");
-  ripple.className = "aivy-auth-ripple";
-  ripple.style.width = `${size}px`;
-  ripple.style.height = `${size}px`;
-  ripple.style.left = `${(e.clientX ?? rect.left + rect.width / 2) - rect.left - size / 2}px`;
-  ripple.style.top = `${(e.clientY ?? rect.top + rect.height / 2) - rect.top - size / 2}px`;
-  btn.appendChild(ripple);
-  ripple.addEventListener("animationend", () => ripple.remove());
-}
+    const LETTER_STAGGER = 0.09;
+    const LETTER_SPAN = 1 - (letters.length - 1) * LETTER_STAGGER;
 
-function GoogleGlyph({ size = 19 }) {
+    function sparkleD(cx, cy, R, pinch, samples) {
+      let d = "";
+      for (let i = 0; i <= samples; i++) {
+        const theta = (i / samples) * Math.PI * 2;
+        const c = Math.cos(theta), s = Math.sin(theta);
+        const x = cx + R * Math.sign(c) * Math.pow(Math.abs(c), pinch);
+        const y = cy + R * Math.sign(s) * Math.pow(Math.abs(s), pinch);
+        d += (i === 0 ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2) + " ";
+      }
+      return d + "Z";
+    }
+    starPath.setAttribute("d", sparkleD(50, 50, 37, 5, 240));
+
+    const barDefs = [
+      { x: 27, base: 24, amp: 11, speed: 1.7, phase: 0.0 },
+      { x: 40, base: 40, amp: 14, speed: 2.3, phase: 1.1 },
+      { x: 53, base: 30, amp: 12, speed: 1.9, phase: 2.4 },
+      { x: 66, base: 36, amp: 13, speed: 2.6, phase: 0.6 },
+    ];
+    const barWidth = 7;
+    const barRects = barDefs.map((b) => {
+      const rect = document.createElementNS(NS, "rect");
+      rect.setAttribute("x", b.x);
+      rect.setAttribute("width", barWidth);
+      rect.setAttribute("height", b.base);
+      rect.setAttribute("y", 50 - b.base / 2);
+      rect.setAttribute("rx", barWidth / 2);
+      barsGroup.appendChild(rect);
+      return rect;
+    });
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function smoothstep(x) {
+      x = Math.min(1, Math.max(0, x));
+      return x * x * (3 - 2 * x);
+    }
+
+    function apply(blend, gooAmount) {
+      barsGroup.style.opacity = 1 - blend;
+      starGroup.style.opacity = blend;
+      barsGroup.style.transform = `scale(${1 - 0.12 * blend}) rotate(${-10 * blend}deg)`;
+      starGroup.style.transform = `scale(${0.88 + 0.12 * blend}) rotate(${10 * (1 - blend)}deg)`;
+      gooBlur.setAttribute("stdDeviation", gooAmount.toFixed(2));
+
+      letters.forEach((letter, i) => {
+        const delay = i * LETTER_STAGGER;
+        const local = smoothstep((blend - delay) / LETTER_SPAN);
+        letter.style.opacity = local;
+        letter.style.transform = `translateY(${(1 - local) * 14}px) scale(${0.7 + 0.3 * local})`;
+        letter.style.filter = `blur(${(1 - local) * 5}px)`;
+      });
+    }
+
+    function animateBars(t) {
+      barDefs.forEach((b, i) => {
+        const h = b.base + b.amp * Math.sin((t / 1000) * b.speed + b.phase);
+        barRects[i].setAttribute("height", h);
+        barRects[i].setAttribute("y", 50 - h / 2);
+      });
+    }
+
+    let raf;
+    if (reduced) {
+      apply(1, 0);
+      return () => {};
+    }
+
+    const HOLD_EQ = 2200, MORPH = 1300, HOLD_STAR = 2200;
+    const PERIOD = HOLD_EQ + MORPH + HOLD_STAR + MORPH;
+
+    function frame(now) {
+      animateBars(now);
+      const t = now % PERIOD;
+      let blend, goo;
+      if (t < HOLD_EQ) {
+        blend = 0; goo = 0;
+      } else if (t < HOLD_EQ + MORPH) {
+        const local = (t - HOLD_EQ) / MORPH;
+        blend = smoothstep(local);
+        goo = Math.max(0, 6 * (1 - Math.abs(local - 0.5) * 2));
+      } else if (t < HOLD_EQ + MORPH + HOLD_STAR) {
+        blend = 1; goo = 0;
+      } else {
+        const local = (t - (HOLD_EQ + MORPH + HOLD_STAR)) / MORPH;
+        blend = 1 - smoothstep(local);
+        goo = Math.max(0, 6 * (1 - Math.abs(local - 0.5) * 2));
+      }
+      apply(blend, goo);
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
-      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
-      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/>
-      <path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.6c-2.1 1.5-4.8 2.7-7.7 2.7-5.3 0-9.7-3.1-11.3-7.6l-6.5 5C9.4 39.6 16.1 44 24 44z"/>
-      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.6 5.6C41.5 36.4 44 30.7 44 24c0-1.3-.1-2.7-.4-3.5z"/>
-    </svg>
-  );
-}
-
-function DiscordGlyph({ size = 18, color = "currentColor" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden="true">
-      <path d="M20.3 5.35a18.6 18.6 0 0 0-4.6-1.43.07.07 0 0 0-.08.04c-.2.36-.42.82-.57 1.19a17.2 17.2 0 0 0-5.15 0 8.5 8.5 0 0 0-.58-1.19.07.07 0 0 0-.08-.04c-1.6.28-3.14.76-4.6 1.43a.07.07 0 0 0-.03.03C1.98 9.06 1.25 12.65 1.6 16.2a.08.08 0 0 0 .03.05 18.7 18.7 0 0 0 5.63 2.84.07.07 0 0 0 .08-.03c.43-.6.82-1.23 1.15-1.9a.07.07 0 0 0-.04-.1 12.3 12.3 0 0 1-1.76-.84.07.07 0 0 1-.01-.12c.12-.09.24-.18.35-.27a.07.07 0 0 1 .07-.01c3.7 1.69 7.7 1.69 11.36 0a.07.07 0 0 1 .07.01c.11.1.23.18.35.27a.07.07 0 0 1-.01.12c-.56.33-1.15.6-1.76.84a.07.07 0 0 0-.04.11c.34.66.73 1.29 1.15 1.89a.07.07 0 0 0 .08.03 18.6 18.6 0 0 0 5.64-2.84.07.07 0 0 0 .03-.05c.42-4.1-.7-7.66-2.96-10.82a.06.06 0 0 0-.03-.03zM8.52 14.05c-1.11 0-2.02-1.02-2.02-2.27 0-1.25.89-2.27 2.02-2.27 1.14 0 2.04 1.03 2.02 2.27 0 1.25-.89 2.27-2.02 2.27zm6.98 0c-1.11 0-2.02-1.02-2.02-2.27 0-1.25.89-2.27 2.02-2.27 1.14 0 2.04 1.03 2.02 2.27 0 1.25-.88 2.27-2.02 2.27z"/>
-    </svg>
-  );
-}
-const IVY_LEAF_D = "M0,0 C-2,-5 -6,-6 -10,-9 C-15,-13 -15,-20 -10,-23 C-6,-26 -2,-22 0,-16 C2,-22 6,-26 10,-23 C15,-20 15,-13 10,-9 C6,-6 2,-5 0,0 Z";
-function IvyHalf({ flip = false, gradId, seedOffset = 0 }) {
-  const path = "M14,466 C4,430 24,394 12,358 C2,322 22,286 12,250 C3,214 21,178 11,142 C3,106 19,70 11,34 C5,14 16,4 30,2";
-  const leaves = [
-    [18, 432, -16, 0.95],
-    [8, 378, 15, 1.0],
-    [18, 322, -13, 0.9],
-    [8, 266, 16, 1.05],
-    [18, 208, -15, 0.9],
-    [8, 150, 14, 1.0],
-    [16, 92, -18, 0.95],
-    [10, 38, 12, 0.85],
-  ];
-  const stem = (
-    <g className={`aivy-ivy-stem ${flip ? "flip" : ""}`}>
-      <path className="aivy-ivy-vine-path" d={path} />
-      {leaves.map(([x, y, angle, scale], i) => (
-        <g key={i} transform={`translate(${x} ${y}) rotate(${angle}) scale(${scale})`}>
-          <g
-            className="aivy-ivy-leaf-sway"
-            style={{
-              animationDuration: `${3.4 + ((i + seedOffset) % 4) * 0.55}s`,
-              animationDelay: `-${(i * 0.63 + seedOffset * 0.31).toFixed(2)}s`,
-            }}
-          >
-            <path d={IVY_LEAF_D} fill={`url(#${gradId})`} stroke="var(--moss-ink)" strokeWidth="0.6" strokeOpacity="0.3" />
-            <path d="M0,-1 L0,-20" stroke="var(--moss-strong)" strokeWidth="0.7" strokeOpacity="0.4" strokeLinecap="round" />
-            <path d="M0,-7 L-7,-13 M0,-7 L7,-13" stroke="var(--moss-strong)" strokeWidth="0.5" strokeOpacity="0.3" strokeLinecap="round" />
-          </g>
+    <div className="cx-mark">
+      <svg className="cx-glyph" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <filter id="cxGoo" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0" result="blur" ref={gooBlurRef} />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9" />
+          </filter>
+        </defs>
+        <g filter="url(#cxGoo)">
+          <g ref={barsRef}></g>
+          <g ref={starGroupRef}><path ref={starPathRef} d=""></path></g>
         </g>
-      ))}
-    </g>
-  );
-  return flip ? <g transform="translate(400,0) scale(-1,1)">{stem}</g> : stem;
-}
-
-function IvyBorder() {
-  return (
-    <svg className="aivy-ivy-frame" viewBox="0 0 400 480" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="ivyLeafGradA" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--moss-strong)" />
-          <stop offset="100%" stopColor="var(--moss)" />
-        </linearGradient>
-        <linearGradient id="ivyLeafGradB" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="var(--moss)" />
-          <stop offset="100%" stopColor="var(--moss-strong)" />
-        </linearGradient>
-      </defs>
-      <IvyHalf flip={false} gradId="ivyLeafGradA" seedOffset={0} />
-      <IvyHalf flip={true} gradId="ivyLeafGradB" seedOffset={3} />
-    </svg>
+      </svg>
+      <div className="cx-wordmark">
+        {word.split("").map((ch, i) => (
+          <span key={i} ref={(el) => (letterRefs.current[i] = el)} className="cx-letter">{ch}</span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -118,8 +173,6 @@ export function LoginPage() {
   const { navigate } = useRouter();
   const [errorCode, setErrorCode] = useState(null);
   const [pending, setPending] = useState(null);
-  const cardRef = useRef(null);
-  useCardSpotlight(cardRef);
 
   useEffect(() => {
     if (authChecked && authUser) navigate("home", { replace: true });
@@ -133,84 +186,38 @@ export function LoginPage() {
     }
   }, []);
 
-  const handleGoogle = (e) => { spawnRipple(e); setPending("google"); loginGoogle(); };
-  const handleDiscord = (e) => { spawnRipple(e); setPending("discord"); login(); };
+  const handleGoogle = () => { setPending("google"); loginGoogle(); };
+  const handleDiscord = () => { setPending("discord"); login(); };
 
   return (
-    <div className="aivy-login-shell">
-      <div className="aivy-login-ambient" aria-hidden="true">
-        <div className="aivy-blob b1" />
-        <div className="aivy-blob b3" />
-      </div>
+    <div className="cx-stage">
+      <div className="cx-frame">
+        <CosmicMark />
 
-      <div className="aivy-login-visual" aria-hidden="true">
-        <div className="aivy-login-visual-top">
-          <div className="aivy-brand"><StarMark size={24} color="var(--moss-strong)" /><span className="word font-display">cosmicx</span></div>
-        </div>
-        <div className="aivy-login-visual-bottom">
-          <p className="aivy-login-visual-quote">{"\u201cMusik yang tumbuh perlahan bersama seleramu, bukan yang dipaksakan kepadamu.\u201d"}</p>
-          <div className="aivy-login-visual-points">
-            <div className="aivy-login-visual-point"><span className="dot"><Music2 size={14} color="var(--moss-strong)" /></span><span>Beranda yang terus menyesuaikan diri dengan seleramu</span></div>
-            <div className="aivy-login-visual-point"><span className="dot"><Users size={14} color="var(--moss-strong)" /></span><span>Ruang untuk mendengarkan bersama teman secara real-time</span></div>
-            <div className="aivy-login-visual-point"><span className="dot"><ShieldCheck size={14} color="var(--moss-strong)" /></span><span>Hanya meminta informasi profil dasar akunmu</span></div>
-          </div>
-          <div className="aivy-login-eq">
-            <span style={{ height: 6, animationDelay: "0ms" }} />
-            <span style={{ height: 12, animationDelay: "120ms" }} />
-            <span style={{ height: 8, animationDelay: "260ms" }} />
-            <span style={{ height: 14, animationDelay: "80ms" }} />
-            <span style={{ height: 5, animationDelay: "200ms" }} />
-          </div>
-        </div>
-      </div>
+        <div className="cx-bottom-group">
+          {errorCode && (
+            <div className="cx-error" role="alert">
+              <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>{LOGIN_ERRORS[errorCode] || LOGIN_ERRORS.login_failed}</span>
+            </div>
+          )}
 
-      <div className="aivy-login">
-        <div className="aivy-login-frame">
-          <IvyBorder />
-          <div className="aivy-login-card" ref={cardRef}>
-            <div className="aivy-login-card-spotlight" aria-hidden="true" />
-            <div className="aivy-login-card-glow" aria-hidden="true" />
+          {!authChecked ? (
+            <div style={{ padding: "18px 0" }}><StarLoader size={30} /></div>
+          ) : (
+            <div className="cx-actions">
+              <button className="cx-btn cx-btn-primary" type="button" onClick={handleGoogle} disabled={!!pending}>
+                {pending === "google" ? <StarLoader size={18} /> : <GoogleGlyph size={18} />}
+                Lanjutkan dengan Google
+              </button>
+              <button className="cx-btn cx-btn-outline" type="button" onClick={handleDiscord} disabled={!!pending}>
+                {pending === "discord" ? <StarLoader size={18} /> : <DiscordGlyph size={18} />}
+                Lanjutkan dengan Discord
+              </button>
+            </div>
+          )}
 
-            <div className="aivy-login-mark"><StarMark size={26} color="var(--moss-strong)" /></div>
-            <h1 className="font-display">Masuk ke cosmicx</h1>
-            <p className="aivy-login-sub">Pilih salah satu akun untuk menyimpan lagu, membuat playlist, dan mendengarkan bersama teman di ruang.</p>
-
-            {errorCode && (
-              <div className="aivy-login-error" role="alert">
-                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span>{LOGIN_ERRORS[errorCode] || LOGIN_ERRORS.login_failed}</span>
-              </div>
-            )}
-
-            {!authChecked ? (
-              <div style={{ padding: "18px 0" }}><StarLoader size={30} /></div>
-            ) : (
-              <div className="aivy-auth-providers">
-                <button className="aivy-auth-btn google" style={{ animationDelay: "60ms" }} onClick={handleGoogle} disabled={!!pending}>
-                  <span className="shine" aria-hidden="true" />
-                  <span className="icon-wrap">{pending === "google" ? <StarLoader size={18} /> : <GoogleGlyph size={18} />}</span>
-                  <span className="label-wrap">
-                    <span>Lanjutkan dengan Google</span>
-                  </span>
-                  <ChevronRight size={16} className="chevron" />
-                </button>
-
-                <div className="aivy-auth-divider">atau</div>
-
-                <div className="aivy-auth-alt-row">
-                  <span className="aivy-auth-alt-label">Alternatif login</span>
-                  <span className="aivy-auth-alt-hint"><DiscordGlyph size={12} color="#5865F2" /> Discord</span>
-                </div>
-                <button className="aivy-auth-btn discord" style={{ animationDelay: "130ms" }} onClick={handleDiscord} disabled={!!pending}>
-                  <span className="icon-wrap">{pending === "discord" ? <StarLoader size={18} /> : <DiscordGlyph size={18} color="#5865F2" />}</span>
-                  <span className="label-wrap">
-                    <span>Lanjutkan dengan Discord</span>
-                  </span>
-                  <ChevronRight size={16} className="chevron" />
-                </button>
-              </div>
-            )}
-          </div>
+          <p className="cx-foot">Dengan melanjutkan, kamu menyetujui Ketentuan &amp; Privasi.</p>
         </div>
       </div>
     </div>
