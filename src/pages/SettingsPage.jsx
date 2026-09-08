@@ -481,6 +481,19 @@ export function SettingsPage() {
 
   const renderAppearance = () => (
     <>
+      <SettingSection title={tt("Bahasa", "Language")}>
+        <SelectRow
+          label={tt("Bahasa Aplikasi", "App Language")}
+          hint={tt("Mengubah semua teks di aplikasi", "Changes all text throughout the app")}
+          value={settings.language || "id"}
+          onChange={set("language")}
+          options={[
+            { value: "id", label: "Bahasa Indonesia" },
+            { value: "en", label: "English" },
+          ]}
+        />
+      </SettingSection>
+
       <SettingSection title={tt("Tema", "Theme")}>
         <div className="aivy-themes-grid">
           {[
