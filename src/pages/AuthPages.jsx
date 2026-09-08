@@ -63,6 +63,10 @@ function CosmicMark() {
     }
     starPath.setAttribute("d", sparkleD(50, 50, 37, 5, 240));
 
+    // Guard against React StrictMode's dev-only double-invoke of effects: clear any
+    // bars appended by a previous run before creating a fresh set.
+    while (barsGroup.firstChild) barsGroup.removeChild(barsGroup.firstChild);
+
     const barDefs = [
       { x: 27, base: 24, amp: 11, speed: 1.7, phase: 0.0 },
       { x: 40, base: 40, amp: 14, speed: 2.3, phase: 1.1 },
@@ -115,7 +119,7 @@ function CosmicMark() {
     let raf;
     if (reduced) {
       apply(1, 0);
-      return () => {};
+      return () => { while (barsGroup.firstChild) barsGroup.removeChild(barsGroup.firstChild); };
     }
 
     const HOLD_EQ = 2200, MORPH = 1300, HOLD_STAR = 2200;
@@ -142,7 +146,10 @@ function CosmicMark() {
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      while (barsGroup.firstChild) barsGroup.removeChild(barsGroup.firstChild);
+    };
   }, []);
 
   return (
@@ -203,15 +210,15 @@ export function LoginPage() {
           )}
 
           {!authChecked ? (
-            <div style={{ padding: "18px 0" }}><StarLoader size={30} /></div>
+            <div style={{ padding: "18px 0" }}><StarLoader size={30} color="var(--cx-ink)" /></div>
           ) : (
             <div className="cx-actions">
               <button className="cx-btn cx-btn-primary" type="button" onClick={handleGoogle} disabled={!!pending}>
-                {pending === "google" ? <StarLoader size={18} /> : <GoogleGlyph size={18} />}
+                {pending === "google" ? <StarLoader size={18} color="#0a0a0a" /> : <GoogleGlyph size={18} />}
                 Lanjutkan dengan Google
               </button>
               <button className="cx-btn cx-btn-outline" type="button" onClick={handleDiscord} disabled={!!pending}>
-                {pending === "discord" ? <StarLoader size={18} /> : <DiscordGlyph size={18} />}
+                {pending === "discord" ? <StarLoader size={18} color="var(--cx-ink)" /> : <DiscordGlyph size={18} />}
                 Lanjutkan dengan Discord
               </button>
             </div>
