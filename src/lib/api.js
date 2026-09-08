@@ -16,12 +16,13 @@ async function apiGet(path) {
   if (!res.ok) await throwApiError(res);
   return res.json();
 }
-async function apiSend(path, method, body) {
+async function apiSend(path, method, body, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     credentials: "include",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
+    keepalive: !!opts.keepalive,
   });
   if (!res.ok) await throwApiError(res);
   const text = await res.text();
@@ -89,7 +90,7 @@ export const Api = {
     apiGet(`/api/track/audio-info?videoId=${encodeURIComponent(videoId || "")}&quality=${getPreferredAudioQuality()}`),
 
   me: () => apiGet("/auth/me"),
-  logout: () => apiSend("/auth/logout", "POST"),
+  logout: () => apiSend("/auth/logout", "POST", undefined, { keepalive: true }),
   discordLoginUrl: () => `${API_BASE}/auth/discord`,
   googleLoginUrl: () => `${API_BASE}/auth/google`,
 
