@@ -537,6 +537,9 @@ export function PlayerProvider({ children }) {
       compressor.release.value = 0.2;
       const fadeGain = ctx.createGain();
       fadeGain.gain.value = 1;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.75;
 
       source.connect(preamp);
       let node = preamp;
@@ -544,8 +547,9 @@ export function PlayerProvider({ children }) {
       node.connect(compressor);
       compressor.connect(fadeGain);
       fadeGain.connect(ctx.destination);
+      fadeGain.connect(analyser);
 
-      const graph = { ctx, source, preamp, bands, compressor, fadeGain };
+      const graph = { ctx, source, preamp, bands, compressor, fadeGain, analyser };
       audioGraphRef.current = graph;
       ctx.addEventListener("statechange", () => {
         if (ctx.state !== "running" && isPlayingRef.current) ctx.resume().catch(() => {});
@@ -571,6 +575,11 @@ export function PlayerProvider({ children }) {
     graph.compressor.threshold.value = settings.normalizeVolume ? -24 : 0;
     graph.compressor.ratio.value = settings.normalizeVolume ? 8 : 1;
   }, [settings.normalizeVolume, ensureAudioGraph]);
+
+  const getAnalyser = useCallback(() => {
+    const graph = ensureAudioGraph();
+    return graph?.analyser || null;
+  }, [ensureAudioGraph]);
 
   const currentTrack = queueList.length && order.length ? queueList[order[posInOrder]] : null;
   const currentKey = currentTrack ? currentTrack.id : null;
@@ -1605,6 +1614,7 @@ export function PlayerProvider({ children }) {
     chatMessages, sendChatMessage, voteSkip,
     promptCast, getAudioSrc,
     localTracks, localScan, scanLocalFiles, clearLocalLibrary,
+    getAnalyser,
   };
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;
 }

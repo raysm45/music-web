@@ -7,7 +7,7 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
-  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge,
+  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -136,7 +136,37 @@ export class ErrorBoundary extends Component {
   }
 }
 
-export function Scrubber({ getRatio, onSeekRatio, registerFill, registerThumb, className = "", loading = false }) {
+function seededRand(seed) {
+  let h = 0;
+  const s = String(seed || "x");
+  for (let i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0; }
+  return () => {
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    return (h % 1000) / 1000;
+  };
+}
+
+function WaveformBars({ seed, className }) {
+  const bars = useMemo(() => {
+    const rand = seededRand(seed);
+    const n = 64;
+    const out = [];
+    let last = 0.5;
+    for (let i = 0; i < n; i++) {
+      const jitter = (rand() - 0.5) * 0.7;
+      last = Math.max(0.14, Math.min(1, last * 0.55 + 0.45 * (0.55 + jitter)));
+      out.push(last);
+    }
+    return out;
+  }, [seed]);
+  return (
+    <div className={`aivy-waveform ${className || ""}`} aria-hidden="true">
+      {bars.map((h, i) => <span key={i} style={{ height: `${Math.round(h * 100)}%` }} />)}
+    </div>
+  );
+}
+
+export function Scrubber({ getRatio, onSeekRatio, registerFill, registerThumb, className = "", loading = false, waveformSeed = null }) {
   const trackRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const ratioFromEvent = (e) => {
@@ -152,14 +182,19 @@ export function Scrubber({ getRatio, onSeekRatio, registerFill, registerThumb, c
   }
   return (
     <div
-      ref={trackRef} className={`aivy-scrubber ${dragging ? "dragging" : ""} ${className}`}
+      ref={trackRef} className={`aivy-scrubber ${dragging ? "dragging" : ""} ${waveformSeed ? "has-waveform" : ""} ${className}`}
       onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging(true); onSeekRatio(ratioFromEvent(e)); }}
       onPointerMove={(e) => { if (dragging) onSeekRatio(ratioFromEvent(e)); }}
       onPointerUp={(e) => { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
       onPointerCancel={(e) => { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {} }}
       role="slider" aria-label="Posisi lagu" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((getRatio ? getRatio() : 0) * 100)}
     >
-      <div className="track"><div className="fill" ref={registerFill} /></div>
+      <div className="track">
+        {waveformSeed && <WaveformBars seed={waveformSeed} className="wave-bg" />}
+        <div className="fill" ref={registerFill}>
+          {waveformSeed && <WaveformBars seed={waveformSeed} className="wave-fg" />}
+        </div>
+      </div>
       <div className="thumb" ref={registerThumb} />
     </div>
   );
@@ -526,6 +561,8 @@ export function CardTrack({ track, list }) {
 export function CardAlbum({ album }) {
   const { navigate } = useRouter();
   const { playList } = usePlayer();
+  const { settings } = useUI();
+  const compact = !!settings.compactAlbums;
   const handlePlay = async (e) => {
     e.stopPropagation();
     const { Api } = await import("./lib/api.js");
@@ -533,20 +570,34 @@ export function CardAlbum({ album }) {
     if (full?.tracks?.length) playList(full.tracks, 0);
   };
   return (
-    <div className="aivy-card" onClick={() => navigate("album", { params: { id: album.id } })} style={{ cursor: "pointer" }}>
+    <div className={`aivy-card ${compact ? "is-compact" : ""}`} onClick={() => navigate("album", { params: { id: album.id } })} style={{ cursor: "pointer" }}>
       <div className="art-wrap">
-        <SmartCover src={album.cover} seed={"album" + album.id + album.title} size={140} radius={8} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
-        <button className="aivy-card-play" onClick={handlePlay} aria-label="Putar album"><Play size={16} /></button>
+        <SmartCover src={album.cover} seed={"album" + album.id + album.title} size={compact ? 72 : 140} radius={compact ? 6 : 8} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+        <button className="aivy-card-play" onClick={handlePlay} aria-label="Putar album"><Play size={compact ? 13 : 16} /></button>
       </div>
       <div className="title">{album.title}</div>
-      <div className="sub">{album.artist?.name}{album.releaseDate ? ` \u00b7 ${String(album.releaseDate).slice(0, 4)}` : ""}</div>
+      {!compact && <div className="sub">{album.artist?.name}{album.releaseDate ? ` \u00b7 ${String(album.releaseDate).slice(0, 4)}` : ""}</div>}
     </div>
   );
 }
 
 export function CardArtist({ artist }) {
   const { navigate } = useRouter();
-  const { t } = useUI();
+  const { t, settings } = useUI();
+  const compact = !!settings.compactArtists;
+  if (compact) {
+    return (
+      <div className="aivy-card aivy-card-artist is-compact is-row" onClick={() => navigate("artist", { params: { id: artist.id } })} style={{ cursor: "pointer" }}>
+        <div className="art-wrap round">
+          <SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={44} radius={999} style={{ width: 44, height: 44, borderRadius: "50%" }} />
+        </div>
+        <div className="row-meta">
+          <div className="title">{artist.name}</div>
+          <div className="sub">{t("artistLabel")}</div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="aivy-card" onClick={() => navigate("artist", { params: { id: artist.id } })} style={{ cursor: "pointer" }}>
       <div className="art-wrap round">
@@ -705,20 +756,34 @@ export function TransportButtons({ big = false, minimal = false }) {
   );
 }
 
-export function PlayerBar() {
-  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics } = usePlayer();
+export function PlayerBar({ onOpenNowPlaying }) {
+  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics, isPlaying } = usePlayer();
   const { navigate } = useRouter();
-  const { toggleLyrics, sidebarQueueOpen, toggleSidebarQueue, t } = useUI();
+  const { toggleLyrics, sidebarQueueOpen, toggleSidebarQueue, t, settings } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
+  const handleCoverClick = () => {
+    if (!currentTrack) return;
+    const mode = settings.nowPlayingView || "album";
+    if (mode === "lyrics") toggleLyrics();
+    else if (mode === "fullscreen") onOpenNowPlaying?.();
+    else if (currentTrack.album?.id) navigate("album", { params: { id: currentTrack.album.id } });
+    else onOpenNowPlaying?.();
+  };
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
 
   return (
-    <div className="aivy-player">
+    <div className={`aivy-player ${isPlaying ? "is-playing" : ""}`}>
       <div className="now">
         {currentTrack ? (
           <>
-            <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={52} radius={8} />
+            <span
+              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""}`}
+              onClick={handleCoverClick} role="button" tabIndex={0} style={{ cursor: "pointer" }}
+              onKeyDown={(e) => { if (e.key === "Enter") handleCoverClick(); }}
+            >
+              <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={52} radius={settings.noRoundCover ? 0 : 8} />
+            </span>
             <div className="meta">
               <span className="t">{currentTrack.title}</span>
               <span className="a" onClick={() => currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } })} style={{ cursor: "pointer" }}>
@@ -740,7 +805,10 @@ export function PlayerBar() {
         <TransportButtons />
         <div className="aivy-scrubber-row">
           <span className="aivy-time font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
-          <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
+          <Scrubber
+            getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio}
+            waveformSeed={settings.waveformSeekbar && currentTrack ? String(currentTrack.id || currentTrack.title || "") : null}
+          />
           <span className="aivy-time right font-mono">{loadingAudio ? "\u2013\u2013" : formatTime(duration)}</span>
         </div>
       </div>
@@ -756,17 +824,24 @@ export function PlayerBar() {
 export function MiniPlayer({ onExpand }) {
   const { currentTrack, isPlaying, togglePlay, next, loadingAudio } = usePlayer();
   const { registerFill } = useScrubberBinding();
-  const { t } = useUI();
+  const { t, settings, toggleLyrics } = useUI();
+  const { navigate } = useRouter();
   const [pulsing, setPulsing] = useState(false);
   const miniRef = useRef(null);
-  const swipe = useVerticalSwipe({ active: !!currentTrack, direction: "up", onTrigger: onExpand, dragRef: miniRef, threshold: 36, velocityThreshold: 0.35 });
+  const handleExpand = () => {
+    const mode = settings.nowPlayingView || "fullscreen";
+    if (mode === "lyrics") toggleLyrics();
+    else if (mode === "album" && currentTrack?.album?.id) navigate("album", { params: { id: currentTrack.album.id } });
+    else onExpand?.();
+  };
+  const swipe = useVerticalSwipe({ active: !!currentTrack, direction: "up", onTrigger: handleExpand, dragRef: miniRef, threshold: 36, velocityThreshold: 0.35 });
   if (!currentTrack) return null;
   return (
     <div
-      className="aivy-mini-player" ref={miniRef} onClick={onExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
+      className="aivy-mini-player" ref={miniRef} onClick={handleExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
       onPointerDown={swipe.onPointerDown} onPointerMove={swipe.onPointerMove} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
     >
-      <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={6} />
+      <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
       <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
@@ -859,21 +934,277 @@ function useHeroFlip(mode, targets) {
   return capture;
 }
 
+function useDominantColor(src) {
+  const [color, setColor] = useState(null);
+  useEffect(() => {
+    if (!src) { setColor(null); return; }
+    let alive = true;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (!alive) return;
+      try {
+        const canvas = document.createElement("canvas");
+        const size = 24;
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const alpha = data[i + 3];
+          if (alpha < 32) continue;
+          r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+        }
+        if (!n) return;
+        r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        const boost = max - min < 28 ? 1.25 : 1.08;
+        const cl = (v) => Math.max(0, Math.min(255, Math.round(128 + (v - 128) * boost)));
+        if (alive) setColor(`rgb(${cl(r)}, ${cl(g)}, ${cl(b)})`);
+      } catch { /* CORS-tainted canvas, ignore */ }
+    };
+    img.onerror = () => {};
+    img.src = src;
+    return () => { alive = false; };
+  }, [src]);
+  return color;
+}
+
+function useTilt({ enabled, distance = 10, speed = 240 }) {
+  const ref = useRef(null);
+  const [style, setStyle] = useState({});
+  const onMove = useCallback((e) => {
+    if (!enabled || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    setStyle({
+      transform: `perspective(700px) rotateX(${(-py * distance).toFixed(2)}deg) rotateY(${(px * distance).toFixed(2)}deg) scale3d(1.02,1.02,1.02)`,
+      transition: `transform ${Math.max(30, speed / 8)}ms ease-out`,
+    });
+  }, [enabled, distance, speed]);
+  const onLeave = useCallback(() => {
+    if (!enabled) return;
+    setStyle({ transform: "perspective(700px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)", transition: `transform ${speed}ms ease` });
+  }, [enabled, speed]);
+  useEffect(() => { if (!enabled) setStyle({}); }, [enabled]);
+  return { ref, style, onMove, onLeave };
+}
+
+const VISUALIZER_COLOR_SETS = {
+  auto: ["#7fd18c", "#9fe6ac", "#e8f5e3"],
+  ocean: ["#4fa3e3", "#7fd3ff", "#dfe9f5"],
+  martian: ["#e36f4f", "#ffb27f", "#f5ded0"],
+  sunset: ["#e35f8a", "#ffb27f", "#fff0d6"],
+  kaleido: ["#a78bfa", "#f472b6", "#7fd1e6"],
+  matrix: ["#39ff88", "#0fae4f", "#0a2a12"],
+};
+
+export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brightness = 100, preset = "auto", height = 220 }) {
+  const { getAnalyser, isPlaying } = usePlayer();
+  const canvasRef = useRef(null);
+  const rafRef = useRef(null);
+  const phaseRef = useRef(0);
+  const historyRef = useRef([]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const ctx2d = canvas.getContext("2d");
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const colors = VISUALIZER_COLOR_SETS[preset] || VISUALIZER_COLOR_SETS.auto;
+    const sens = Math.max(0.1, sensitivity / 60);
+    const bright = Math.max(0.2, brightness / 100);
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, rect.width * dpr);
+      canvas.height = Math.max(1, rect.height * dpr);
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+
+    const draw = () => {
+      rafRef.current = requestAnimationFrame(draw);
+      const w = canvas.width, h = canvas.height;
+      const analyser = getAnalyser?.();
+      let freq = null, time = null;
+      if (analyser) {
+        freq = new Uint8Array(analyser.frequencyBinCount);
+        time = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(freq);
+        analyser.getByteTimeDomainData(time);
+      }
+      const active = isPlaying && analyser;
+      phaseRef.current += 0.02;
+
+      ctx2d.clearRect(0, 0, w, h);
+      if (mode === "solid") {
+        ctx2d.fillStyle = "rgba(10,12,8,1)";
+        ctx2d.fillRect(0, 0, w, h);
+      }
+      ctx2d.globalAlpha = bright;
+
+      if (style === "lcd") {
+        const bars = 32;
+        const gap = w / bars;
+        for (let i = 0; i < bars; i++) {
+          const v = active ? (freq[Math.floor((i / bars) * freq.length)] / 255) : 0.06 + 0.03 * Math.sin(phaseRef.current + i);
+          const barH = Math.min(h, v * h * sens);
+          ctx2d.fillStyle = colors[i % colors.length];
+          const segH = h / 22;
+          const segs = Math.floor(barH / segH);
+          for (let s = 0; s < segs; s++) {
+            ctx2d.fillRect(i * gap + gap * 0.15, h - (s + 1) * segH + segH * 0.15, gap * 0.7, segH * 0.7);
+          }
+        }
+      } else if (style === "pixels") {
+        const cols = 24, rows = 14;
+        const cw = w / cols, ch = h / rows;
+        for (let x = 0; x < cols; x++) {
+          const v = active ? (freq[Math.floor((x / cols) * freq.length)] / 255) : 0.15 + 0.1 * Math.sin(phaseRef.current + x * 0.5);
+          const litRows = Math.floor(v * rows * sens);
+          for (let y = 0; y < rows; y++) {
+            const lit = y >= rows - litRows;
+            ctx2d.fillStyle = lit ? colors[(x + y) % colors.length] : "rgba(255,255,255,.04)";
+            ctx2d.fillRect(x * cw + cw * 0.08, y * ch + ch * 0.08, cw * 0.84, ch * 0.84);
+          }
+        }
+      } else if (style === "particles") {
+        const n = 60;
+        for (let i = 0; i < n; i++) {
+          const bin = active ? freq[Math.floor((i / n) * freq.length)] / 255 : 0.15;
+          const angle = (i / n) * Math.PI * 2 + phaseRef.current * 0.3;
+          const r = (h * 0.15) + bin * h * 0.35 * sens;
+          const cx = w / 2 + Math.cos(angle) * r;
+          const cy = h / 2 + Math.sin(angle) * r;
+          ctx2d.fillStyle = colors[i % colors.length];
+          ctx2d.beginPath();
+          ctx2d.arc(cx, cy, 2 + bin * 6 * sens, 0, Math.PI * 2);
+          ctx2d.fill();
+        }
+      } else if (style === "unknown") {
+        const rows = 10;
+        historyRef.current.unshift(time ? Array.from(time) : new Array(64).fill(128));
+        if (historyRef.current.length > rows) historyRef.current.length = rows;
+        historyRef.current.forEach((row, ri) => {
+          ctx2d.beginPath();
+          const yBase = h * (0.25 + (ri / rows) * 0.6);
+          const step = w / row.length;
+          row.forEach((v, i) => {
+            const amp = active ? ((v - 128) / 128) * h * 0.18 * sens : 0.01 * Math.sin(phaseRef.current + i * 0.3) * h;
+            const x = i * step, y = yBase - amp - ri * (h * 0.02);
+            if (i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
+          });
+          ctx2d.strokeStyle = `rgba(255,255,255,${0.9 - ri * 0.07})`;
+          ctx2d.lineWidth = 1.4;
+          ctx2d.stroke();
+        });
+      } else if (style === "butterchurn") {
+        const blobs = 5;
+        for (let i = 0; i < blobs; i++) {
+          const bin = active ? freq[Math.floor((i / blobs) * freq.length)] / 255 : 0.2;
+          const ang = phaseRef.current * (0.4 + i * 0.15) + i;
+          const cx = w / 2 + Math.cos(ang) * w * 0.22;
+          const cy = h / 2 + Math.sin(ang * 1.3) * h * 0.22;
+          const rad = (h * 0.18 + bin * h * 0.28 * sens);
+          const grad = ctx2d.createRadialGradient(cx, cy, 0, cx, cy, rad);
+          grad.addColorStop(0, colors[i % colors.length] + "cc");
+          grad.addColorStop(1, "transparent");
+          ctx2d.fillStyle = grad;
+          ctx2d.beginPath();
+          ctx2d.arc(cx, cy, rad, 0, Math.PI * 2);
+          ctx2d.fill();
+        }
+      } else if (style === "kawarp") {
+        const cols = 20, rows = 12;
+        ctx2d.strokeStyle = colors[0];
+        ctx2d.lineWidth = 1;
+        for (let y = 0; y <= rows; y++) {
+          ctx2d.beginPath();
+          for (let x = 0; x <= cols; x++) {
+            const bin = active ? freq[Math.floor(((x + y) % freq.length))] / 255 : 0.1;
+            const warp = Math.sin(phaseRef.current + x * 0.4 + y * 0.4) * (8 + bin * 30 * sens);
+            const px = (x / cols) * w;
+            const py = (y / rows) * h + warp;
+            if (x === 0) ctx2d.moveTo(px, py); else ctx2d.lineTo(px, py);
+          }
+          ctx2d.globalAlpha = bright * 0.5;
+          ctx2d.stroke();
+        }
+        ctx2d.globalAlpha = bright;
+      }
+    };
+    draw();
+    return () => { cancelAnimationFrame(rafRef.current); ro.disconnect(); };
+  }, [style, mode, sensitivity, brightness, preset, getAnalyser, isPlaying]);
+
+  return <canvas ref={canvasRef} className={`aivy-visualizer-canvas ${mode}`} style={{ ...style, height }} />;
+}
+
+export function NowPlayingVisualizer() {
+  const { settings } = useUI();
+  const [cyclePreset, setCyclePreset] = useState(settings.visualizerPreset || "auto");
+  const presets = Object.keys(VISUALIZER_COLOR_SETS);
+
+  useEffect(() => {
+    if (!settings.cyclePresets) { setCyclePreset(settings.visualizerPreset || "auto"); return undefined; }
+    const durMs = Math.max(3, Number(settings.cycleDuration) || 30) * 1000;
+    const id = setInterval(() => {
+      setCyclePreset((prev) => {
+        if (settings.randomizePresets) {
+          const opts = presets.filter((p) => p !== prev);
+          return opts[Math.floor(Math.random() * opts.length)] || prev;
+        }
+        const idx = presets.indexOf(prev);
+        return presets[(idx + 1) % presets.length];
+      });
+    }, durMs);
+    return () => clearInterval(id);
+  }, [settings.cyclePresets, settings.cycleDuration, settings.randomizePresets, settings.visualizerPreset]);
+
+  if (!settings.visualizerEnabled) return null;
+  return (
+    <VisualizerCanvas
+      mode={settings.visualizerMode || "solid"}
+      style={settings.visualizerStyle || "butterchurn"}
+      sensitivity={Number(settings.visualizerSensitivity) || 60}
+      brightness={Number(settings.visualizerBrightness) || 100}
+      preset={cyclePreset}
+    />
+  );
+}
+
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const {
     currentTrack, currentTime: playerTime, seekTo, isPreviewClip, audioFormat,
-    liked, toggleLike, loadingAudio, currentTrackHasLyrics,
+    liked, toggleLike, loadingAudio, currentTrackHasLyrics, isPlaying, togglePlay, next, prev,
   } = usePlayer();
   const { navigate } = useRouter();
-  const { t, lyricsOpen, toggleLyrics } = useUI();
+  const { t, settings, lyricsOpen, toggleLyrics } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
+  const dynamicColor = useDominantColor(settings.dynamicColors ? currentTrack?.cover : null);
+  const tilt = useTilt({ enabled: !!settings.tiltCover, distance: Number(settings.tiltDistance) || 10, speed: Number(settings.tiltSpeed) || 240 });
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
   const formatLabel = audioFormat && audioFormat !== "unavailable" ? audioFormat.label : null;
   const [moreOpen, setMoreOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [aodOpen, setAodOpen] = useState(false);
+  const [uiHidden, setUiHidden] = useState(false);
   const handleMore = () => { if (!currentTrack) return; setMoreOpen(true); };
+  const handleFullscreenCoverClick = () => {
+    const action = settings.fullscreenCoverClick || "exit";
+    if (action === "exit") onClose();
+    else if (action === "hide") setUiHidden((h) => !h);
+    else if (action === "pause") togglePlay();
+    else if (action === "next") next(false);
+    else if (action === "prev") prev();
+  };
+  useEffect(() => { if (!open) setUiHidden(false); }, [open]);
+  useEffect(() => { setUiHidden(false); }, [currentTrack?.id]);
 
   const lyricsMode = !!(open && lyricsOpen);
   const [singMode, setSingMode] = useState(false);
@@ -941,13 +1272,16 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={handleGrabberTap} />
-      <div ref={sheetRef} className={`aivy-sheet ${open ? "open" : ""} ${lyricsMode ? "mode-lyrics" : ""}`} aria-hidden={!open}>
-        {currentTrack && (
+      <div ref={sheetRef} className={`aivy-sheet ${open ? "open" : ""} ${lyricsMode ? "mode-lyrics" : ""} ${isPlaying ? "is-playing" : ""} ${uiHidden ? "is-ui-hidden" : ""}`} aria-hidden={!open}>
+        {currentTrack && settings.coverBackground !== false && (
           <div
             className="aivy-sheet-bg"
             style={{ backgroundImage: `url(${currentTrack.cover})` }}
             aria-hidden="true"
           />
+        )}
+        {settings.visualizerEnabled && settings.visualizerMode === "solid" && (
+          <div className="aivy-sheet-visualizer" aria-hidden="true"><NowPlayingVisualizer /></div>
         )}
         <div
           className="aivy-sheet-grabber-row"
@@ -963,7 +1297,18 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
               onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
             >
-              <div className="npx-cover" ref={coverRef}>
+              <div
+                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""}`}
+                ref={(el) => { coverRef.current = el; tilt.ref.current = el; }}
+                style={{ ...tilt.style, ...(dynamicColor ? { "--npx-dynamic": dynamicColor, boxShadow: `0 24px 60px rgba(0,0,0,.5), 0 0 60px -12px ${dynamicColor}` } : {}) }}
+                onPointerMove={settings.tiltCover ? tilt.onMove : undefined}
+                onPointerLeave={settings.tiltCover ? tilt.onLeave : undefined}
+                onClick={handleFullscreenCoverClick}
+                role="button" tabIndex={0}
+              >
+                {settings.visualizerEnabled && settings.visualizerMode === "blended" && (
+                  <div className="npx-cover-visualizer" aria-hidden="true"><NowPlayingVisualizer height={320} /></div>
+                )}
                 <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }} />
               </div>
               <div className="npx-metarow">
@@ -1006,7 +1351,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             <div className="npx-top-controls" ref={controlsRef}>
               <div className="aivy-scrubber-row">
                 <span className="aivy-time">{loadingAudio ? "\u2013\u2013" : formatTime(currentTime)}</span>
-                <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio} />
+                <Scrubber
+                  getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} loading={loadingAudio}
+                  waveformSeed={settings.waveformSeekbar && currentTrack ? String(currentTrack.id || currentTrack.title || "") : null}
+                />
                 <span className="aivy-time right">{loadingAudio ? "\u2013\u2013" : `-${formatTime(remaining)}`}</span>
               </div>
 
@@ -2228,7 +2576,7 @@ export function Sidebar() {
   const {
     theme, toggleTheme, authUser, login, t,
     sidebarWidth, setSidebarWidth, sidebarCollapsed, toggleSidebarCollapsed,
-    settings,
+    settings, pushToast,
   } = useUI();
   const { playlists, createPlaylist } = usePlayer();
   const [creating, setCreating] = useState(false);
@@ -2236,6 +2584,21 @@ export function Sidebar() {
   const inputRef = useRef(null);
   useEffect(() => { if (creating) inputRef.current?.focus(); }, [creating]);
   const submitCreate = () => { const val = newName.trim(); if (val) createPlaylist(val); setNewName(""); setCreating(false); };
+
+  const showAnySideLinks = settings.showSideAbout || settings.showSideDiscord || settings.showSideGithub;
+
+  useEffect(() => {
+    if (!settings.donationReminders) return undefined;
+    const KEY = "aivy_last_donation_nudge";
+    const DAY = 24 * 60 * 60 * 1000;
+    const last = Number(localStorage.getItem(KEY) || 0);
+    if (Date.now() - last < 3 * DAY) return undefined;
+    const timer = setTimeout(() => {
+      pushToast(t("language") === "en" ? "Enjoying Cosmicx? Consider supporting the project ❤️" : "Suka pakai Cosmicx? Yuk bantu dukung proyek ini ❤️");
+      localStorage.setItem(KEY, String(Date.now()));
+    }, 45000);
+    return () => clearTimeout(timer);
+  }, [settings.donationReminders, pushToast, t]);
 
   const { onDragStart, isDragging } = usePanelResize({
     width: sidebarWidth, setWidth: setSidebarWidth, min: SIDEBAR_MIN_W, max: SIDEBAR_MAX_W, side: "left",
@@ -2311,6 +2674,13 @@ export function Sidebar() {
           {playlists.map((pl) => <Link key={pl.id} to="playlist" params={{ id: pl.id }} className="aivy-playlist-row"><Library size={15} /><span>{pl.name}</span></Link>)}
         </div>
       </div>
+      {showAnySideLinks && (
+        <div className="aivy-side-links">
+          {settings.showSideAbout && <a href="/about" className="aivy-side-link"><Info size={13} /> {t("language") === "en" ? "About" : "Tentang"}</a>}
+          {settings.showSideDiscord && <a href="https://discord.gg/" target="_blank" rel="noreferrer" className="aivy-side-link"><Users size={13} /> Discord</a>}
+          {settings.showSideGithub && <a href="https://github.com/" target="_blank" rel="noreferrer" className="aivy-side-link"><Github size={13} /> GitHub</a>}
+        </div>
+      )}
       <div className="aivy-side-footer">
         {}
         <Link to="settings" className="aivy-theme-btn"><SettingsIcon size={15} />{t("navSettings")}</Link>

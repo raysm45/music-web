@@ -572,38 +572,38 @@ export function SettingsPage() {
       </SettingSection>
 
       <SettingSection title={tt("Tampilan Pemutar", "Player Look")}>
-        <ToggleRow soon label={tt("Seekbar waveform", "Waveform Seekbar")} hint={tt("Tampilkan bentuk gelombang di progress bar (eksperimental)", "Show a waveform of the track in the progress bar (Experimental)")} checked={!!settings.waveformSeekbar} onChange={set("waveformSeekbar")} />
-        <ToggleRow soon label={tt("Background sampul album", "Album Cover Background")} hint={tt("Pakai sampul sebagai background blur dan warna utama", "Use the album cover as blurred background and primary color")} checked={!!settings.coverBackground} onChange={set("coverBackground")} />
-        <ToggleRow soon label={tt("Warna dinamis", "Dynamic Colors")} hint={tt("Warna aksen berubah mengikuti sampul lagu yang diputar", "Accent color follows the playing track's album art")} checked={!!settings.dynamicColors} onChange={set("dynamicColors")} />
-        <ToggleRow soon label={tt("Sampul tanpa sudut bulat", "No Round Album Cover")} checked={!!settings.noRoundCover} onChange={set("noRoundCover")} />
-        <ToggleRow soon label={tt("Efek tilt 3D pada sampul", "Vanilla Tilt Album Cover")} hint={tt("Efek kemiringan 3D di layar penuh", "3D tilt effect on the fullscreen cover")} checked={!!settings.tiltCover} onChange={set("tiltCover")} />
-        <SliderRow soon label={tt("Jarak tilt", "Tilt Distance")} hint={tt("Maksimum kemiringan (default 10)", "Max tilt distance (default: 10)")} value={Number(settings.tiltDistance) || 10} min={1} max={30} step={1} onChange={set("tiltDistance")} />
-        <SliderRow soon label={tt("Kecepatan tilt", "Tilt Speed")} hint="ms" value={Number(settings.tiltSpeed) || 240} min={50} max={600} step={10} onChange={set("tiltSpeed")} format={(v) => `${v}`} />
-        <ToggleRow soon label={tt("Sampul CD berputar", "CD Album Cover")} hint={tt("Sampul berputar seperti CD di layar penuh", "Spin the cover like a CD in fullscreen")} checked={!!settings.cdCoverSpin} onChange={set("cdCoverSpin")} />
+        <ToggleRow label={tt("Seekbar waveform", "Waveform Seekbar")} hint={tt("Tampilkan bentuk gelombang di progress bar (pola bentuk-tetap per lagu, bukan hasil decode audio asli)", "Show a waveform shape on the progress bar (a per-track fixed pattern, not decoded from the actual audio)")} checked={!!settings.waveformSeekbar} onChange={set("waveformSeekbar")} />
+        <ToggleRow label={tt("Background sampul album", "Album Cover Background")} hint={tt("Pakai sampul sebagai background blur di layar penuh", "Use the album cover as a blurred background on the fullscreen player")} checked={settings.coverBackground !== false} onChange={set("coverBackground")} />
+        <ToggleRow label={tt("Warna dinamis", "Dynamic Colors")} hint={tt("Cahaya di sekitar sampul menyesuaikan warna dominan lagu yang diputar", "Glow around the cover follows the playing track's dominant color")} checked={!!settings.dynamicColors} onChange={set("dynamicColors")} />
+        <ToggleRow label={tt("Sampul tanpa sudut bulat", "No Round Album Cover")} checked={!!settings.noRoundCover} onChange={set("noRoundCover")} />
+        <ToggleRow label={tt("Efek tilt 3D pada sampul", "Vanilla Tilt Album Cover")} hint={tt("Efek kemiringan 3D di layar penuh saat kursor digerakkan", "3D tilt effect on the fullscreen cover as you move the cursor")} checked={!!settings.tiltCover} onChange={set("tiltCover")} />
+        <SliderRow label={tt("Jarak tilt", "Tilt Distance")} hint={tt("Maksimum kemiringan (default 10)", "Max tilt distance (default: 10)")} value={Number(settings.tiltDistance) || 10} min={1} max={30} step={1} onChange={set("tiltDistance")} />
+        <SliderRow label={tt("Kecepatan tilt", "Tilt Speed")} hint="ms" value={Number(settings.tiltSpeed) || 240} min={50} max={600} step={10} onChange={set("tiltSpeed")} format={(v) => `${v}`} />
+        <ToggleRow label={tt("Sampul CD berputar", "CD Album Cover")} hint={tt("Sampul berputar seperti CD saat lagu diputar", "Spin the cover like a CD while a song is playing")} checked={!!settings.cdCoverSpin} onChange={set("cdCoverSpin")} />
       </SettingSection>
 
-      <SettingSection title="Visualizer" desc={tt("Belum tersedia — semua pengaturan visualizer disegel untuk saat ini.", "Not available yet — all visualizer settings are locked for now.")}>
-        <ToggleRow soon label={tt("Visualizer layar penuh", "Full-screen Visualizer")} checked={!!settings.visualizerEnabled} onChange={set("visualizerEnabled")} />
-        <SelectRow soon label={tt("Gaya visualizer", "Visualizer Style")} value={settings.visualizerStyle || "butterchurn"} onChange={set("visualizerStyle")} options={VISUALIZER_STYLES} />
-        <SelectRow soon label={tt("Mode visualizer", "Visualizer Mode")} value={settings.visualizerMode || "solid"} onChange={set("visualizerMode")}
+      <SettingSection title="Visualizer" desc={tt("Visualizer canvas ringan berbasis Web Audio — gaya Butterchurn/Kawarp di sini adalah interpretasi kustom, bukan library Milkdrop asli.", "A lightweight Web-Audio canvas visualizer — the Butterchurn/Kawarp styles here are custom interpretations, not the original Milkdrop library.")}>
+        <ToggleRow label={tt("Visualizer layar penuh", "Full-screen Visualizer")} checked={!!settings.visualizerEnabled} onChange={set("visualizerEnabled")} />
+        <SelectRow label={tt("Gaya visualizer", "Visualizer Style")} value={settings.visualizerStyle || "butterchurn"} onChange={set("visualizerStyle")} options={VISUALIZER_STYLES} />
+        <SelectRow label={tt("Mode visualizer", "Visualizer Mode")} value={settings.visualizerMode || "solid"} onChange={set("visualizerMode")}
           options={[{ value: "solid", label: tt("Background solid", "Solid Background") }, { value: "blended", label: tt("Menyatu dengan sampul", "Blended on Cover Art") }]} />
-        <ToggleRow soon label={tt("Pergantian intensitas pintar", "Smart Intensity Switching")} hint={tt("Intensitas menyesuaikan energi lagu", "Adjust intensity based on song energy")} checked={!!settings.smartIntensity} onChange={set("smartIntensity")} />
-        <SliderRow soon label={tt("Sensitivitas visualizer", "Visualizer Sensitivity")} hint={tt("Hati-hati: sensitivitas tinggi bisa memicu fotosensitif", "Warning: high sensitivity may cause flashing lights")} value={Number(settings.visualizerSensitivity) || 60} min={10} max={200} step={5} onChange={set("visualizerSensitivity")} format={(v) => `${v}%`} />
-        <SliderRow soon label={tt("Kecerahan visualizer", "Visualizer Brightness")} value={Number(settings.visualizerBrightness) || 100} min={20} max={200} step={5} onChange={set("visualizerBrightness")} format={(v) => `${v}%`} />
-        <ToggleRow soon label={tt("Ganti preset otomatis", "Cycle Presets")} checked={!!settings.cyclePresets} onChange={set("cyclePresets")} />
-        <SelectRow soon label={tt("Preset saat ini", "Current Preset")} value={settings.visualizerPreset || "auto"} onChange={set("visualizerPreset")} options={VISUALIZER_PRESETS} />
-        <SliderRow soon label={tt("Durasi siklus", "Cycle Duration")} hint={tt("Detik antar pergantian preset", "Seconds between preset changes")} value={Number(settings.cycleDuration) || 30} min={5} max={120} step={5} onChange={set("cycleDuration")} format={(v) => `${v}s`} />
-        <ToggleRow soon label={tt("Acak preset", "Randomize Presets")} hint={tt("Preset berikutnya dipilih acak", "Pick the next preset randomly")} checked={!!settings.randomizePresets} onChange={set("randomizePresets")} />
+        <ToggleRow label={tt("Pergantian intensitas pintar", "Smart Intensity Switching")} hint={tt("Intensitas menyesuaikan energi lagu yang sedang diputar", "Adjust intensity based on the playing track's audio energy")} checked={!!settings.smartIntensity} onChange={set("smartIntensity")} />
+        <SliderRow label={tt("Sensitivitas visualizer", "Visualizer Sensitivity")} hint={tt("Hati-hati: sensitivitas tinggi bisa memicu fotosensitif", "Warning: high sensitivity may cause flashing lights")} value={Number(settings.visualizerSensitivity) || 60} min={10} max={200} step={5} onChange={set("visualizerSensitivity")} format={(v) => `${v}%`} />
+        <SliderRow label={tt("Kecerahan visualizer", "Visualizer Brightness")} value={Number(settings.visualizerBrightness) || 100} min={20} max={200} step={5} onChange={set("visualizerBrightness")} format={(v) => `${v}%`} />
+        <ToggleRow label={tt("Ganti preset otomatis", "Cycle Presets")} checked={!!settings.cyclePresets} onChange={set("cyclePresets")} />
+        <SelectRow label={tt("Preset saat ini", "Current Preset")} value={settings.visualizerPreset || "auto"} onChange={set("visualizerPreset")} options={VISUALIZER_PRESETS} />
+        <SliderRow label={tt("Durasi siklus", "Cycle Duration")} hint={tt("Detik antar pergantian preset", "Seconds between preset changes")} value={Number(settings.cycleDuration) || 30} min={5} max={120} step={5} onChange={set("cycleDuration")} format={(v) => `${v}s`} />
+        <ToggleRow label={tt("Acak preset", "Randomize Presets")} hint={tt("Preset berikutnya dipilih acak", "Pick the next preset randomly")} checked={!!settings.randomizePresets} onChange={set("randomizePresets")} />
       </SettingSection>
 
       <SettingSection title={tt("Bagian Beranda", "Home Sections")}>
-        <ToggleRow soon label={tt("Tampilkan lagu rekomendasi", "Show Recommended Songs")} checked={settings.showRecommendedSongs !== false} onChange={set("showRecommendedSongs")} />
-        <ToggleRow soon label={tt("Tampilkan album rekomendasi", "Show Recommended Albums")} checked={settings.showRecommendedAlbums !== false} onChange={set("showRecommendedAlbums")} />
-        <ToggleRow soon label={tt("Tampilkan artist rekomendasi", "Show Recommended Artists")} checked={settings.showRecommendedArtists !== false} onChange={set("showRecommendedArtists")} />
-        <ToggleRow soon label={tt("Tampilkan Lanjutkan Dengerin", "Show Jump Back In")} checked={settings.showJumpBackIn !== false} onChange={set("showJumpBackIn")} />
-        <ToggleRow soon label={tt("Tampilkan Pilihan Editor", "Show Editor's Picks")} checked={!!settings.showEditorsPicks} onChange={set("showEditorsPicks")} />
-        <ToggleRow soon label={tt("Acak urutan Pilihan Editor", "Shuffle Editor's Picks")} checked={!!settings.shuffleEditorsPicks} onChange={set("shuffleEditorsPicks")} />
-        <SelectRow soon label={tt("Sumber Pilihan Editor", "Editor's Picks Source")} value={settings.editorsPicksSource || "current"} onChange={set("editorsPicksSource")}
+        <ToggleRow label={tt("Tampilkan lagu rekomendasi", "Show Recommended Songs")} checked={settings.showRecommendedSongs !== false} onChange={set("showRecommendedSongs")} />
+        <ToggleRow label={tt("Tampilkan album rekomendasi", "Show Recommended Albums")} checked={settings.showRecommendedAlbums !== false} onChange={set("showRecommendedAlbums")} />
+        <ToggleRow label={tt("Tampilkan artist rekomendasi", "Show Recommended Artists")} checked={settings.showRecommendedArtists !== false} onChange={set("showRecommendedArtists")} />
+        <ToggleRow label={tt("Tampilkan Lanjutkan Dengerin", "Show Jump Back In")} checked={settings.showJumpBackIn !== false} onChange={set("showJumpBackIn")} />
+        <ToggleRow label={tt("Tampilkan Pilihan Editor", "Show Editor's Picks")} checked={!!settings.showEditorsPicks} onChange={set("showEditorsPicks")} />
+        <ToggleRow label={tt("Acak urutan Pilihan Editor", "Shuffle Editor's Picks")} checked={!!settings.shuffleEditorsPicks} onChange={set("shuffleEditorsPicks")} />
+        <SelectRow label={tt("Sumber Pilihan Editor", "Editor's Picks Source")} value={settings.editorsPicksSource || "current"} onChange={set("editorsPicksSource")}
           options={[{ value: "current", label: tt("Utama", "Current") }, { value: "alt", label: tt("Alternatif", "Alternative") }]} />
       </SettingSection>
     </>
@@ -612,9 +612,9 @@ export function SettingsPage() {
   const renderInterface = () => (
     <>
       <SettingSection title={tt("Tata Letak", "Layout")}>
-        <ToggleRow soon label={tt("Artist ringkas", "Compact Artists")} hint={tt("Kartu artist lebih padat & horizontal", "Artist cards in a compact, horizontal layout")} checked={!!settings.compactArtists} onChange={set("compactArtists")} />
-        <ToggleRow soon label={tt("Banner artist", "Artist Banners")} hint={tt("Banner video di halaman artist", "Video banners on artist pages")} checked={!!settings.artistBanners} onChange={set("artistBanners")} />
-        <ToggleRow soon label={tt("Album ringkas", "Compact Albums")} checked={!!settings.compactAlbums} onChange={set("compactAlbums")} />
+        <ToggleRow label={tt("Artist ringkas", "Compact Artists")} hint={tt("Kartu artist lebih padat & horizontal", "Artist cards in a compact, horizontal layout")} checked={!!settings.compactArtists} onChange={set("compactArtists")} />
+        <ToggleRow label={tt("Banner artist", "Artist Banners")} hint={tt("Tampilkan banner di halaman artist", "Show the banner image on artist pages")} checked={settings.artistBanners !== false} onChange={set("artistBanners")} />
+        <ToggleRow label={tt("Album ringkas", "Compact Albums")} checked={!!settings.compactAlbums} onChange={set("compactAlbums")} />
         <ToggleRow label={tt("Baris lebih rapat", "Denser rows")} hint={tt("Bikin daftar lagu lebih padat", "Make song lists more compact")} checked={!!settings.compactRows} onChange={set("compactRows")} />
       </SettingSection>
 
@@ -627,26 +627,26 @@ export function SettingsPage() {
       </SettingSection>
 
       <SettingSection title={tt("Navigasi Samping — Bawah", "Sidebar Bottom Section")}>
-        <ToggleRow soon label={tt("Tautan Tentang", "About link")} checked={!!settings.showSideAbout} onChange={set("showSideAbout")} />
-        <ToggleRow soon label="Discord" checked={!!settings.showSideDiscord} onChange={set("showSideDiscord")} />
-        <ToggleRow soon label="GitHub" checked={!!settings.showSideGithub} onChange={set("showSideGithub")} />
-        <ToggleRow soon label={tt("Pengingat donasi", "Donation Reminders")} hint={tt("Kadang muncul notifikasi ajakan dukung Cosmicx", "Occasionally show a notification inviting you to support Cosmicx")} checked={!!settings.donationReminders} onChange={set("donationReminders")} />
+        <ToggleRow label={tt("Tautan Tentang", "About link")} checked={!!settings.showSideAbout} onChange={set("showSideAbout")} />
+        <ToggleRow label="Discord" checked={!!settings.showSideDiscord} onChange={set("showSideDiscord")} />
+        <ToggleRow label="GitHub" checked={!!settings.showSideGithub} onChange={set("showSideGithub")} />
+        <ToggleRow label={tt("Pengingat donasi", "Donation Reminders")} hint={tt("Kadang muncul notifikasi ajakan dukung Cosmicx", "Occasionally show a notification inviting you to support Cosmicx")} checked={!!settings.donationReminders} onChange={set("donationReminders")} />
       </SettingSection>
 
       <SettingSection title={tt("Perilaku Navigasi", "Navigation Behavior")}>
-        <ToggleRow soon label={tt("Tutup modal saat pindah halaman", "Close Modals on Navigation")} hint={tt("Panel terbuka (lirik, antrean) ditutup saat navigasi", "Open modals/panels close when navigating")} checked={!!settings.closeModalsOnNavigation} onChange={set("closeModalsOnNavigation")} />
-        <ToggleRow soon label={tt("Tombol back tutup modal dulu", "Intercept Back to Close Modals")} hint={tt("Tekan back: modal ditutup dulu, tekan lagi baru pindah halaman", "Pressing back closes modals first without navigating")} checked={!!settings.interceptBackToCloseModals} onChange={set("interceptBackToCloseModals")} />
+        <ToggleRow label={tt("Tutup modal saat pindah halaman", "Close Modals on Navigation")} hint={tt("Panel terbuka (lirik, antrean) ditutup saat navigasi", "Open modals/panels close when navigating")} checked={!!settings.closeModalsOnNavigation} onChange={set("closeModalsOnNavigation")} />
+        <ToggleRow label={tt("Tombol back tutup modal dulu", "Intercept Back to Close Modals")} hint={tt("Tekan back: modal ditutup dulu, tekan lagi baru pindah halaman", "Pressing back closes modals first without navigating")} checked={!!settings.interceptBackToCloseModals} onChange={set("interceptBackToCloseModals")} />
       </SettingSection>
 
       <SettingSection title={tt("Layar Penuh & Now Playing", "Fullscreen & Now Playing")}>
-        <SelectRow soon label={tt("Tampilan klik sampul mini", "Now Playing View Mode")} hint={tt("Yang muncul saat sampul kecil diklik", "What appears when clicking the small album art")}
+        <SelectRow label={tt("Tampilan klik sampul mini", "Now Playing View Mode")} hint={tt("Yang muncul saat sampul kecil diklik", "What appears when clicking the small album art")}
           value={settings.nowPlayingView || "album"} onChange={set("nowPlayingView")}
           options={[
             { value: "album", label: tt("Ke halaman album", "Go to Album") },
             { value: "fullscreen", label: tt("Mode layar penuh", "Fullscreen Mode") },
             { value: "lyrics", label: tt("Panel lirik", "Lyrics Panel") },
           ]} />
-        <SelectRow soon label={tt("Aksi klik sampul layar penuh", "Fullscreen Cover Click Action")}
+        <SelectRow label={tt("Aksi klik sampul layar penuh", "Fullscreen Cover Click Action")}
           value={settings.fullscreenCoverClick || "exit"} onChange={set("fullscreenCoverClick")}
           options={[
             { value: "exit", label: tt("Keluar layar penuh", "Exit fullscreen mode") },

@@ -141,7 +141,19 @@ export function HomePage() {
 
   const hotTracks = useDiscoverRow("hot-new-tracks", 12, "track", homeTab === "hot");
   const hotAlbums = useDiscoverRow("hot-new-albums", 24, "album", homeTab === "hot");
-  const pickAlbums = useDiscoverRow("editors-pick-" + new Date().toDateString(), 24, "album", homeTab === "picks");
+  const showEditorsPicks = !!settings.showEditorsPicks;
+  const picksSeedBase = settings.editorsPicksSource === "alt" ? "editors-pick-alt-" : "editors-pick-";
+  const pickAlbumsRaw = useDiscoverRow(picksSeedBase + new Date().toDateString(), 24, "album", homeTab === "picks" && showEditorsPicks);
+  const pickAlbums = useMemo(() => {
+    if (!pickAlbumsRaw) return pickAlbumsRaw;
+    if (!settings.shuffleEditorsPicks) return pickAlbumsRaw;
+    const arr = [...pickAlbumsRaw];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [pickAlbumsRaw, settings.shuffleEditorsPicks]);
   const aotyAlbums = useDiscoverRow("aoty-" + new Date().getFullYear(), 24, "album", homeTab === "aoty");
 
   const bgCover = currentTrack?.cover || (!nothingPlayed && playedHistory[0]?.cover) || null;
@@ -174,6 +186,8 @@ export function HomePage() {
 
   useEffect(() => { loadMore(); }, []);
 
+  useEffect(() => { if (homeTab === "picks" && !showEditorsPicks) setHomeTab("home"); }, [homeTab, showEditorsPicks]);
+
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -196,7 +210,7 @@ export function HomePage() {
       {bgCover && <div className="aivy-home-bg" style={{ backgroundImage: `url(${bgCover})` }} aria-hidden="true" />}
       <div className="aivy-home-inner">
         <div className="aivy-home-tabs">
-          {[["home", t("tabHome")], ["hot", t("tabHotNew")], ["picks", t("tabEditorsPicks")], ["aoty", t("tabAoty")]].map(([id, label]) => (
+          {[["home", t("tabHome")], ["hot", t("tabHotNew")], ...(showEditorsPicks ? [["picks", t("tabEditorsPicks")]] : []), ["aoty", t("tabAoty")]].map(([id, label]) => (
             <button key={id} className={homeTab === id ? "active" : ""} onClick={() => setHomeTab(id)}>{label}</button>
           ))}
         </div>
@@ -210,41 +224,47 @@ export function HomePage() {
               </div>
             )}
 
-            <section className="aivy-section" style={{ marginTop: 0 }}>
-              <div className="aivy-section-head">
-                <div className="aivy-home-head-left">
-                  <h2 className="aivy-section-title">{t("recoSongs")}</h2>
-                  {trendingTracks.length > 0 && (
-                    <button className="aivy-chip" onClick={startRadio}>
-                      <Play size={11} /> {t("startInfiniteRadio")}
-                    </button>
-                  )}
+            {settings.showRecommendedSongs !== false && (
+              <section className="aivy-section" style={{ marginTop: 0 }}>
+                <div className="aivy-section-head">
+                  <div className="aivy-home-head-left">
+                    <h2 className="aivy-section-title">{t("recoSongs")}</h2>
+                    {trendingTracks.length > 0 && (
+                      <button className="aivy-chip" onClick={startRadio}>
+                        <Play size={11} /> {t("startInfiniteRadio")}
+                      </button>
+                    )}
+                  </div>
+                  <button className="aivy-icon-btn bare" onClick={() => setTrendingSeed("trending-" + Date.now())} aria-label="Refresh" title="Refresh">
+                    <RefreshCw size={15} />
+                  </button>
                 </div>
-                <button className="aivy-icon-btn bare" onClick={() => setTrendingSeed("trending-" + Date.now())} aria-label="Refresh" title="Refresh">
-                  <RefreshCw size={15} />
-                </button>
-              </div>
-              <div className="aivy-songlist-grid">
-                {trending === null
-                  ? <SkeletonSongGrid count={6} />
-                  : trendingTracks.map((tr) => <SongListRow key={tr.id} track={tr} list={trendingTracks} />)}
-              </div>
-            </section>
+                <div className="aivy-songlist-grid">
+                  {trending === null
+                    ? <SkeletonSongGrid count={6} />
+                    : trendingTracks.map((tr) => <SongListRow key={tr.id} track={tr} list={trendingTracks} />)}
+                </div>
+              </section>
+            )}
 
-            <Row
-              title={t("recoAlbums")}
-              items={fresh === null ? null : freshAlbums}
-              action={
-                <button className="aivy-icon-btn bare" onClick={() => setAlbumSeed("fresh-" + Date.now())} aria-label="Refresh" title="Refresh">
-                  <RefreshCw size={15} />
-                </button>
-              }
-              render={(a) => <CardAlbum key={a.id} album={a} />}
-            />
+            {settings.showRecommendedAlbums !== false && (
+              <Row
+                title={t("recoAlbums")}
+                items={fresh === null ? null : freshAlbums}
+                action={
+                  <button className="aivy-icon-btn bare" onClick={() => setAlbumSeed("fresh-" + Date.now())} aria-label="Refresh" title="Refresh">
+                    <RefreshCw size={15} />
+                  </button>
+                }
+                render={(a) => <CardAlbum key={a.id} album={a} />}
+              />
+            )}
 
-            <Row title={t("recoArtists")} items={moodCalm === null ? null : artists} render={(a) => <CardArtist key={a.id} artist={a} />} />
+            {settings.showRecommendedArtists !== false && (
+              <Row title={t("recoArtists")} items={moodCalm === null ? null : artists} render={(a) => <CardArtist key={a.id} artist={a} />} />
+            )}
 
-            {playedHistory === null || playedHistory.length > 0 ? (
+            {settings.showJumpBackIn !== false && (playedHistory === null || playedHistory.length > 0) ? (
               <Row scroll title={t("rowContinueListening")} items={playedHistory === null ? null : playedHistory.slice(0, 12)} render={(tr) => <CardTrack key={tr.id} track={tr} list={playedHistory} />} />
             ) : null}
 
@@ -290,7 +310,7 @@ export function HomePage() {
           </>
         )}
 
-        {homeTab === "picks" && (
+        {homeTab === "picks" && showEditorsPicks && (
           <Row title={t("tabEditorsPicks")} items={pickAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
         )}
 

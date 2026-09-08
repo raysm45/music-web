@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { MaintenancePage } from "./pages/MaintenancePage.jsx";
 import { ServerDownPage } from "./pages/ServerDownPage.jsx";
 import { useBackendHealth } from "./lib/health.js";
@@ -50,11 +50,38 @@ const PAGE_BY_ROUTE = {
 
 function AppInner() {
   const { name, params } = useRouter();
-  const { authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek, mobileQueueOpen, openMobileQueue, closeMobileQueue } = useUI();
+  const {
+    authChecked, authUser, sidebarWidth, sidebarCollapsed, rightPanelWidth, rightPanelCollapsed, rightPanelPeek,
+    mobileQueueOpen, openMobileQueue, closeMobileQueue, lyricsOpen, closeLyrics, sidebarQueueOpen, closeSidebarQueue, settings,
+  } = useUI();
   const { currentTrack } = usePlayer();
   const isMobile = useIsMobile(860);
   const isPanelCompact = useIsMobile(1240);
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
+
+  const anyModalOpen = nowPlayingOpen || mobileQueueOpen || lyricsOpen || !!sidebarQueueOpen;
+  const closeAllModals = () => { setNowPlayingOpen(false); closeMobileQueue(); closeLyrics(); if (closeSidebarQueue) closeSidebarQueue(); };
+
+  const prevNameRef = useRef(name);
+  useEffect(() => {
+    if (settings.closeModalsOnNavigation && prevNameRef.current !== name) closeAllModals();
+    prevNameRef.current = name;
+  }, [name, settings.closeModalsOnNavigation]);
+
+  const modalOpenRef = useRef(anyModalOpen);
+  useEffect(() => { modalOpenRef.current = anyModalOpen; }, [anyModalOpen]);
+
+  useEffect(() => {
+    if (!settings.interceptBackToCloseModals) return undefined;
+    if (anyModalOpen) window.history.pushState({ aivyModal: true }, "");
+  }, [anyModalOpen, settings.interceptBackToCloseModals]);
+
+  useEffect(() => {
+    if (!settings.interceptBackToCloseModals) return undefined;
+    const onPop = () => { if (modalOpenRef.current) closeAllModals(); };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [settings.interceptBackToCloseModals]);
 
   if (!authChecked) return <div className="aivy-boot"><ViewLoading /></div>;
   if (name === "landing") return <LandingPage />;
@@ -86,14 +113,14 @@ function AppInner() {
           <ErrorBoundary key={name + JSON.stringify(params)}><Page /></ErrorBoundary>
         </div>
       </main>
-      {!isMobile && <PlayerBar />}
+      {!isMobile && <PlayerBar onOpenNowPlaying={() => setNowPlayingOpen(true)} />}
       {!isMobile && <RightPanel />}
 
       {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
       {isMobile && <LyricsPrefetch />}
       {isMobile && !isImmersiveShorts && <MobileTabBar />}
       { }
-      {isMobile && <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} />}
+      <NowPlayingSheet open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} onOpenQueue={() => { setNowPlayingOpen(false); openMobileQueue(); }} />
       {isMobile && <QueueSheet open={mobileQueueOpen} onClose={closeMobileQueue} />}
 
       <AddToPlaylistModal />

@@ -147,6 +147,9 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-nav-item.active{ background: var(--bg-elev-2); color: var(--ink); }
 
 .aivy-side-section{ margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line-soft); flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.aivy-side-links{ display: flex; flex-direction: column; gap: 2px; padding: 8px 4px 0; }
+.aivy-side-link{ display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; font-size: 12.5px; color: var(--ink-dim); text-decoration: none; }
+.aivy-side-link:hover{ background: var(--bg-elev-2); color: var(--ink); }
 .aivy-side-section .eyebrow{ padding: 0 12px 8px; }
 .aivy-playlist-list{ overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; }
 .aivy-playlist-row{ display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: var(--radius-sm); min-width: 0; color: var(--ink-dim); font-size: 13.5px; }
@@ -249,6 +252,14 @@ body.aivy-resizing *{ user-select: none !important; }
 @media (max-width: 480px){ .aivy-grid{ grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; } .aivy-section-title{ font-size: 1.25rem; } }
 
 .aivy-card{ width: 100%; min-width: 0; background: var(--bg-elev); padding: 12px; border-radius: 8px; border: 1px solid transparent; position: relative; cursor: pointer; transition: transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease), background var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease); }
+.aivy-card.is-compact{ padding: 8px; }
+.aivy-card.is-compact .art-wrap{ margin-bottom: 8px; }
+.aivy-card.is-compact .title{ font-size: 12.5px; }
+.aivy-card.is-row{ display: flex; flex-direction: row; align-items: center; gap: 10px; width: auto; }
+.aivy-card.is-row .art-wrap{ margin-bottom: 0; flex-shrink: 0; width: 44px; height: 44px; }
+.aivy-card.is-row .row-meta{ min-width: 0; }
+.aivy-card.is-row .row-meta .title{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aivy-card.is-row .row-meta .sub{ font-size: 11px; color: var(--ink-faint); }
 .aivy-card:hover{ background: var(--bg-elev-2); transform: translateY(-6px); box-shadow: 0 10px 15px -3px rgba(0,0,0,.12), 0 4px 6px -4px rgba(0,0,0,.12); border-color: var(--line); }
 .aivy-card .art-wrap{ position: relative; margin-bottom: 12px; border-radius: 8px; overflow: hidden; aspect-ratio: 1; box-shadow: 0 4px 6px -1px rgba(0,0,0,.14), 0 2px 4px -2px rgba(0,0,0,.14); transition: box-shadow var(--dur-base) var(--ease); }
 .aivy-card:hover .art-wrap{ box-shadow: 0 20px 25px -5px rgba(0,0,0,.22), 0 8px 10px -6px rgba(0,0,0,.22); }
@@ -352,6 +363,12 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-scrubber:hover .thumb, .aivy-scrubber.dragging .thumb{ opacity: 1; transform: translate(-50%,-50%) scale(1); }
 .aivy-scrubber.is-loading{ cursor: default; }
 .aivy-scrubber.is-loading .track{ background: var(--bg-elev-3); overflow: hidden; }
+.aivy-scrubber.has-waveform .track{ background: transparent; overflow: hidden; }
+.aivy-scrubber.has-waveform .fill{ overflow: hidden; background: transparent; }
+.aivy-waveform{ position: absolute; inset: 0; display: flex; align-items: center; gap: 1.5px; pointer-events: none; }
+.aivy-waveform span{ flex: 1; min-width: 1px; border-radius: 2px; background: var(--ink-faint); }
+.aivy-waveform.wave-fg span{ background: var(--sheet-ink, var(--moss-strong)); }
+.aivy-scrubber .fill .aivy-waveform.wave-fg{ position: absolute; left: 0; top: 0; bottom: 0; }
 
 @keyframes aivy-shine{ 0%{ transform: translateX(-100%); } 100%{ transform: translateX(100%); } }
 .skeleton-shine{ position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg-elev-3); }
@@ -589,6 +606,10 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 .aivy-sheet-bg::after{ content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%); }
 .aivy-sheet-head{ position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top,0px)) 18px 6px; flex-shrink: 0; color: var(--sheet-ink); touch-action: none; }
+.aivy-sheet.is-ui-hidden .aivy-sheet-head,
+.aivy-sheet.is-ui-hidden .npx-metarow,
+.aivy-sheet.is-ui-hidden .npx-top-controls{ opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+.aivy-sheet .npx-metarow, .aivy-sheet .npx-top-controls, .aivy-sheet .aivy-sheet-head{ transition: opacity .25s ease; }
 .aivy-sheet-head-actions{ display: flex; align-items: center; gap: 4px; }
 .aivy-sheet-body{ position: relative; z-index: 2; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; align-items: center; padding: 6px 26px calc(28px + var(--safe-b)); color: var(--sheet-ink); }
 /* ---- Morphing hero: cover + title/artist shared between "player" and
@@ -598,7 +619,26 @@ body.aivy-resizing *{ user-select: none !important; }
    rules only need to describe each state correctly, not how to tween
    between them. */
 .npx-hero{ display: flex; flex-direction: column; align-items: center; width: 100%; position: relative; z-index: 2; }
-.npx-cover{ width: min(78vw, 320px); aspect-ratio: 1; border-radius: var(--radius-lg); overflow: hidden; margin: 10px 0 20px; flex-shrink: 0; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.npx-cover{ width: min(78vw, 320px); aspect-ratio: 1; border-radius: var(--radius-lg); overflow: hidden; margin: 10px 0 20px; flex-shrink: 0; box-shadow: 0 24px 60px rgba(0,0,0,.5); position: relative; transform-style: preserve-3d; }
+.npx-cover.no-round{ border-radius: 4px; }
+.npx-cover.has-tilt{ will-change: transform; }
+.npx-cover.cd-spin{ border-radius: 50%; }
+.npx-cover.cd-spin img, .npx-cover.cd-spin > *{ border-radius: 50%; }
+.npx-cover.cd-spin::after{ content: ""; position: absolute; inset: 0; margin: auto; width: 14%; height: 14%; border-radius: 50%; background: var(--bg, #16180f); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); z-index: 3; }
+.aivy-player .npx-cover.cd-spin, .aivy-player-cover.cd-spin{ animation: aivy-cd-spin 6s linear infinite; }
+.aivy-sheet:not(.is-spinning) .npx-cover.cd-spin{ animation-play-state: paused; }
+.npx-cover.cd-spin{ animation: aivy-cd-spin 6s linear infinite; animation-play-state: paused; }
+.aivy-sheet.is-playing .npx-cover.cd-spin{ animation-play-state: running; }
+@keyframes aivy-cd-spin{ from{ transform: rotate(0deg); } to{ transform: rotate(360deg); } }
+.aivy-player-cover{ position: relative; display: inline-flex; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+.aivy-player-cover.no-round{ border-radius: 4px; }
+.aivy-player-cover.cd-spin{ border-radius: 50%; animation-play-state: paused; }
+.aivy-player-cover.cd-spin img{ border-radius: 50%; }
+.aivy-player.is-playing .aivy-player-cover.cd-spin{ animation-play-state: running; }
+.npx-cover-visualizer{ position: absolute; inset: 0; z-index: 1; opacity: .85; mix-blend-mode: screen; pointer-events: none; }
+.aivy-sheet-visualizer{ position: absolute; inset: 0; z-index: 0; opacity: .9; pointer-events: none; }
+.aivy-visualizer-canvas{ width: 100%; height: 100%; display: block; }
+.aivy-visualizer-canvas.blended{ background: transparent; }
 .npx-metarow{ width: 100%; text-align: left; margin-bottom: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .npx-titles{ min-width: 0; }
 .npx-titles .t{ font-family: var(--font-display); font-size: clamp(19px, 5vw, 24px); font-weight: 600; line-height: 1.2; color: var(--sheet-ink); }
