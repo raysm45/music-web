@@ -226,6 +226,10 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-icon-btn-outline{ width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--ink); flex-shrink: 0; transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
 .aivy-icon-btn-outline:hover{ background: var(--bg-elev-2); border-color: var(--ink-faint); transform: scale(1.05); }
 .aivy-icon-btn-outline:active{ transform: scale(0.96); }
+.aivy-icon-btn-solid{ width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; color: var(--ink); background: var(--bg-elev-2); flex-shrink: 0; transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+.aivy-icon-btn-solid:hover{ background: var(--bg-elev-3); transform: scale(1.05); }
+.aivy-icon-btn-solid:active{ transform: scale(0.96); }
+.aivy-icon-btn-solid.active{ background: var(--moss-strong); color: var(--moss-ink); }
 .aivy-playlist-visibility{ display: inline-flex; align-items: center; gap: 4px; }
 .aivy-check-row{ display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-dim); padding: 4px 2px 10px; cursor: pointer; }
 
@@ -339,6 +343,9 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-play-btn:active{ transform: scale(0.9); background: none; }
 .aivy-play-btn svg{ margin-left: 1px; }
 .aivy-play-btn:disabled{ opacity: .4; }
+.aivy-play-btn.is-hero{ background: var(--moss-strong); color: var(--moss-ink); box-shadow: 0 6px 18px -4px color-mix(in srgb, var(--moss-strong) 60%, transparent); }
+.aivy-play-btn.is-hero:hover{ background: var(--moss-strong); transform: scale(1.06); }
+.aivy-play-btn.is-hero:active{ background: var(--moss-strong); transform: scale(0.94); }
 
 .aivy-scrubber-row{ display: flex; align-items: center; gap: 9px; width: 100%; }
 .aivy-time{ font-family: var(--font-body); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 11px; color: var(--ink-faint); width: 34px; flex-shrink: 0; }

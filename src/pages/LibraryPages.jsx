@@ -89,7 +89,7 @@ export function LikedPage() {
       </div>
       {likedTracks === null ? null : likedTracks.length > 0 ? (
         <>
-          <div className="aivy-hero-actions"><button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(likedTracks, 0, { type: "library", label: t("navLikedSongs") })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button></div>
+          <div className="aivy-hero-actions"><button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => playList(likedTracks, 0, { type: "library", label: t("navLikedSongs") })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button></div>
           <div>{likedTracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={likedTracks} showAlbum onRemove={() => handleUnlike(tr)} removeLabel={t("menuRemoveLiked")} queueMode="context" source={{ type: "library", label: t("navLikedSongs") }} />)}</div>
         </>
       ) : (
@@ -249,16 +249,10 @@ export function PlaylistPage() {
   const searchRef = React.useRef(null);
   const pl = playlists.find((p) => String(p.id) === String(params.id));
   const [displaySongs, setDisplaySongs] = React.useState(pl?.songs || []);
-  const prevShuffleRef = React.useRef(shuffle);
-
-  React.useEffect(() => { setDisplaySongs(pl?.songs || []); }, [pl?.id]);
 
   React.useEffect(() => {
-    if (prevShuffleRef.current === shuffle) return;
-    prevShuffleRef.current = shuffle;
-    if (!pl?.songs) return;
-    setDisplaySongs(shuffle ? shuffleArray(pl.songs) : pl.songs);
-  }, [shuffle, pl?.songs]);
+    setDisplaySongs(shuffle ? shuffleArray(pl?.songs || []) : (pl?.songs || []));
+  }, [pl?.songs, shuffle]);
 
   React.useEffect(() => {
     if (!params.id) return;
@@ -314,18 +308,19 @@ export function PlaylistPage() {
       </div>
       <div className="aivy-hero-actions">
         {isOwner && (
-          <button className="aivy-icon-btn-outline" onClick={() => setEditOpen(true)} aria-label={t("editPlaylistBtn")} title={t("editPlaylistBtn")}>
+          <button className="aivy-icon-btn-solid" onClick={() => setEditOpen(true)} aria-label={t("editPlaylistBtn")} title={t("editPlaylistBtn")}>
             <Pencil size={16} />
           </button>
         )}
-        {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
+        {pl.songs?.length > 0 && <button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
         {pl.songs?.length > 0 && (
-          <button className={`aivy-icon-btn-outline ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} title={t("shuffle")}>
+          <button className={`aivy-icon-btn-solid ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} title={t("shuffle")}>
             <Shuffle size={18} />
           </button>
         )}
         <button
-          className="aivy-icon-btn-outline"
+          className="aivy-icon-btn"
+          style={{ width: 40, height: 40 }}
           aria-label={t("playlistMenuLabel")}
           title={t("playlistMenuLabel")}
           onClick={(e) => {

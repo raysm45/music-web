@@ -47,7 +47,7 @@ export function ArtistPage() {
         </div>
       </div>
       <div className="aivy-hero-actions">
-        <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => topTracks.length && playList(topTracks, 0)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>
+        <button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => topTracks.length && playList(topTracks, 0)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>
         <button className={following ? "aivy-chip active" : "aivy-btn-ghost"} onClick={() => { setFollowing((f) => !f); pushToast(following ? `${t("unfollowedToast")} ${artist.name}` : `${t("followedToast")} ${artist.name}`); }}>
           {following ? <><Check size={14} /> {t("following")}</> : t("follow")}
         </button>
@@ -93,15 +93,10 @@ export function AlbumPage() {
   const albumTracks = useMemo(() => filterExplicit(album?.tracks, settings) || [], [album, settings]);
   const totalMin = Math.round(albumTracks.reduce((s, tr) => s + (tr.duration || 0), 0) / 60);
   const [displayTracks, setDisplayTracks] = useState(albumTracks);
-  const prevShuffleRef = React.useRef(shuffle);
-
-  useEffect(() => { setDisplayTracks(albumTracks); }, [album?.id]);
 
   useEffect(() => {
-    if (prevShuffleRef.current === shuffle) return;
-    prevShuffleRef.current = shuffle;
     setDisplayTracks(shuffle ? shuffleArray(albumTracks) : albumTracks);
-  }, [shuffle, albumTracks]);
+  }, [albumTracks, shuffle]);
 
   if (loading) return <SkeletonHeroPage rows={7} />;
   if (!album) return <ViewNotFound label={t("albumLabel")} />;
@@ -121,8 +116,8 @@ export function AlbumPage() {
         </div>
       </div>
       <div className="aivy-hero-actions">
-        <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(albumTracks, 0)} aria-label={t("playAlbum")}><Play size={22} fill="currentColor" /></button>
-        <button className={`aivy-icon-btn ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} title={t("shuffle")}><Shuffle size={18} /></button>
+        <button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => playList(albumTracks, 0)} aria-label={t("playAlbum")}><Play size={22} fill="currentColor" /></button>
+        <button className={`aivy-icon-btn-solid ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} title={t("shuffle")}><Shuffle size={18} /></button>
       </div>
       <FlipList
         items={displayTracks}
