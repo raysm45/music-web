@@ -558,6 +558,79 @@ export function CardTrack({ track, list }) {
   );
 }
 
+export function shuffleArray(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+export function FlipList({ items, getKey, renderItem, className, as: Tag = "div" }) {
+  const containerRef = useRef(null);
+  const prevRectsRef = useRef(new Map());
+  const firstRef = useRef(true);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const nodes = Array.from(container.children);
+    const newRects = new Map();
+    nodes.forEach((node) => {
+      const k = node.getAttribute("data-flip-key");
+      if (k != null) newRects.set(k, node.getBoundingClientRect());
+    });
+
+    if (!firstRef.current) {
+      let moved = 0;
+      nodes.forEach((node) => {
+        const k = node.getAttribute("data-flip-key");
+        const oldRect = prevRectsRef.current.get(k);
+        const newRect = newRects.get(k);
+        if (oldRect && newRect) {
+          const dx = oldRect.left - newRect.left;
+          const dy = oldRect.top - newRect.top;
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            const delay = Math.min(moved * 9, 160);
+            node.style.position = "relative";
+            node.style.zIndex = "2";
+            node.style.transition = "none";
+            node.style.transform = `translate(${dx}px, ${dy}px)`;
+            // eslint-disable-next-line no-unused-expressions
+            node.offsetHeight; // force reflow
+            requestAnimationFrame(() => {
+              node.style.transition = `transform 560ms cubic-bezier(.22,1,.36,1) ${delay}ms`;
+              node.style.transform = "translate(0, 0)";
+            });
+            const cleanup = () => {
+              node.style.transition = "";
+              node.style.transform = "";
+              node.style.zIndex = "";
+              node.style.position = "";
+              node.removeEventListener("transitionend", cleanup);
+            };
+            node.addEventListener("transitionend", cleanup);
+            moved++;
+          }
+        }
+      });
+    }
+    prevRectsRef.current = newRects;
+    firstRef.current = false;
+  }, [items, getKey]);
+
+  return (
+    <Tag ref={containerRef} className={className}>
+      {items.map((item, idx) => (
+        <div key={getKey(item)} data-flip-key={String(getKey(item))}>
+          {renderItem(item, idx)}
+        </div>
+      ))}
+    </Tag>
+  );
+}
+
 export function CardAlbum({ album }) {
   const { navigate } = useRouter();
   const { playList } = usePlayer();

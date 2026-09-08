@@ -3,7 +3,7 @@ import { Play, Shuffle, Check } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { TrackRow, CardAlbum, CardArtist, ViewNotFound, SkeletonHeroPage, filterExplicit } from "../components.jsx";
+import { TrackRow, CardAlbum, CardArtist, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
 export function ArtistPage() {
@@ -79,7 +79,7 @@ export function AlbumPage() {
   const { params } = useRouter();
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { playList, toggleShuffle } = usePlayer();
+  const { playList, toggleShuffle, shuffle } = usePlayer();
   const { navigate } = useRouter();
   const { t, settings } = useUI();
 
@@ -92,6 +92,16 @@ export function AlbumPage() {
 
   const albumTracks = useMemo(() => filterExplicit(album?.tracks, settings) || [], [album, settings]);
   const totalMin = Math.round(albumTracks.reduce((s, tr) => s + (tr.duration || 0), 0) / 60);
+  const [displayTracks, setDisplayTracks] = useState(albumTracks);
+  const prevShuffleRef = React.useRef(shuffle);
+
+  useEffect(() => { setDisplayTracks(albumTracks); }, [album?.id]);
+
+  useEffect(() => {
+    if (prevShuffleRef.current === shuffle) return;
+    prevShuffleRef.current = shuffle;
+    setDisplayTracks(shuffle ? shuffleArray(albumTracks) : albumTracks);
+  }, [shuffle, albumTracks]);
 
   if (loading) return <SkeletonHeroPage rows={7} />;
   if (!album) return <ViewNotFound label={t("albumLabel")} />;
@@ -112,9 +122,13 @@ export function AlbumPage() {
       </div>
       <div className="aivy-hero-actions">
         <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(albumTracks, 0)} aria-label={t("playAlbum")}><Play size={22} fill="currentColor" /></button>
-        <button className="aivy-icon-btn" onClick={() => { toggleShuffle(); playList(albumTracks, 0); }} aria-label={t("shufflePlay")}><Shuffle size={18} /></button>
+        <button className={`aivy-icon-btn ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} title={t("shuffle")}><Shuffle size={18} /></button>
       </div>
-      <div>{albumTracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={albumTracks} queueMode="context" />)}</div>
+      <FlipList
+        items={displayTracks}
+        getKey={(tr) => tr.id}
+        renderItem={(tr) => <TrackRow track={tr} index={albumTracks.indexOf(tr)} list={albumTracks} queueMode="context" />}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import React, { useMemo, useRef } from "react";
 import { Heart, Play, Library as LibraryIcon, Youtube, Music2, ListMusic, ArrowLeft, ArrowRight, Check, Loader2, ClipboardList, PlusCircle, ImagePlus, X, RotateCcw, Pencil, MoreHorizontal, Shuffle, Share2, Globe, Lock, Search, ListPlus, FolderSearch, Trash2, FolderOpen } from "lucide-react";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter, Link } from "../router.jsx";
-import { TrackRow, ViewNotFound, ConfirmDialog, CustomSelect } from "../components.jsx";
+import { TrackRow, ViewNotFound, ConfirmDialog, CustomSelect, FlipList, shuffleArray } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 import { Api } from "../lib/api.js";
 
@@ -238,7 +238,7 @@ function PlaylistEditModal({ pl, onClose }) {
 
 export function PlaylistPage() {
   const { params } = useRouter();
-  const { playlists, playList, toggleShuffle, removeFromPlaylist, deletePlaylist, setPlaylistDetail, addAllToQueueEnd, playAllNext } = usePlayer();
+  const { playlists, playList, toggleShuffle, shuffle, removeFromPlaylist, deletePlaylist, setPlaylistDetail, addAllToQueueEnd, playAllNext } = usePlayer();
   const { navigate } = useRouter();
   const { openContextMenu, openAddToPlaylist, pushToast, authUser, t } = useUI();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -248,6 +248,17 @@ export function PlaylistPage() {
   const [query, setQuery] = React.useState("");
   const searchRef = React.useRef(null);
   const pl = playlists.find((p) => String(p.id) === String(params.id));
+  const [displaySongs, setDisplaySongs] = React.useState(pl?.songs || []);
+  const prevShuffleRef = React.useRef(shuffle);
+
+  React.useEffect(() => { setDisplaySongs(pl?.songs || []); }, [pl?.id]);
+
+  React.useEffect(() => {
+    if (prevShuffleRef.current === shuffle) return;
+    prevShuffleRef.current = shuffle;
+    if (!pl?.songs) return;
+    setDisplaySongs(shuffle ? shuffleArray(pl.songs) : pl.songs);
+  }, [shuffle, pl?.songs]);
 
   React.useEffect(() => {
     if (!params.id) return;
@@ -266,8 +277,8 @@ export function PlaylistPage() {
   const cover = pl.cover_thumbnail ?? pl.songs?.[0]?.cover ?? null;
   const q = query.trim().toLowerCase();
   const visibleSongs = q
-    ? (pl.songs || []).filter((s) => s.title?.toLowerCase().includes(q) || s.artist?.name?.toLowerCase().includes(q))
-    : pl.songs;
+    ? (displaySongs || []).filter((s) => s.title?.toLowerCase().includes(q) || s.artist?.name?.toLowerCase().includes(q))
+    : displaySongs;
 
   return (
     <div className="aivy-view-enter aivy-playlist-page">
@@ -308,6 +319,11 @@ export function PlaylistPage() {
           </button>
         )}
         {pl.songs?.length > 0 && <button className="aivy-play-btn" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
+        {pl.songs?.length > 0 && (
+          <button className={`aivy-icon-btn-outline ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} title={t("shuffle")}>
+            <Shuffle size={18} />
+          </button>
+        )}
         <button
           className="aivy-icon-btn-outline"
           aria-label={t("playlistMenuLabel")}
@@ -316,7 +332,6 @@ export function PlaylistPage() {
             const r = e.currentTarget.getBoundingClientRect();
             const hasSongs = pl.songs?.length > 0;
             openContextMenu(r.left, r.bottom + 6, [
-              ...(hasSongs ? [{ label: t("shufflePlayBtn"), icon: <Shuffle size={15} />, onSelect: () => { toggleShuffle(); playList(pl.songs, 0, { type: "library", label: pl.name }); } }] : []),
               ...(hasSongs ? [{ label: t("findInPlaylistBtn"), icon: <Search size={15} />, onSelect: () => setSearchOpen(true) }] : []),
               ...(hasSongs ? [{ label: t("playAfterThisBtn"), icon: <ListPlus size={15} />, onSelect: () => playAllNext(pl.songs) }] : []),
               ...(hasSongs ? [{ label: t("addToQueueBtn"), icon: <ListMusic size={15} />, onSelect: () => addAllToQueueEnd(pl.songs) }] : []),
@@ -359,7 +374,13 @@ export function PlaylistPage() {
       />
       {pl.songs?.length > 0 ? (
         visibleSongs.length > 0 ? (
-          <div>{visibleSongs.map((tr) => <TrackRow key={tr.id} track={tr} index={pl.songs.indexOf(tr)} list={pl.songs} showAlbum onRemove={isOwner ? () => removeFromPlaylist(pl.id, tr.id) : undefined} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} />)}</div>
+          <FlipList
+            items={visibleSongs}
+            getKey={(tr) => tr.id}
+            renderItem={(tr) => (
+              <TrackRow track={tr} index={pl.songs.indexOf(tr)} list={pl.songs} showAlbum onRemove={isOwner ? () => removeFromPlaylist(pl.id, tr.id) : undefined} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} />
+            )}
+          />
         ) : (
           <div className="aivy-empty"><div className="title">{t("findInPlaylistNoResults")}</div></div>
         )

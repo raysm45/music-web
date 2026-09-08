@@ -181,6 +181,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-icon-btn:hover{ color: var(--ink); background: none; }
 .aivy-icon-btn:active{ background: none; transform: scale(0.9); }
 .aivy-icon-btn.active{ color: var(--moss-strong); }
+.aivy-icon-btn-outline.active{ color: var(--moss-strong); border-color: var(--moss-strong); }
 .aivy-icon-btn.sm{ width: 28px; height: 28px; }
 .aivy-icon-btn:disabled{ opacity: .35; cursor: default; }
 .aivy-icon-btn:disabled:hover{ background: none; color: var(--ink-dim); }
