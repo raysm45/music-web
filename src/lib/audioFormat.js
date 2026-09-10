@@ -83,5 +83,5 @@ export function clearAudioFormatCache(url) {
 }
 
 export function getPreferredAudioQuality() {
-  return "compatible";
-    }
+  return "high";
+}
