@@ -470,7 +470,7 @@ export function filterExplicit(tracks, settings) {
   return tracks.filter((tr) => !tr?.explicit);
 }
 
-export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single", source = null, note = null }) {
+export function TrackRow({ track, index, list, showIndex = true, showAlbum = false, onRemove, removeLabel, queueMode = "single", source = null, note = null, shuffleOverride = null }) {
   const { currentTrack, isPlaying, togglePlay, playSingle, playList, playRadio, selectQueuePosition, liked, toggleLike } = usePlayer();
   const { openContextMenu, t } = useUI();
   const { navigate } = useRouter();
@@ -480,7 +480,7 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
 
   const handlePlay = () => {
     if (isCurrent) { togglePlay(); return; }
-    if (queueMode === "context" && list && list.length) { playList(list, index, source); return; }
+    if (queueMode === "context" && list && list.length) { playList(list, index, source, shuffleOverride); return; }
     if (queueMode === "radio") { playRadio(track, source); return; }
     if (queueMode === "queue") { selectQueuePosition(index); return; }
     playSingle(track, source);

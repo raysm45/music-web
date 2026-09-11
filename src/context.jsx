@@ -1022,7 +1022,7 @@ export function PlayerProvider({ children }) {
     return [startIndex, ...rest];
   }, []);
 
-  const playList = useCallback((rawList, startIndex = 0, source = null) => {
+  const playList = useCallback((rawList, startIndex = 0, source = null, shuffleOverride = null) => {
     resumeAudioCtx();
     const list = rawList.map(normalizeTrack).filter(Boolean);
     if (!list.length) return;
@@ -1033,13 +1033,15 @@ export function PlayerProvider({ children }) {
       socketRef.current?.emit("playback-control", { roomId: room.id, action: "select", payload: { index: baseIndex + safeStart } });
       return;
     }
+    const effectiveShuffle = shuffleOverride !== null ? shuffleOverride : shuffle;
     const safeStart = clamp(startIndex, 0, list.length - 1);
     setQueueList(list);
-    setOrder(buildOrder(list.length, safeStart, shuffle));
+    setOrder(buildOrder(list.length, safeStart, effectiveShuffle));
 
-    setPosInOrder(shuffle ? 0 : safeStart);
+    setPosInOrder(effectiveShuffle ? 0 : safeStart);
     setIsPlaying(true);
     setPlaySource(source);
+    if (shuffleOverride !== null && shuffleOverride !== shuffle) setShuffle(shuffleOverride);
     if (authUser && settings.historyEnabled !== false) {
       const t = list[clamp(startIndex, 0, list.length - 1)];
       Api.addHistory(t.videoId || t.id, { title: t.title, artistName: t.artist?.name || null, artists: trackArtists(t), thumbnail: t.cover, albumId: t.album?.id || null, albumTitle: t.album?.title || null, duration: t.duration }).catch(() => {});
@@ -1614,6 +1616,7 @@ export function PlayerProvider({ children }) {
     isPlaying, currentTime, duration: clipDuration, isPreviewClip, audioFormat, loadingAudio,
     volume, muted, shuffle, repeat, liked, playlists,
     playList, togglePlay, next, prev, seekRatio, seekTo, toggleShuffle, cycleRepeat,
+    setShuffle,
     setVolume, toggleMute, toggleLike, addToQueueEnd, playNextInQueue, addAllToQueueEnd, playAllNext,
     removeFromQueue, moveQueueItem, clearUpNext, selectQueuePosition,
     playSingle, playRadio, createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist, setPlaylistDetail, setPlaylistCover, updatePlaylistMeta, refreshPlaylists,

@@ -79,9 +79,10 @@ export function AlbumPage() {
   const { params } = useRouter();
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { playList, toggleShuffle, shuffle } = usePlayer();
+  const { playList } = usePlayer();
   const { navigate } = useRouter();
   const { t, settings } = useUI();
+  const [localShuffle, setLocalShuffle] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -95,8 +96,8 @@ export function AlbumPage() {
   const [displayTracks, setDisplayTracks] = useState(albumTracks);
 
   useEffect(() => {
-    setDisplayTracks(shuffle ? shuffleArray(albumTracks) : albumTracks);
-  }, [albumTracks, shuffle]);
+    setDisplayTracks(localShuffle ? shuffleArray(albumTracks) : albumTracks);
+  }, [albumTracks, localShuffle]);
 
   if (loading) return <SkeletonHeroPage rows={7} />;
   if (!album) return <ViewNotFound label={t("albumLabel")} />;
@@ -116,13 +117,13 @@ export function AlbumPage() {
         </div>
       </div>
       <div className="aivy-hero-actions">
-        <button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => playList(albumTracks, 0)} aria-label={t("playAlbum")}><Play size={22} fill="currentColor" /></button>
-        <button className={`aivy-icon-btn-solid ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} title={t("shuffle")}><Shuffle size={18} /></button>
+        <button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => playList(albumTracks, 0, null, localShuffle)} aria-label={t("playAlbum")}><Play size={22} fill="currentColor" /></button>
+        <button className={`aivy-icon-btn-solid ${localShuffle ? "active" : ""}`} onClick={() => setLocalShuffle((s) => !s)} aria-label={t("shuffle")} aria-pressed={localShuffle} title={t("shuffle")}><Shuffle size={18} /></button>
       </div>
       <FlipList
         items={displayTracks}
         getKey={(tr) => tr.id}
-        renderItem={(tr) => <TrackRow track={tr} index={albumTracks.indexOf(tr)} list={albumTracks} queueMode="context" />}
+        renderItem={(tr) => <TrackRow track={tr} index={albumTracks.indexOf(tr)} list={albumTracks} queueMode="context" shuffleOverride={localShuffle} />}
       />
     </div>
   );

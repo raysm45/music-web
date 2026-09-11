@@ -239,7 +239,7 @@ function PlaylistEditModal({ pl, onClose }) {
 
 export function PlaylistPage() {
   const { params } = useRouter();
-  const { playlists, playList, toggleShuffle, shuffle, removeFromPlaylist, deletePlaylist, setPlaylistDetail, addAllToQueueEnd, playAllNext } = usePlayer();
+  const { playlists, playList, removeFromPlaylist, deletePlaylist, setPlaylistDetail, addAllToQueueEnd, playAllNext } = usePlayer();
   const { navigate } = useRouter();
   const { openContextMenu, openAddToPlaylist, pushToast, authUser, t } = useUI();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -250,10 +250,11 @@ export function PlaylistPage() {
   const searchRef = React.useRef(null);
   const pl = playlists.find((p) => String(p.id) === String(params.id));
   const [displaySongs, setDisplaySongs] = React.useState(pl?.songs || []);
+  const [localShuffle, setLocalShuffle] = React.useState(false);
 
   React.useEffect(() => {
-    setDisplaySongs(shuffle ? shuffleArray(pl?.songs || []) : (pl?.songs || []));
-  }, [pl?.songs, shuffle]);
+    setDisplaySongs(localShuffle ? shuffleArray(pl?.songs || []) : (pl?.songs || []));
+  }, [pl?.songs, localShuffle]);
 
   React.useEffect(() => {
     if (!params.id) return;
@@ -313,9 +314,9 @@ export function PlaylistPage() {
             <Pencil size={16} />
           </button>
         )}
-        {pl.songs?.length > 0 && <button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name })} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
+        {pl.songs?.length > 0 && <button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => playList(pl.songs, 0, { type: "library", label: pl.name }, localShuffle)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>}
         {pl.songs?.length > 0 && (
-          <button className={`aivy-icon-btn-solid ${shuffle ? "active" : ""}`} onClick={toggleShuffle} aria-label={t("shuffle")} aria-pressed={shuffle} title={t("shuffle")}>
+          <button className={`aivy-icon-btn-solid ${localShuffle ? "active" : ""}`} onClick={() => setLocalShuffle((s) => !s)} aria-label={t("shuffle")} aria-pressed={localShuffle} title={t("shuffle")}>
             <Shuffle size={18} />
           </button>
         )}
@@ -374,7 +375,7 @@ export function PlaylistPage() {
             items={visibleSongs}
             getKey={(tr) => tr.id}
             renderItem={(tr) => (
-              <TrackRow track={tr} index={pl.songs.indexOf(tr)} list={pl.songs} showAlbum onRemove={isOwner ? () => removeFromPlaylist(pl.id, tr.id) : undefined} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} />
+              <TrackRow track={tr} index={pl.songs.indexOf(tr)} list={pl.songs} showAlbum onRemove={isOwner ? () => removeFromPlaylist(pl.id, tr.id) : undefined} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} shuffleOverride={localShuffle} />
             )}
           />
         ) : (
