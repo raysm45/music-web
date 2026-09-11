@@ -16,13 +16,13 @@ const THEME_SWATCHES = {
   black: ["#000000", "#ffffff", "#f2f2f0"],
   white: ["#ffffff", "#141414", "#141414"],
   dark: ["#12140f", "#ece8d9", "#ece8d9"],
-  ocean: ["#0b1220", "#4fa3e3", "#dfe9f5"],
-  purple: ["#13101e", "#a78bfa", "#eae4f6"],
-  forest: ["#0e1510", "#63b46a", "#e2ecdf"],
-  mocha: ["#1e1e2e", "#b4befe", "#cdd6f4"],
-  macchiato: ["#24273a", "#b7bdf8", "#cad3f5"],
-  frappe: ["#303446", "#ca9ee6", "#c6d0f5"],
-  latte: ["#eff1f5", "#7287fd", "#4c4f69"],
+  ocean: ["#0b1220", "#dfe9f5", "#dfe9f5"],
+  purple: ["#13101e", "#eae4f6", "#eae4f6"],
+  forest: ["#0e1510", "#e2ecdf", "#e2ecdf"],
+  mocha: ["#1e1e2e", "#cdd6f4", "#cdd6f4"],
+  macchiato: ["#24273a", "#cad3f5", "#cad3f5"],
+  frappe: ["#303446", "#c6d0f5", "#c6d0f5"],
+  latte: ["#eff1f5", "#4c4f69", "#4c4f69"],
 };
 
 const FONT_OPTIONS = [
