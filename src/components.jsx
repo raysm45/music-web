@@ -589,6 +589,16 @@ export function FlipList({ items, getKey, renderItem, className, as: Tag = "div"
     const container = containerRef.current;
     if (!container) return;
     const nodes = Array.from(container.children);
+
+    nodes.forEach((node) => {
+      const k = node.getAttribute("data-flip-key");
+      const prevAnim = animsRef.current.get(k);
+      if (prevAnim) {
+        prevAnim.cancel();
+        animsRef.current.delete(k);
+      }
+    });
+
     const newRects = new Map();
     nodes.forEach((node) => {
       const k = node.getAttribute("data-flip-key");
@@ -605,9 +615,6 @@ export function FlipList({ items, getKey, renderItem, className, as: Tag = "div"
         const dx = oldRect.left - newRect.left;
         const dy = oldRect.top - newRect.top;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
-
-        const prevAnim = animsRef.current.get(k);
-        if (prevAnim) prevAnim.cancel();
 
         const delay = Math.min(moved * 9, 160);
         const anim = node.animate(
