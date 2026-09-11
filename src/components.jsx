@@ -501,8 +501,19 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
       </button>
       <div className="meta" onClick={handlePlay} style={{ cursor: "pointer" }}>
         <span className="t">{track.explicit && <span className="aivy-explicit-badge" title="Explicit">E</span>}{track.title}</span>
-        <span className="a" onClick={(e) => { e.stopPropagation(); track.artist?.id && navigate("artist", { params: { id: track.artist.id } }); }}>
-          {track.artist?.name || "\u2014"}
+        <span className="a">
+          {(track.artists?.length ? track.artists : (track.artist ? [track.artist] : [])).map((a, i, arr) => (
+            <React.Fragment key={a.id || a.name || i}>
+              <span
+                onClick={(e) => { e.stopPropagation(); a.id && navigate("artist", { params: { id: a.id } }); }}
+                style={{ cursor: a.id ? "pointer" : "default" }}
+              >
+                {a.name}
+              </span>
+              {i < arr.length - 1 ? ", " : ""}
+            </React.Fragment>
+          ))}
+          {!track.artists?.length && !track.artist && "\u2014"}
         </span>
         {note && <span className="row-note">{note}</span>}
       </div>

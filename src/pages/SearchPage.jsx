@@ -249,14 +249,14 @@ export function SearchPage() {
   };
 
   const showBrowse = !query.trim() && !hasSearched;
-  const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.cover || r.thumbnail, duration: r.duration || null, artist: typeof r.artist === "string" ? { name: r.artist } : (r.artist || null), album: r.album || null } : r));
+  const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.cover || r.thumbnail, duration: r.duration || null, artist: typeof r.artist === "string" ? { name: r.artist } : (r.artist || null), artists: r.artists || null, album: r.album || null } : r));
 
   useEffect(() => {
     if (!results.length) { setLyricsMap({}); setCheckingLyrics(false); return; }
     let cancelled = false;
     setLyricsMap({});
     setCheckingLyrics(true);
-    const items = results.map((r) => (r.videoId ? { id: r.videoId, title: r.title, artist: typeof r.artist === "string" ? { name: r.artist } : (r.artist || null), duration: r.duration || null } : r));
+    const items = results.map((r) => (r.videoId ? { id: r.videoId, title: r.title, artist: typeof r.artist === "string" ? { name: r.artist } : (r.artist || null), artists: r.artists || null, duration: r.duration || null } : r));
     const found = {};
     const CONCURRENCY = 5;
     let cursor = 0;
