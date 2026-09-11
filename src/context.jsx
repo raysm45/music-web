@@ -492,6 +492,10 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     playbackSnapshotRef.current = { queueList, order, posInOrder, shuffle, repeat, volume, muted, playSource };
   }, [queueList, order, posInOrder, shuffle, repeat, volume, muted, playSource]);
+  const orderPosRef = useRef({ order, posInOrder });
+  useEffect(() => {
+    orderPosRef.current = { order, posInOrder };
+  }, [order, posInOrder]);
 
   const savePlaybackSnapshotNow = useCallback(() => {
     const snap = playbackSnapshotRef.current;
@@ -1276,13 +1280,17 @@ export function PlayerProvider({ children }) {
     setShuffle((s) => {
       const ns = !s;
       if (queueList.length) {
-        const curListIdx = order[posInOrder];
-        setOrder(buildOrder(queueList.length, curListIdx, ns));
-        setPosInOrder(0);
+        const { order: curOrder, posInOrder: curPos } = orderPosRef.current;
+        const curListIdx = curOrder[curPos];
+        const newOrder = buildOrder(queueList.length, curListIdx, ns);
+        const newPos = newOrder.indexOf(curListIdx);
+        orderPosRef.current = { order: newOrder, posInOrder: newPos < 0 ? 0 : newPos };
+        setOrder(newOrder);
+        setPosInOrder(newPos < 0 ? 0 : newPos);
       }
       return ns;
     });
-  }, [queueList.length, order, posInOrder, buildOrder]);
+  }, [queueList.length, buildOrder]);
 
   const cycleRepeat = useCallback(() => setRepeat((r) => (r === "off" ? "all" : r === "all" ? "one" : "off")), []);
   const setVolume = useCallback((v) => { setVolumeState(clamp(v, 0, 1)); if (v > 0) setMuted(false); }, []);

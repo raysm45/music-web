@@ -2732,7 +2732,7 @@ export function Sidebar() {
         >
           <PanelLeft size={18} />
         </button>
-        <Link to="home" className="aivy-brand"><StarMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">cosmicx<small>{t("appTagline")}</small></div></Link>
+        <Link to="home" className="aivy-brand"><StarMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">cosmicx</div></Link>
       </div>
       <nav className="aivy-nav">
         {visibleNavItems.map(({ route, labelKey, icon: Icon }) => (

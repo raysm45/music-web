@@ -187,10 +187,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-icon-btn:disabled{ opacity: .35; cursor: default; }
 .aivy-icon-btn:disabled:hover{ background: none; color: var(--ink-dim); }
 .aivy-icon-btn:disabled:active{ transform: none; }
-
-/* Seek previous/next press feedback: icon nudges in the skip direction and
-   snaps back, triggered from JS via the .is-pulsing class on click so the
-   full animation always plays even on a very quick tap. */
 .skip-prev.is-pulsing svg{ animation: aivy-skip-prev .32s var(--ease); }
 .skip-next.is-pulsing svg{ animation: aivy-skip-next .32s var(--ease); }
 @keyframes aivy-skip-prev{
@@ -344,7 +340,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-play-btn:active{ transform: scale(0.9); background: none; }
 .aivy-play-btn svg{ margin-left: 1px; }
 .aivy-play-btn:disabled{ opacity: .4; }
-.aivy-play-btn.is-hero{ background: var(--moss-strong); color: var(--moss-ink); box-shadow: 0 6px 18px -4px color-mix(in srgb, var(--moss-strong) 60%, transparent); }
+.aivy-play-btn.is-hero{ background: var(--moss-strong); color: var(--moss-ink); }
 .aivy-play-btn.is-hero:hover{ background: var(--moss-strong); transform: scale(1.06); }
 .aivy-play-btn.is-hero:active{ background: var(--moss-strong); transform: scale(0.94); }
 
@@ -352,9 +348,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-time{ font-family: var(--font-body); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 11px; color: var(--ink-faint); width: 34px; flex-shrink: 0; }
 .aivy-time.right{ text-align: right; }
 
-/* iOS-style seek bar: slim rounded capsule that "grows" while you touch/drag it,
-   like the Now Playing scrubber on iPhone. No separate floating knob — the whole
-   pill is the handle, with a small round thumb that appears while interacting. */
 .aivy-scrubber{ position: relative; flex: 1; height: 20px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
 .aivy-scrubber .track{
   position: relative; width: 100%; height: 4px; border-radius: 999px; background: var(--bg-elev-3); overflow: visible;
@@ -383,8 +376,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .skeleton-shine{ position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg-elev-3); }
 .skeleton-shine::after{ content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 22%, transparent), transparent); animation: aivy-shine 1.35s ease-in-out infinite; }
 
-/* iOS-style volume slider: longer capsule, same "grow on touch" behavior as
-   the Control Center / Now Playing volume bar. */
 .aivy-vol{ display: flex; align-items: center; gap: 9px; }
 .aivy-vol .track{
   position: relative; width: 92px; max-width: 40vw; height: 4px; border-radius: 999px; background: var(--bg-elev-3);
@@ -485,7 +476,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet-body.aivy-queue-sheet-body{ align-items: stretch; padding: 4px 16px calc(28px + var(--safe-b)); gap: 26px; }
 .aivy-queue-sheet-body .aivy-queue-meta img, .aivy-queue-sheet-body .aivy-queue-meta svg{ width: 44px; height: 44px; }
 
-/* Mobile queue redesign: group rows into clean divided cards instead of loose floating pills */
 .aivy-queue-sheet-body .aivy-drawer-sub{ padding: 0 2px 2px; }
 .aivy-queue-section{ display: flex; flex-direction: column; gap: 8px; }
 .aivy-queue-card{ background: var(--bg-elev); border-radius: var(--radius-md); overflow: hidden; }
@@ -548,8 +538,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-credits-card-row .aivy-chip{ padding: 6px 14px; font-size: 12px; }
 .aivy-credits-card-description{ font-size: 13px; line-height: 1.55; color: var(--ink-dim); white-space: pre-wrap; padding: 10px 0; }
 .aivy-credits-card-description--loading{ color: var(--ink-faint); font-style: italic; }
-
-/* Full breakdown modal, opened via "Show all" */
 .aivy-credits-modal{ width: min(440px, 100%); padding: 24px 22px; }
 .aivy-credits-modal-body{ margin-top: 4px; max-height: 60vh; overflow-y: auto; }
 .aivy-credits-modal-song{ font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink-dim); margin-bottom: 18px; }
@@ -603,8 +591,6 @@ body.aivy-resizing *{ user-select: none !important; }
 
 .aivy-sheet-backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,.44); z-index: 60; opacity: 0; transition: opacity var(--dur-base) var(--ease); pointer-events: none; will-change: opacity; }
 .aivy-sheet-backdrop.open{ opacity: 1; pointer-events: auto; }
-/* Stacked on top of an already-open aivy-sheet (e.g. the now-playing
-   options/detail sheets opening over the full-screen player). */
 .aivy-sheet-backdrop.over-sheet{ z-index: 62; }
 .aivy-sheet{ position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; height: 100dvh; background: #16180f; display: flex; flex-direction: column; transform: translateY(100%) translateZ(0); transition: transform var(--dur-slow) var(--ease); box-shadow: var(--shadow-sheet); overflow: hidden; will-change: transform; --sheet-ink: #f5f5f5; --sheet-ink-dim: rgba(245,245,245,.66); --sheet-ink-faint: rgba(245,245,245,.42); --sheet-line: rgba(255,255,255,.14); --sheet-elev: rgba(255,255,255,.08); }
 .aivy-sheet.open{ transform: translateY(0) translateZ(0); }
@@ -621,12 +607,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet .npx-metarow, .aivy-sheet .npx-top-controls, .aivy-sheet .aivy-sheet-head{ transition: opacity .25s ease; }
 .aivy-sheet-head-actions{ display: flex; align-items: center; gap: 4px; }
 .aivy-sheet-body{ position: relative; z-index: 2; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; align-items: center; padding: 6px 26px calc(28px + var(--safe-b)); color: var(--sheet-ink); }
-/* ---- Morphing hero: cover + title/artist shared between "player" and
-   "lyrics" layouts of the same sheet. The two layouts below are plain,
-   independent CSS states — the actual smooth morph between them is done
-   in JS (see useHeroFlip / NowPlayingSheet) via a FLIP transform, so these
-   rules only need to describe each state correctly, not how to tween
-   between them. */
+
 .npx-hero{ display: flex; flex-direction: column; align-items: center; width: 100%; position: relative; z-index: 2; }
 .npx-cover{ width: min(78vw, 320px); aspect-ratio: 1; border-radius: var(--radius-lg); overflow: hidden; margin: 10px 0 20px; flex-shrink: 0; box-shadow: 0 24px 60px rgba(0,0,0,.5); position: relative; transform-style: preserve-3d; }
 .npx-cover.no-round{ border-radius: 4px; }
@@ -659,9 +640,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .npx-actions .aivy-icon-btn:hover{ color: var(--sheet-ink); background: none; }
 .npx-actions .aivy-icon-btn.active{ color: #ffd54a; }
 
-/* Compact "lyrics" state — cover shrinks to a thumbnail, title/artist move
-   up beside it. Reached only via the JS FLIP transition, never a bare
-   CSS transition, since flex-direction/font-size don't interpolate. */
 .npx-hero.is-compact{ flex-direction: row; align-items: center; gap: 10px; padding: calc(2px + env(safe-area-inset-top, 0px)) 0 0; }
 .npx-hero.is-compact .npx-cover{ width: 44px; height: 44px; margin: 0; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.35); flex-shrink: 0; }
 .npx-hero.is-compact .npx-metarow{ flex: 1; min-width: 0; margin: 0; align-items: center; }
@@ -670,10 +648,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .npx-hero.is-compact .npx-titles .a{ font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .npx-hero.is-compact .npx-actions .aivy-icon-btn{ width: 34px; height: 34px; }
 
-/* The lyrics pane fills the space vacated by the shrinking cover, fading
-   and sliding up into place from behind it. It doubles as an invisible
-   spacer even when inactive: it always grows to soak up leftover height,
-   pushing whatever comes after it in flex order down to the bottom. */
 .npx-lyrics-wrap{
   position: relative; z-index: 1; width: 100%; min-height: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -688,13 +662,6 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 .npx-lyrics-wrap .aivy-am-lyrics{ position: absolute; inset: 0; padding: 2px 8px 0; --lyrics-scroll-padding-top: 24%; }
 
-/* Flex order for the now-playing sheet's direct children (see
-   NowPlayingSheet): normal "player" mode keeps scrubber/transport/volume
-   right under the hero (order 1) with the lyrics-wrap spacer (order 2)
-   pushing the lyric/output/queue row (order 3) to the very bottom. Lyrics
-   mode instead lets the lyrics pane fill the middle (order 1) and groups
-   the playback controls together with the icon row at the bottom, exactly
-   like the pre-lyrics-mode layout used to. */
 .aivy-sheet .npx-hero{ order: 0; touch-action: none; }
 .aivy-sheet .npx-top-controls{ order: 1; }
 .aivy-sheet .aivy-sheet-icon-row{ order: 3; }
@@ -724,9 +691,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet-icon-row .aivy-icon-btn.active{ color: var(--sheet-ink); }
 .aivy-sheet-icon-row .aivy-icon-btn:disabled{ opacity: .3; }
 
-/* Now-playing "..." menu — a bottom sheet on mobile instead of a
-   positioned popup (see TrackOptionsSheet). Sits above NowPlayingSheet
-   (z-index 61) but shares its backdrop styling/class. */
 .aivy-actionsheet{
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 63;
   background: var(--bg-elev); border-radius: 18px 18px 0 0;
@@ -746,8 +710,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-actionsheet-spinner{ margin-left: auto; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--ink-faint); animation: aivy-spin .7s linear infinite; flex-shrink: 0; }
 @keyframes aivy-spin{ to{ transform: rotate(360deg); } }
 
-/* Redesigned Now-Playing / Lyrics "..." sheet: mini now-playing card,
-   full-width volume row, a grid of icon actions, then grouped list rows. */
 .aivy-optsheet-track{ display: flex; align-items: center; gap: 12px; padding: 4px 10px 16px; }
 .aivy-optsheet-eyebrow{ font-size: 12px; font-weight: 600; color: var(--moss-strong); margin-bottom: 2px; }
 .aivy-optsheet-track .t{ font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -777,7 +739,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-optsheet-listrow.is-busy{ opacity: .6; }
 .aivy-optsheet-badge{ margin-left: auto; font-size: 11px; font-weight: 600; color: var(--ink-faint); background: var(--bg-elev-3); padding: 3px 8px; border-radius: var(--radius-pill); flex-shrink: 0; }
 
-/* Track detail sheet — Informasi / Detail tabs (see TrackDetailSheet). */
 .aivy-detailsheet{
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 63;
   max-height: 88vh; background: var(--bg-elev); border-radius: 18px 18px 0 0;
@@ -807,8 +768,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-detailsheet-row .val{ font-size: 14.5px; font-weight: 600; word-break: break-word; }
 .aivy-detailsheet-row .aivy-icon-btn{ flex-shrink: 0; color: var(--ink-faint); }
 
-/* Always-on-display mode — a dim, minimal full-screen overlay (see
-   AlwaysOnDisplay). Sits above everything else in the shell. */
 .aivy-aod{
   position: fixed; inset: 0; z-index: 95; background: #000;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
@@ -1065,8 +1024,6 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-step{ gap: 14px; }
   .aivy-step-index{ width: 36px; font-size: 24px; }
 }
-
-/* cosmicx login screen (dedicated dark look, independent of the app's light/dark theme) */
 .cx-stage{
   --cx-bg: #060607;
   --cx-frame: #0d0d0f;
@@ -1077,7 +1034,6 @@ body.aivy-resizing *{ user-select: none !important; }
   height: 100dvh; width: 100%; display: flex; align-items: center; justify-content: center;
   padding: 0; background: var(--cx-bg); font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--cx-ink);
 }
-/* Mobile-first: fill the real viewport edge-to-edge, no floating card look. */
 .cx-frame{
   width: 100%; height: 100%; max-width: none; max-height: none; aspect-ratio: auto;
   background: var(--cx-bg);
@@ -1090,7 +1046,6 @@ body.aivy-resizing *{ user-select: none !important; }
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(60% 40% at 50% 0%, rgba(255,255,255,0.04), transparent 70%);
 }
-/* On wider (non-phone) viewports, present it as a floating phone-frame card instead. */
 @media (min-width: 640px){
   .cx-stage{ height: auto; min-height: 100dvh; padding: 32px 16px; }
   .cx-frame{
@@ -1419,13 +1374,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-next .label{ font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--lyr-ink-faint); font-weight: 600; }
 .aivy-lyrics-next .name{ font-size: 12.5px; color: var(--lyr-ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Scrubber, transport controls and volume are now shown on mobile too —
-   previously they were display:none below 860px, which meant opening lyrics
-   fullscreen on a phone left you with no way to seek, play/pause, skip or
-   adjust volume until you closed the overlay. */
-/* Grid with the same 3 columns (label / bar / label) as the scrubber row —
-   the volume row reuses it so its bar lines up exactly with the duration
-   bar's length, even though it only fills 2 of the 3 columns. */
 .aivy-lyrics-scrubwrap{ position: relative; flex-shrink: 0; padding-top: 22px; }
 .aivy-sing-btn{
   position: absolute; top: -2px; left: 50%; transform: translateX(-50%); z-index: 2;
@@ -1455,14 +1403,9 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyrics-side .aivy-vol .fill{ background: var(--lyr-ink); }
 .aivy-lyrics-side .aivy-vol .aivy-icon-btn{ width: 30px; height: 30px; color: var(--lyr-ink-dim); }
 
-/* Keep the volume bar the exact same length as the duration/scrubber bar
-   at every width (they share the same 30px / 1fr / 30px grid), instead of
-   the generic, shorter mobile volume-track sizing used elsewhere. */
 @media (max-width: 640px){ .aivy-lyrics-side .aivy-vol .track{ width: 100%; max-width: none; } }
 @media (max-width: 480px){ .aivy-lyrics-side .aivy-vol .track{ width: 100%; max-width: none; } }
 
-/* On mobile the artwork can eat most of the screen once controls are also
-   visible, so keep it a bit more compact there. */
 @media (max-width: 859px){
   .aivy-lyrics-track{ flex-direction: row; align-items: center; gap: 12px; padding: 0 22px 12px; }
   .aivy-lyrics-track .cover{ width: 44px; max-width: 44px; margin: 0; border-radius: 5px; box-shadow: none; }
@@ -1502,8 +1445,6 @@ body.aivy-resizing *{ user-select: none !important; }
 @media (max-width: 640px){ .aivy-lyrics-line{ padding: 9px 20px; } .aivy-lyrics-plain{ padding: 12px 20px 30vh; } }
 
 @media (min-width: 860px){
-  /* The side panel shows its own like/share/font-size row below, so the
-     floating copies at the top-left would just be duplicates on desktop. */
   .aivy-lyrics-float .aivy-lyrics-fbtn-dup{ display: none; }
 
   .aivy-lyrics-main{ flex-direction: row; padding-top: 0; }
@@ -1620,7 +1561,6 @@ body.aivy-resizing *{ user-select: none !important; }
   color-scheme: light;
 }
 
-/* ===== Settings � tabbed layout ===== */
 .aivy-settings-page{ max-width: 980px; padding-bottom: 56px; }
 .aivy-settings-layout{ display: grid; grid-template-columns: 212px minmax(0,1fr); gap: 30px; align-items: start; }
 .aivy-settings-tabs{ position: sticky; top: 12px; display: flex; flex-direction: column; gap: 3px; }
@@ -1636,7 +1576,6 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-settings-tab.active{ border-color: var(--moss-strong); }
 }
 
-/* Inputs & buttons */
 .aivy-settings-input{ flex-shrink: 0; width: 240px; max-width: 52vw; background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 11px; font-size: 13px; color: var(--ink); transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
 .aivy-settings-input::placeholder{ color: var(--ink-faint); }
 .aivy-settings-input:focus{ outline: none; border-color: var(--moss-strong); background: var(--bg-elev-3); }
@@ -1647,7 +1586,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-btn-danger:hover{ background: color-mix(in srgb, var(--berry) 13%, transparent); }
 .aivy-btn-danger:disabled{ opacity: .5; }
 
-/* Theme swatch cards */
 .aivy-themes-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; padding: 16px 18px; }
 .aivy-theme-card{ border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; text-align: left; transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
 .aivy-theme-card:hover{ transform: translateY(-1px); border-color: var(--ink-faint); }
@@ -1658,12 +1596,10 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-theme-card.active .aivy-theme-card-name{ color: var(--moss-strong); }
 .aivy-theme-check{ color: var(--moss-strong); }
 
-/* Keyboard shortcuts */
 .aivy-shortcut-keys{ display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 .aivy-kbd{ font-family: var(--font-mono); font-size: 11px; line-height: 1; padding: 5px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: var(--bg-elev-2); color: var(--ink-dim); white-space: nowrap; }
 .aivy-capture-tip{ font-size: 12px; color: var(--gold); font-weight: 600; }
 
-/* Instance list */
 .aivy-instance-row{ display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--line-soft); }
 .aivy-instance-row:last-child{ border-bottom: none; }
 .aivy-instance-row .url{ flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); }
@@ -1673,7 +1609,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-btn-danger.sm{ padding: 6px 16px; font-size: 12.5px; }
 .aivy-settings-desc{ font-size: 12.5px; color: var(--ink-faint); margin: -4px 0 10px; line-height: 1.6; }
 
-/* ===== Settings "coming soon" seal ===== */
 .aivy-soon-badge{ display: inline-block; margin-top: 5px; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); background: color-mix(in srgb, var(--gold) 10%, transparent); padding: 2px 8px; border-radius: var(--radius-pill); width: max-content; }
 .aivy-settings-row.is-sealed .label, .aivy-settings-row.is-sealed .hint{ color: var(--ink-faint); }
 .aivy-settings-row.is-sealed .aivy-switch,
@@ -1695,7 +1630,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-tab-sealed textarea,
 .aivy-tab-sealed button{ pointer-events: none; opacity: .5; }
 
-/* ===== Apple Music-style mobile Now Playing & Lyrics ===== */
 .aivy-sheet-grabber-row{ position: relative; z-index: 2; display: flex; justify-content: center; padding: calc(10px + env(safe-area-inset-top, 0px)) 0 2px; flex-shrink: 0; touch-action: none; }
 .aivy-sheet-grabber{ width: 38px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.35); padding: 0; }
 .aivy-sheet-grabber:active{ background: rgba(255,255,255,.55); }
@@ -1728,8 +1662,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet-icon-row .aivy-icon-btn{ width: 42px; height: 42px; }
 .aivy-sheet-icon-row .aivy-icon-btn svg{ width: 22px; height: 22px; }
 
-/* Lyrics — jump-to-active-line pill and Sing toggle, used inside the
-   morphing sheet's npx-lyrics-wrap / npx-sing-row (see NowPlayingSheet). */
 .aivy-lyr2-pill{
   position: absolute; left: 50%; bottom: 16px; z-index: 2;
   transform: translateX(-50%);
@@ -1748,7 +1680,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-lyr2-sing{ padding: 4px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--sheet-ink-dim); border: 1px solid var(--sheet-line); transition: background .2s var(--ease), color .2s var(--ease); }
 .aivy-lyr2-sing.active{ background: var(--sheet-ink); color: #14150f; border-color: transparent; }
 
-/* ===== Room 2.0 ===== */
 .aivy-room2-head{ margin-bottom: 16px; }
 .aivy-room2-head .row1{ display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .aivy-room2-head .min{ display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 0; }
@@ -1794,8 +1725,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .row-note{ font-size: 11px; color: var(--ink-faint); margin-top: 2px; display: block; }
 
 .aivy-room-chat{ position: relative; }
-
-/* Bubble lagu di chat */
 .aivy-chat-msg .song-wrap{ display: flex; flex-direction: column; gap: 6px; max-width: min(78%, 330px); }
 .aivy-chat-msg.own .song-wrap{ align-items: flex-end; }
 .bubble.song-bubble{ display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; text-align: left; cursor: pointer; border-radius: 14px; transition: border-color var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease); }
@@ -1815,8 +1744,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .song-confirm .no:hover{ color: var(--ink); }
 .bubble.emoji-bubble{ padding: 6px 10px; }
 .bubble.emoji-bubble .emoji{ font-size: 30px; line-height: 1.2; }
-
-/* Panel cari lagu di chat */
 .aivy-song-panel{ border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-elev-2); margin-bottom: 10px; overflow: hidden; }
 .aivy-song-panel-search{ display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: var(--ink-faint); border-bottom: 1px solid var(--line-soft); }
 .aivy-song-panel-search input{ flex: 1; background: none; border: none; outline: none; color: var(--ink); font-size: 13.5px; }
@@ -1827,8 +1754,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-song-panel-row .meta .t{ font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aivy-song-panel-row .meta .a{ font-size: 12px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aivy-song-panel-row > svg{ color: var(--moss-strong); flex-shrink: 0; }
-
-/* Popover emoji */
 .aivy-emoji-pop{ position: absolute; bottom: 56px; left: 76px; display: flex; gap: 4px; background: var(--bg-elev-3); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 8px; box-shadow: var(--shadow-pop); z-index: 5; }
 .aivy-emoji-pop button{ font-size: 20px; padding: 4px 6px; border-radius: 10px; transition: transform var(--dur-fast) var(--ease); }
 .aivy-emoji-pop button:hover{ transform: scale(1.25); }
@@ -1839,8 +1764,6 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-room2-now .meta .t{ font-size: 15px; }
   .aivy-room2-head .acts .aivy-btn-ghost.sm{ padding: 6px 12px; font-size: 12px; }
 }
-
-/* ===== Lobby room: tile create/join (accordion) ===== */
 .aivy-room-actions{ display: flex; flex-direction: column; gap: 12px; max-width: 680px; }
 .aivy-room-tile{ border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-elev); overflow: hidden; transition: border-color var(--dur-fast) var(--ease); }
 .aivy-room-tile.open{ border-color: var(--moss-strong); }
@@ -1861,8 +1784,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-room-tile .code-input{ text-align: center; letter-spacing: .4em; font-family: var(--font-mono); font-size: 17px; font-weight: 600; padding: 12px; }
 .aivy-room-tile .code-input::placeholder{ letter-spacing: .4em; }
 .aivy-room-tile .aivy-btn-primary{ justify-content: center; margin-top: 4px; }
-
-/* ===== Chat room: full & rapi ===== */
 .aivy-room2-tabbody.chat{ display: flex; flex-direction: column; }
 .aivy-room-chat-standalone.tall{
   flex: 1; width: 100%; max-width: none;
@@ -1870,8 +1791,6 @@ body.aivy-resizing *{ user-select: none !important; }
   max-height: none; padding: 14px;
 }
 .aivy-room-chat-standalone.tall .aivy-chat-messages{ flex: 1; min-height: 0; max-height: none; }
-
-/* Bubble lagu: kartu horizontal netral, konsisten utk own/other */
 .aivy-chat-msg .bubble.song-bubble{
   flex-direction: row;
   align-items: center;
@@ -1898,9 +1817,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .bubble.song-bubble.queued{ opacity: .55; }
 .bubble.song-bubble.queued .song-play{ background: var(--bg-elev-3); color: var(--ink-faint); }
 .bubble.song-bubble.queued:hover{ filter: none; }
-
-/* Di mobile, lyrics overlay memakai background blur sampul (gelap) �
-   paksa variabel lirik tetap terang walau tema aplikasi terang. */
 @media (max-width: 860px){
   .aivy-lyrics-overlay{
     background: #000;
@@ -1914,10 +1830,6 @@ body.aivy-resizing *{ user-select: none !important; }
       #000;
   }
 }
-
-/* ===== Mobile: Now Playing & Lyrics bebas tema =====
-   Tema apapun (light/white/latte/system), layar ini + menu/toast/modal
-   yang muncul darinya selalu memakai palet gelap yang sama. */
 @media (max-width: 860px){
   .aivy-sheet,
   .aivy-lyrics-overlay,
@@ -1931,10 +1843,7 @@ body.aivy-resizing *{ user-select: none !important; }
     --berry: #C97B6B; --berry-strong: #DE9686; --gold: #D3B673;
   }
 }
-
 .aivy-hrow > .aivy-card{ width: 160px; }
-
-/* ===== Home ala monochrome.tf ===== */
 :root{ --cover-filter: blur(50px) brightness(.4); }
 :root[data-theme="light"], :root[data-theme="white"], :root[data-theme="latte"]{ --cover-filter: blur(50px) brightness(1.6) opacity(.35); }
 
@@ -1954,8 +1863,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-home-welcome p{ margin: 0; color: var(--ink-dim); font-size: 14.5px; }
 .aivy-home-head-left{ display: flex; align-items: center; gap: 10px; min-width: 0; }
 .aivy-home-head-left .aivy-section-title{ margin-bottom: 0; }
-
-/* Daftar lagu rekomendasi — baris kecil 3 kolom ala monochrome */
 .aivy-songlist-grid{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 18px; }
 @media (max-width: 1400px){ .aivy-songlist-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1100px){ .aivy-songlist-grid{ grid-template-columns: 1fr; } }
@@ -1971,13 +1878,9 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-parties-cta{ border: 1px solid var(--line); border-radius: 8px; background: var(--bg-elev); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 .aivy-parties-cta p{ margin: 0; color: var(--ink-dim); font-size: 13.5px; }
 .aivy-parties-cta .acts{ display: flex; gap: 8px; flex-wrap: wrap; }
-
-/* Home full-bleed: hapus padding samping konten */
 .aivy-content.home-full{ padding: 0 0 40px; }
 .aivy-home-inner{ padding: 10px 24px 40px; }
 .aivy-home-bg{ top: 0; left: 0; right: 0; }
-
-/* Tab discover ala monochrome */
 .aivy-home-tabs{ display: flex; gap: 26px; padding: 4px 2px 0; border-bottom: 1px solid var(--line-soft); margin-bottom: 22px; }
 .aivy-home-tabs button{ padding: 10px 2px 12px; font-size: 15px; font-weight: 600; color: var(--ink-faint); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
 .aivy-home-tabs button:hover{ color: var(--ink-dim); }
