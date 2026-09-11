@@ -22,6 +22,14 @@ export function formatDuration(sec) {
   return formatTime(sec);
 }
 
+// Ambil daftar kolaborator lengkap dari sebuah track untuk dikirim ke backend
+// (history/like/playlist), supaya lagu collab tidak kehilangan nama artist lain.
+export function trackArtists(track) {
+  if (track?.artists?.length) return track.artists;
+  if (track?.artist) return [track.artist];
+  return [];
+}
+
 export function parseLRC(lrc) {
   if (!lrc || typeof lrc !== "string") return [];
   const re = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;

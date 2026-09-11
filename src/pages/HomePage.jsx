@@ -78,7 +78,8 @@ function Row({ title, items, render, scroll = false, action = null, skeleton = 8
 function mapHistoryRow(row) {
   return {
     id: row.video_id, videoId: row.video_id, title: row.title,
-    artist: row.artist_name ? { name: row.artist_name } : null,
+    artist: row.artist || (row.artist_name ? { name: row.artist_name } : null),
+    artists: row.artists || null,
     album: row.album || null,
     cover: row.thumbnail || null, duration: row.duration || null,
   };

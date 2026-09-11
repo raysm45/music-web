@@ -3,7 +3,7 @@ import React, {
 } from "react";
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
-import { clamp, uid, debounce, pickBestAudioMatch } from "./lib/utils.js";
+import { clamp, uid, debounce, pickBestAudioMatch, trackArtists } from "./lib/utils.js";
 import { makeT } from "./lib/i18n.js";
 import { useDiscordActivity } from "./lib/discordActivity.js";
 
@@ -1038,7 +1038,7 @@ export function PlayerProvider({ children }) {
     setPlaySource(source);
     if (authUser && settings.historyEnabled !== false) {
       const t = list[clamp(startIndex, 0, list.length - 1)];
-      Api.addHistory(t.videoId || t.id, { title: t.title, artistName: t.artist?.name || null, thumbnail: t.cover, albumId: t.album?.id || null, albumTitle: t.album?.title || null, duration: t.duration }).catch(() => {});
+      Api.addHistory(t.videoId || t.id, { title: t.title, artistName: t.artist?.name || null, artists: trackArtists(t), thumbnail: t.cover, albumId: t.album?.id || null, albumTitle: t.album?.title || null, duration: t.duration }).catch(() => {});
     }
   }, [inRoom, room, buildOrder, shuffle, authUser, settings.historyEnabled, resumeAudioCtx]);
 
@@ -1070,7 +1070,7 @@ export function PlayerProvider({ children }) {
     setPosInOrder(0);
     setIsPlaying(true);
     if (authUser && settings.historyEnabled !== false) {
-      Api.addHistory(track.videoId || track.id, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration }).catch(() => {});
+      Api.addHistory(track.videoId || track.id, { title: track.title, artistName: track.artist?.name || null, artists: trackArtists(track), thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration }).catch(() => {});
     }
   }, [inRoom, room, queueList, order, authUser, settings.historyEnabled, resumeAudioCtx]);
 
@@ -1088,7 +1088,7 @@ export function PlayerProvider({ children }) {
     setIsPlaying(true);
     setPlaySource(source);
     if (authUser && settings.historyEnabled !== false) {
-      Api.addHistory(track.videoId || track.id, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration }).catch(() => {});
+      Api.addHistory(track.videoId || track.id, { title: track.title, artistName: track.artist?.name || null, artists: trackArtists(track), thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration }).catch(() => {});
     }
 
     const similarArgs = track.source === "deezer"
@@ -1150,7 +1150,7 @@ export function PlayerProvider({ children }) {
     setPosInOrder((p) => p + 1);
     setIsPlaying(true);
     if (authUser && settings.historyEnabled !== false) {
-      Api.addHistory(nextTrack.videoId || nextTrack.id, { title: nextTrack.title, artistName: nextTrack.artist?.name || null, thumbnail: nextTrack.cover, albumId: nextTrack.album?.id || null, albumTitle: nextTrack.album?.title || null, duration: nextTrack.duration }).catch(() => {});
+      Api.addHistory(nextTrack.videoId || nextTrack.id, { title: nextTrack.title, artistName: nextTrack.artist?.name || null, artists: trackArtists(nextTrack), thumbnail: nextTrack.cover, albumId: nextTrack.album?.id || null, albumTitle: nextTrack.album?.title || null, duration: nextTrack.duration }).catch(() => {});
     }
   }, [authUser, settings.historyEnabled]);
 
@@ -1295,7 +1295,7 @@ export function PlayerProvider({ children }) {
     setLiked((prev) => { const n = new Set(prev); willLike ? n.add(key) : n.delete(key); return n; });
     pushToast(`${willLike ? t("toastAddedLiked") : t("toastRemovedLiked")} — ${track.title}`);
     try {
-      if (willLike) await Api.like(key, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration });
+      if (willLike) await Api.like(key, { title: track.title, artistName: track.artist?.name || null, artists: trackArtists(track), thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration });
       else await Api.unlike(key);
     } catch { pushToast(t("toastLikeFailed")); }
   }, [authUser, liked, pushToast, t]);
@@ -1414,7 +1414,8 @@ export function PlayerProvider({ children }) {
       id: s.video_id,
       videoId: s.video_id,
       title: s.title,
-      artist: s.artist_name ? { name: s.artist_name } : null,
+      artist: s.artist || (s.artist_name ? { name: s.artist_name } : null),
+      artists: s.artists || null,
       album: s.album || null,
       cover: s.thumbnail,
       duration: s.duration,
@@ -1433,7 +1434,7 @@ export function PlayerProvider({ children }) {
     setPlaylists((list) => list.map((pl) => (pl.id === playlistId && !pl.songs?.some((s) => (s.videoId || s.id) === key)
       ? { ...pl, songs: [...(pl.songs || []), track] } : pl)));
     try {
-      await Api.addSong(playlistId, key, { title: track.title, artistName: track.artist?.name || null, thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration });
+      await Api.addSong(playlistId, key, { title: track.title, artistName: track.artist?.name || null, artists: trackArtists(track), thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration });
       pushToast(t("toastAddedToPlaylist"));
     } catch { pushToast(t("toastAddToPlaylistFailed")); }
   }, [pushToast, t]);
