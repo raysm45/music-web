@@ -3184,19 +3184,14 @@ export function LyricsOverlay() {
 
   return (
     <div className={`aivy-lyrics-overlay ${lyricsOpen ? "open" : ""}`}>
+      {currentTrack?.cover && (
+        <div className="aivy-lyrics-backdrop" style={{ backgroundImage: `url(${currentTrack.cover})` }} />
+      )}
       <div className="aivy-lyrics-scrim" />
 
       <div className="aivy-lyrics-float">
         <button className="aivy-lyrics-fbtn primary" onClick={closeLyrics} aria-label={t("close")}><X size={19} /></button>
         { }
-        <button
-          className={`aivy-lyrics-fbtn aivy-lyrics-fbtn-dup ${isLiked ? "active" : ""}`}
-          onClick={() => currentTrack && toggleLike(currentTrack)}
-          disabled={!currentTrack}
-          aria-label={t("like")}
-        >
-          <Star size={16} fill={isLiked ? "currentColor" : "none"} />
-        </button>
         <button className="aivy-lyrics-fbtn aivy-lyrics-fbtn-dup" onClick={() => setShareOpen((v) => !v)} disabled={!currentTrack} aria-label={t("share")}>
           <Share2 size={16} />
         </button>
@@ -3213,21 +3208,18 @@ export function LyricsOverlay() {
               <div className="cover">
                 <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }} />
               </div>
-              <div className="meta">
-                <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
-                <div className="a">{currentTrack.artist?.name}</div>
+              <div className="row">
+                <div className="meta">
+                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
+                  <div className="a">{currentTrack.artist?.name}</div>
+                </div>
+                <div className="aivy-lyrics-actions">
+                  <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => currentTrack && toggleLike(currentTrack)} aria-label={t("like")}>
+                    <Star size={17} fill={isLiked ? "currentColor" : "none"} />
+                  </button>
+                  <button className="aivy-icon-btn" onClick={handleLyricsMore} aria-label={t("more")}><MoreHorizontal size={17} /></button>
+                </div>
               </div>
-            </div>
-
-            <div className="aivy-lyrics-actions">
-              <button className={`aivy-icon-btn ${isLiked ? "active" : ""}`} onClick={() => currentTrack && toggleLike(currentTrack)} aria-label={t("like")}>
-                <Star size={17} fill={isLiked ? "currentColor" : "none"} />
-              </button>
-              <button className="aivy-icon-btn" onClick={() => setShareOpen((v) => !v)} aria-label={t("share")}><Share2 size={17} /></button>
-              <button className="aivy-icon-btn aivy-fontsize-btn" onClick={cycleFontSize} aria-label={t("fontSize")} title={`${t("fontSize")}: ${fontSize.toUpperCase()}`}>
-                <Type size={17} />
-                <span className="aivy-fontsize-tag">{fontSize}</span>
-              </button>
             </div>
 
             {shareOpen && (
