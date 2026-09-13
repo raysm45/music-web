@@ -3224,48 +3224,50 @@ export function LyricsOverlay() {
               </div>
             </div>
 
-            {shareOpen && (
-              <div className="aivy-lyrics-share">
-                <div className="cover-mini">
-                  <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={72} radius={8} style={{ width: "100%", height: "100%" }} />
+            <div className="aivy-lyrics-side-scroll">
+              {shareOpen && (
+                <div className="aivy-lyrics-share">
+                  <div className="cover-mini">
+                    <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={72} radius={8} style={{ width: "100%", height: "100%" }} />
+                  </div>
+                  <div className="line">{activeLineText || "\u266a"}</div>
+                  <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
+                  <button onClick={handleSaveImage}>{t("saveAsImage")}</button>
                 </div>
-                <div className="line">{activeLineText || "\u266a"}</div>
-                <div className="sub">{currentTrack.artist?.name} &middot; {currentTrack.title}</div>
-                <button onClick={handleSaveImage}>{t("saveAsImage")}</button>
-              </div>
-            )}
+              )}
 
-            {nextTrack && (
-              <div className="aivy-lyrics-next">
-                <span className="label">{t("upNextLabel")}</span>
-                <span className="name">{nextTrack.title} &middot; {nextTrack.artist?.name}</span>
-              </div>
-            )}
+              {nextTrack && (
+                <div className="aivy-lyrics-next">
+                  <span className="label">{t("upNextLabel")}</span>
+                  <span className="name">{nextTrack.title} &middot; {nextTrack.artist?.name}</span>
+                </div>
+              )}
 
-            <div className={`aivy-lyrics-scrubwrap ${singMode ? "is-singing" : ""}`}>
-              <button
-                type="button"
-                className={`aivy-sing-btn ${singMode ? "active" : ""}`}
-                onClick={() => setSingMode((v) => !v)}
-                aria-pressed={singMode}
-                aria-label={t("singToggle", "Sing")}
-                title={t("singToggle", "Sing")}
-              >
-                <Mic size={14} />
-                <span>{t("singLabel", "Sing")}</span>
-              </button>
-              <div className="aivy-lyrics-scrubber-row">
-                <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
-                <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
-                <span className="aivy-time right font-mono">{formatTime(scrubDuration)}</span>
+              <div className={`aivy-lyrics-scrubwrap ${singMode ? "is-singing" : ""}`}>
+                <button
+                  type="button"
+                  className={`aivy-sing-btn ${singMode ? "active" : ""}`}
+                  onClick={() => setSingMode((v) => !v)}
+                  aria-pressed={singMode}
+                  aria-label={t("singToggle", "Sing")}
+                  title={t("singToggle", "Sing")}
+                >
+                  <Mic size={14} />
+                  <span>{t("singLabel", "Sing")}</span>
+                </button>
+                <div className="aivy-lyrics-scrubber-row">
+                  <span className="aivy-time font-mono">{formatTime(scrubTime)}</span>
+                  <Scrubber getRatio={getRatio} onSeekRatio={onSeekRatio} registerFill={registerFill} registerThumb={registerThumb} />
+                  <span className="aivy-time right font-mono">{formatTime(scrubDuration)}</span>
+                </div>
               </div>
+
+              <TransportButtons big />
+
+              <VolumeControl />
+
+              <MobileNowPlayingIconRow lyricsActive onToggleLyrics={closeLyrics} lyricsDisabled={false} onOpenQueue={openMobileQueue} />
             </div>
-
-            <TransportButtons big />
-
-            <VolumeControl />
-
-            <MobileNowPlayingIconRow lyricsActive onToggleLyrics={closeLyrics} lyricsDisabled={false} onOpenQueue={openMobileQueue} />
           </div>
 
           <div className="aivy-lyrics-body-wrap" style={{ "--lyrics-fs": LYRICS_FONT_SIZES[fontSize] }}>
