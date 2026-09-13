@@ -3374,7 +3374,7 @@ const AI_QUICK_PROMPTS = [
 
 export function AiAssistantWidget() {
   const { settings, authUser } = useUI();
-  const { playlists, createPlaylist, addToPlaylist, playSingle } = usePlayer();
+  const { playlists, createPlaylist, addToPlaylist, playSingle, playList, deletePlaylist, updatePlaylistMeta, removeFromPlaylist, toggleLike, liked } = usePlayer();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -3416,7 +3416,19 @@ export function AiAssistantWidget() {
     setInput("");
     setSending(true);
     try {
-      const ctx = { search: Api.search, createPlaylist, addToPlaylist, playSingle, playlists };
+      const ctx = {
+        search: Api.search,
+        createPlaylist,
+        addToPlaylist,
+        playSingle,
+        playlists,
+        playList,
+        deletePlaylist,
+        updatePlaylistMeta,
+        removeFromPlaylist,
+        toggleLike,
+        liked,
+      };
       const { text: reply, history } = await runAiAssistantTurn(text, historyRef.current, ctx);
       historyRef.current = history;
       pushAssistant(reply);
