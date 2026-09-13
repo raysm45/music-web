@@ -123,6 +123,7 @@ export function AlbumPage() {
       <FlipList
         items={displayTracks}
         getKey={(tr) => tr.id}
+        stagger={!localShuffle}
         renderItem={(tr) => <TrackRow track={tr} index={albumTracks.indexOf(tr)} list={albumTracks} queueMode="context" shuffleOverride={localShuffle} />}
       />
     </div>

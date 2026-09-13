@@ -374,6 +374,7 @@ export function PlaylistPage() {
           <FlipList
             items={visibleSongs}
             getKey={(tr) => tr._rowKey || tr.id}
+            stagger={!localShuffle}
             renderItem={(tr) => (
               <TrackRow track={tr} index={pl.songs.findIndex((s) => (s._rowKey || s.id) === (tr._rowKey || tr.id))} list={pl.songs} showAlbum onRemove={isOwner ? () => removeFromPlaylist(pl.id, tr.id) : undefined} removeLabel={t("removeFromThisPlaylist")} queueMode="context" source={{ type: "library", label: pl.name }} shuffleOverride={localShuffle} />
             )}

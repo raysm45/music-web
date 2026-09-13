@@ -580,7 +580,7 @@ export function shuffleArray(arr) {
   return out;
 }
 
-export function FlipList({ items, getKey, renderItem, className, as: Tag = "div" }) {
+export function FlipList({ items, getKey, renderItem, className, as: Tag = "div", stagger = true }) {
   const containerRef = useRef(null);
   const prevRectsRef = useRef(new Map());
   const animsRef = useRef(new Map());
@@ -618,7 +618,12 @@ export function FlipList({ items, getKey, renderItem, className, as: Tag = "div"
         const dy = oldRect.top - newRect.top;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
 
-        const delay = Math.min(moved * 9, 160);
+        // Staggering (each row starting slightly after the previous one) reads
+        // nicely for small reorders — a single row moving up or down — but
+        // when most/all rows move at once (e.g. shuffling the whole list) it
+        // reads as a wave cascading from the top instead of one clean shuffle.
+        // So large-scale reorders (stagger=false) animate every row together.
+        const delay = stagger ? Math.min(moved * 9, 160) : 0;
         const anim = node.animate(
           [
             { transform: `translate(${dx}px, ${dy}px)` },
@@ -635,7 +640,7 @@ export function FlipList({ items, getKey, renderItem, className, as: Tag = "div"
     }
     prevRectsRef.current = newRects;
     firstRef.current = false;
-  }, [orderKey]);
+  }, [orderKey, stagger]);
 
   return (
     <Tag ref={containerRef} className={className}>
