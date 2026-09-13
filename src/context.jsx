@@ -1441,7 +1441,7 @@ export function PlayerProvider({ children }) {
     const track = normalizeTrack(rawTrack);
     const key = track.videoId || track.id;
 
-    setPlaylists((list) => list.map((pl) => (pl.id === playlistId && !pl.songs?.some((s) => (s.videoId || s.id) === key)
+    setPlaylists((list) => list.map((pl) => (String(pl.id) === String(playlistId) && !pl.songs?.some((s) => String(s.videoId || s.id) === String(key))
       ? { ...pl, songs: [...(pl.songs || []), track] } : pl)));
     try {
       await Api.addSong(playlistId, key, { title: track.title, artistName: track.artist?.name || null, artists: trackArtists(track), thumbnail: track.cover, albumId: track.album?.id || null, albumTitle: track.album?.title || null, duration: track.duration });
@@ -1450,12 +1450,12 @@ export function PlayerProvider({ children }) {
   }, [pushToast, t]);
 
   const removeFromPlaylist = useCallback(async (playlistId, trackId) => {
-    setPlaylists((list) => list.map((pl) => (pl.id === playlistId ? { ...pl, songs: pl.songs.filter((s) => s.id !== trackId) } : pl)));
+    setPlaylists((list) => list.map((pl) => (String(pl.id) === String(playlistId) ? { ...pl, songs: pl.songs.filter((s) => String(s.id) !== String(trackId)) } : pl)));
     try { await Api.removeSong(playlistId, trackId); } catch { pushToast(t("toastRemoveFromPlaylistFailed")); }
   }, [pushToast, t]);
 
   const deletePlaylist = useCallback(async (playlistId) => {
-    setPlaylists((list) => list.filter((p) => p.id !== playlistId));
+    setPlaylists((list) => list.filter((p) => String(p.id) !== String(playlistId)));
     try { await Api.deletePlaylist(playlistId); pushToast(t("toastPlaylistDeleted")); } catch { pushToast(t("toastPlaylistDeleteFailed")); }
   }, [pushToast, t]);
 

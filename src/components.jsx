@@ -3376,6 +3376,7 @@ export function AiAssistantWidget() {
   const { settings, authUser } = useUI();
   const { playlists, createPlaylist, addToPlaylist, playSingle, playList, deletePlaylist, updatePlaylistMeta, removeFromPlaylist, toggleLike, liked, upNext, addToQueueEnd, playNextInQueue, removeFromQueue } = usePlayer();
   const [open, setOpen] = useState(false);
+  const [panelClosing, setPanelClosing] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [chat, setChat] = useState([]);
@@ -3384,6 +3385,23 @@ export function AiAssistantWidget() {
   const historyRef = useRef([]);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const wasOpenRef = useRef(false);
+  const closeTimerRef = useRef(null);
+
+  // Play a brief closing animation instead of unmounting the panel instantly.
+  useEffect(() => {
+    if (open) {
+      clearTimeout(closeTimerRef.current);
+      setPanelClosing(false);
+    } else if (wasOpenRef.current) {
+      setPanelClosing(true);
+      closeTimerRef.current = setTimeout(() => setPanelClosing(false), 170);
+    }
+    wasOpenRef.current = open;
+    return () => clearTimeout(closeTimerRef.current);
+  }, [open]);
+
+  const panelVisible = open || panelClosing;
 
   const en = settings.language === "en";
   const tt = (id, us) => (en ? us : id);
@@ -3460,7 +3478,7 @@ export function AiAssistantWidget() {
   return (
     <>
       <div className="aivy-ai-fab-wrap">
-        <button className="aivy-ai-fab" onClick={() => setOpen((v) => !v)} aria-label="AI Assistant">
+        <button className={`aivy-ai-fab ${open ? "is-open" : ""}`} onClick={() => setOpen((v) => !v)} aria-label="AI Assistant">
           <Sparkles size={20} />
         </button>
         {!open && unread > 0 && (
@@ -3468,8 +3486,8 @@ export function AiAssistantWidget() {
         )}
       </div>
 
-      {open && (
-        <div className="aivy-ai-panel">
+      {panelVisible && (
+        <div className={`aivy-ai-panel ${!open ? "is-closing" : ""}`}>
           <div className="aivy-ai-head">
             <span className="t"><Sparkles size={15} /> {tt("Asisten AI", "AI Assistant")}</span>
             <div className="acts">

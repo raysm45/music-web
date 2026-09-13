@@ -558,6 +558,8 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-room-member .name{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .aivy-room-chat{ display: flex; flex-direction: column; padding: 0 4px; gap: 8px; }
+.aivy-chat-msg{ animation: aivy-msg-in .3s cubic-bezier(.16,1,.3,1) both; }
+.aivy-chat-msg.own{ transform-origin: bottom right; }
 .aivy-chat-messages{ display: flex; flex-direction: column; gap: 10px; max-height: 320px; min-height: 120px; overflow-y: auto; padding: 4px 2px; }
 .aivy-chat-empty{ color: var(--ink-faint); font-size: 13px; padding: 10px 2px; }
 .aivy-chat-msg{ display: flex; align-items: flex-end; gap: 8px; }
@@ -1752,7 +1754,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .song-confirm .no:hover{ color: var(--ink); }
 .bubble.emoji-bubble{ padding: 6px 10px; }
 .bubble.emoji-bubble .emoji{ font-size: 30px; line-height: 1.2; }
-.aivy-song-panel{ border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-elev-2); margin-bottom: 10px; overflow: hidden; }
+.aivy-song-panel{ border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-elev-2); margin-bottom: 10px; overflow: hidden; animation: aivy-pop-in .2s var(--ease, ease) both; }
 .aivy-song-panel-search{ display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: var(--ink-faint); border-bottom: 1px solid var(--line-soft); }
 .aivy-song-panel-search input{ flex: 1; background: none; border: none; outline: none; color: var(--ink); font-size: 13.5px; }
 .aivy-song-panel-search input::placeholder{ color: var(--ink-faint); }
@@ -1762,7 +1764,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-song-panel-row .meta .t{ font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aivy-song-panel-row .meta .a{ font-size: 12px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aivy-song-panel-row > svg{ color: var(--moss-strong); flex-shrink: 0; }
-.aivy-emoji-pop{ position: absolute; bottom: 56px; left: 76px; display: flex; gap: 4px; background: var(--bg-elev-3); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 8px; box-shadow: var(--shadow-pop); z-index: 5; }
+.aivy-emoji-pop{ position: absolute; bottom: 56px; left: 76px; display: flex; gap: 4px; background: var(--bg-elev-3); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 8px; box-shadow: var(--shadow-pop); z-index: 5; animation: aivy-pop-in .18s var(--ease, ease) both; transform-origin: bottom left; }
 .aivy-emoji-pop button{ font-size: 20px; padding: 4px 6px; border-radius: 10px; transition: transform var(--dur-fast) var(--ease); }
 .aivy-emoji-pop button:hover{ transform: scale(1.25); }
 
@@ -1899,7 +1901,11 @@ body.aivy-resizing *{ user-select: none !important; }
   display: flex; align-items: center; justify-content: center;
   background: var(--moss); color: var(--moss-ink);
   box-shadow: 0 8px 24px -6px rgba(0,0,0,.4);
+  transition: transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow var(--dur-fast) var(--ease);
 }
+.aivy-ai-fab.is-open{ transform: rotate(90deg) scale(1.04); }
+.aivy-ai-fab:active{ transform: scale(.92); }
+.aivy-ai-fab.is-open:active{ transform: rotate(90deg) scale(.94); }
 .aivy-ai-fab svg path{ transform-box: fill-box; transform-origin: center; }
 .aivy-ai-fab:hover svg path:nth-child(1){ animation: aivy-spark-big 1.6s ease-in-out infinite; }
 .aivy-ai-fab:hover svg path:nth-child(2),
@@ -1941,6 +1947,20 @@ body.aivy-resizing *{ user-select: none !important; }
   background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius-lg);
   box-shadow: 0 20px 50px -16px rgba(0,0,0,.5);
   overflow: hidden;
+  transform-origin: bottom right;
+  animation: aivy-ai-panel-in .24s cubic-bezier(.16,1,.3,1) both;
+}
+.aivy-ai-panel.is-closing{
+  animation: aivy-ai-panel-out .16s cubic-bezier(.4,0,1,1) both;
+  pointer-events: none;
+}
+@keyframes aivy-ai-panel-in{
+  from{ opacity: 0; transform: translateY(18px) scale(.92); }
+  to{ opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes aivy-ai-panel-out{
+  from{ opacity: 1; transform: translateY(0) scale(1); }
+  to{ opacity: 0; transform: translateY(18px) scale(.92); }
 }
 .is-mobile ~ .aivy-ai-panel, .aivy-shell.is-mobile .aivy-ai-panel{ bottom: calc(var(--tabbar-h) + var(--player-h-mobile) + var(--safe-b) + 72px); }
 .aivy-ai-head{ display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); flex-shrink: 0; }
@@ -1954,7 +1974,14 @@ body.aivy-resizing *{ user-select: none !important; }
   background: var(--bg-elev-2); color: var(--ink-dim); transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .aivy-ai-suggest button:hover{ border-color: var(--moss); color: var(--ink); }
-.aivy-ai-msg-wrap{ display: flex; flex-direction: column; gap: 3px; max-width: 88%; }
+@keyframes aivy-msg-in{
+  from{ opacity: 0; transform: translateY(10px) scale(.96); }
+  to{ opacity: 1; transform: translateY(0) scale(1); }
+}
+.aivy-ai-msg-wrap{ display: flex; flex-direction: column; gap: 3px; max-width: 88%; animation: aivy-msg-in .3s cubic-bezier(.16,1,.3,1) both; }
+.aivy-ai-msg-wrap.user{ transform-origin: bottom right; }
+.aivy-ai-msg-wrap.assistant{ transform-origin: bottom left; }
+.aivy-ai-msg.is-typing{ animation: aivy-msg-in .2s ease both; }
 .aivy-ai-msg-wrap.user{ align-self: flex-end; align-items: flex-end; }
 .aivy-ai-msg-wrap.assistant{ align-self: flex-start; align-items: flex-start; }
 .aivy-ai-msg{ padding: 9px 12px; border-radius: 14px; font-size: 13.5px; line-height: 1.5; }
