@@ -3366,8 +3366,8 @@ function renderAiMarkdown(raw) {
 }
 
 const AI_QUICK_PROMPTS = [
-  { id: "taylor", tid: "Buatin playlist lagu Taylor Swift", ten: "Make a Taylor Swift playlist" },
-  { id: "play", tid: "Puterin lagu Blinding Lights", ten: "Play Blinding Lights" },
+  { id: "taylor", tid: "Buatin playlist lagu idgitaf", ten: "Make a Taylor Swift playlist" },
+  { id: "play", tid: "Puterin lagu jiwa yang bersedih", ten: "Play blank space" },
   { id: "mood", tid: "Rekomendasiin lagu buat santai malam ini", ten: "Recommend chill songs for tonight" },
   { id: "list", tid: "Lihat playlist aku apa aja", ten: "Show me my playlists" },
 ];

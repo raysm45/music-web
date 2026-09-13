@@ -1899,9 +1899,25 @@ body.aivy-resizing *{ user-select: none !important; }
   display: flex; align-items: center; justify-content: center;
   background: var(--moss); color: var(--moss-ink);
   box-shadow: 0 8px 24px -6px rgba(0,0,0,.4);
-  transition: transform var(--dur-fast) var(--ease);
 }
-.aivy-ai-fab:hover{ transform: scale(1.06); }
+.aivy-ai-fab svg path{ transform-box: fill-box; transform-origin: center; }
+.aivy-ai-fab:hover svg path:nth-child(1){ animation: aivy-spark-big 1.6s ease-in-out infinite; }
+.aivy-ai-fab:hover svg path:nth-child(2),
+.aivy-ai-fab:hover svg path:nth-child(3){ animation: aivy-spark-tr .85s ease-in-out infinite; }
+.aivy-ai-fab:hover svg path:nth-child(4),
+.aivy-ai-fab:hover svg path:nth-child(5){ animation: aivy-spark-bl 1.15s ease-in-out .3s infinite; }
+@keyframes aivy-spark-big{
+  0%, 100%{ transform: scale(1) rotate(0deg); }
+  50%{ transform: scale(1.2) rotate(10deg); }
+}
+@keyframes aivy-spark-tr{
+  0%, 100%{ transform: scale(.4); opacity: .35; }
+  50%{ transform: scale(1.35); opacity: 1; }
+}
+@keyframes aivy-spark-bl{
+  0%, 100%{ transform: scale(.4); opacity: .35; }
+  50%{ transform: scale(1.35); opacity: 1; }
+}
 .is-mobile ~ .aivy-ai-fab, .aivy-shell.is-mobile .aivy-ai-fab{ bottom: calc(var(--tabbar-h) + var(--player-h-mobile) + var(--safe-b) + 16px); }
 
 .aivy-ai-fab-wrap{ position: fixed; right: 20px; bottom: 20px; z-index: 55; }
