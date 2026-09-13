@@ -2,7 +2,7 @@ import { API_BASE } from "./api.js";
 import { Api } from "./api.js";
 
 const AI_ENDPOINT = `${API_BASE}/api/ai-chat`;
-const MAX_ROUNDS = 6;
+const MAX_ROUNDS = 12;
 
 function toTrack(raw) {
   if (!raw) return null;
