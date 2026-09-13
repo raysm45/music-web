@@ -10,7 +10,7 @@ import {
 import {
   ErrorBoundary, Sidebar, MobileTabBar, TopBar, PlayerBar, MiniPlayer, NowPlayingSheet, QueueSheet,
   RightPanel, GlobalContextMenu, AddToPlaylistModal, CreditsModal, ToastHost, ViewLoading, LyricsOverlay,
-  LyricsPrefetch,
+  LyricsPrefetch, AiAssistantWidget,
 } from "./components.jsx";
 import { LandingPage, LoginPage } from "./pages/AuthPages.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
@@ -115,6 +115,7 @@ function AppInner() {
       </main>
       {!isMobile && <PlayerBar onOpenNowPlaying={() => setNowPlayingOpen(true)} />}
       {!isMobile && <RightPanel />}
+      <AiAssistantWidget />
 
       {isMobile && !isImmersiveShorts && <MiniPlayer onExpand={() => setNowPlayingOpen(true)} />}
       {isMobile && <LyricsPrefetch />}

@@ -7,7 +7,7 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
-  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github,
+  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github, Sparkles,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -16,6 +16,8 @@ import {
 import { useRouter, Link } from "./router.jsx";
 import { CoverArt, SmartCover, StarMark, StarLoader } from "./lib/brand.jsx";
 import { formatTime, formatDuration, relativeTime, formatClockTime, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "./lib/utils.js";
+import { runAiAssistantTurn } from "./lib/aiAssistant.js";
+import { Api } from "./lib/api.js";
 function usePanelResize({ width, setWidth, min, max, side }) {
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, width: 0 });
@@ -3288,5 +3290,92 @@ export function LyricsOverlay() {
         <div className="aivy-empty" style={{ position: "relative", zIndex: 1 }}><StarMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>
       )}
     </div>
+  );
+}
+
+export function AiAssistantWidget() {
+  const { settings, authUser } = useUI();
+  const { playlists, createPlaylist, addToPlaylist, playSingle } = usePlayer();
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [chat, setChat] = useState([]);
+  const historyRef = useRef([]);
+  const scrollRef = useRef(null);
+
+  const en = settings.language === "en";
+  const tt = (id, us) => (en ? us : id);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [chat, sending]);
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || sending) return;
+    if (!authUser) {
+      setChat((c) => [...c, { role: "user", text }, { role: "assistant", text: tt("Login dulu ya buat pakai fitur ini (misalnya bikin playlist).", "Please log in first to use this (e.g. creating playlists).") }]);
+      setInput("");
+      return;
+    }
+    setChat((c) => [...c, { role: "user", text }]);
+    setInput("");
+    setSending(true);
+    try {
+      const ctx = { search: Api.search, createPlaylist, addToPlaylist, playSingle, playlists };
+      const { text: reply, history } = await runAiAssistantTurn(text, historyRef.current, ctx);
+      historyRef.current = history;
+      setChat((c) => [...c, { role: "assistant", text: reply }]);
+    } catch (err) {
+      setChat((c) => [...c, { role: "assistant", text: `${tt("Gagal", "Failed")}: ${err?.message || tt("terjadi kesalahan.", "something went wrong.")}` }]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <>
+      <button className="aivy-ai-fab" onClick={() => setOpen((v) => !v)} aria-label="AI Assistant">
+        <Sparkles size={20} />
+      </button>
+
+      {open && (
+        <div className="aivy-ai-panel">
+          <div className="aivy-ai-head">
+            <span className="t"><Sparkles size={15} /> {tt("Asisten AI", "AI Assistant")}</span>
+            <button className="aivy-icon-btn sm" onClick={() => setOpen(false)} aria-label={tt("Tutup", "Close")}><X size={15} /></button>
+          </div>
+
+          <div className="aivy-ai-body" ref={scrollRef}>
+            {chat.length === 0 && (
+              <div className="aivy-ai-empty">
+                {tt(
+                  "Coba minta: \"buatin playlist isinya lagu Taylor Swift\" atau \"puterin lagu Blinding Lights\".",
+                  "Try asking: \"make me a playlist of Taylor Swift songs\" or \"play Blinding Lights\"."
+                )}
+              </div>
+            )}
+            {chat.map((m, i) => (
+              <div key={i} className={`aivy-ai-msg ${m.role}`}>{m.text}</div>
+            ))}
+            {sending && <div className="aivy-ai-msg assistant is-typing">{tt("Mikir…", "Thinking…")}</div>}
+          </div>
+
+          <div className="aivy-ai-input-row">
+            <input
+              className="aivy-ai-input"
+              value={input}
+              placeholder={tt("Minta AI bikinin playlist, cari lagu, dll…", "Ask the AI to build a playlist, find a song, etc…")}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+              disabled={sending}
+            />
+            <button className="aivy-icon-btn" onClick={send} disabled={sending || !input.trim()} aria-label={tt("Kirim", "Send")}>
+              <Send size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
