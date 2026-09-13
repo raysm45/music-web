@@ -178,6 +178,19 @@ async function executeTool(name, input, ctx, trackCache) {
       return { ok: true, playlist_name: detail?.name, track_count: tracks.length };
     }
 
+    if (name === "get_playlist_tracks") {
+      const detail = await Api.playlist(input.playlist_id);
+      if (!detail) return { error: "Playlist tidak ditemukan." };
+      const tracks = (detail?.songs || []).map(toTrack).filter(Boolean);
+      tracks.forEach((tr) => trackCache.set(tr.id, tr));
+      const mapped = tracks.map((tr) => ({
+        track_id: tr.id,
+        title: tr.title,
+        artist: tr.artist?.name || null,
+      }));
+      return { playlist_id: input.playlist_id, playlist_name: detail?.name, track_count: mapped.length, tracks: mapped };
+    }
+
     if (name === "search_albums") {
       const results = await Api.albumSearch(input.query);
       const mapped = (results || []).slice(0, 10).map((a) => ({
