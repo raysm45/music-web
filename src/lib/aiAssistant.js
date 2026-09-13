@@ -1,4 +1,6 @@
-const AI_ENDPOINT = "/api/ai-chat";
+import { API_BASE } from "./api.js";
+
+const AI_ENDPOINT = `${API_BASE}/api/ai-chat`;
 const MAX_ROUNDS = 6;
 
 async function executeTool(name, input, ctx, trackCache) {
@@ -64,13 +66,11 @@ async function executeTool(name, input, ctx, trackCache) {
   }
 }
 
-/**
- * Runs one user turn through the Groq (OpenAI-compatible) tool-use loop.
- * @param {string} userText
- * @param {Array} history - prior OpenAI-style { role, content, ... } messages
- * @param {object} ctx - { search, createPlaylist, addToPlaylist, playSingle, playlists }
- * @returns {Promise<{ text: string, history: Array }>}
- */
+
+param {string} userText
+param {Array} history
+param {object} ctx 
+returns {Promise<{ text: string, history: Array }>}
 export async function runAiAssistantTurn(userText, history, ctx) {
   const trackCache = new Map();
   let messages = [...history, { role: "user", content: userText }];
