@@ -3470,8 +3470,8 @@ export function AiAssistantWidget() {
             {chat.length === 0 && (
               <div className="aivy-ai-empty">
                 {tt(
-                  "Coba minta: \"buatin playlist isinya lagu Taylor Swift\" atau \"puterin lagu Blinding Lights\".",
-                  "Try asking: \"make me a playlist of Taylor Swift songs\" or \"play Blinding Lights\"."
+                  "Coba minta: \"buatin playlist isinya lagu Taylor Swift\" atau \"puterin lagu jiwa yang bersedih\".",
+                  "Try asking: \"make me a playlist of Taylor Swift songs\" or \"play wide awake\"."
                 )}
                 <div className="aivy-ai-suggest">
                   {AI_QUICK_PROMPTS.map((q) => (
