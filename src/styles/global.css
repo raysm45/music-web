@@ -1900,9 +1900,13 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-ai-fab:hover{ transform: scale(1.06); }
 .is-mobile ~ .aivy-ai-fab, .aivy-shell.is-mobile .aivy-ai-fab{ bottom: calc(var(--tabbar-h) + var(--player-h-mobile) + var(--safe-b) + 16px); }
 
-.aivy-ai-fab-wrap{ position: fixed; right: 12px; bottom: calc(var(--player-h) + 4px); z-index: 55; }
+.aivy-ai-fab-wrap{ position: fixed; right: 20px; bottom: 20px; z-index: 55; }
 .is-mobile ~ .aivy-ai-fab-wrap, .aivy-shell.is-mobile .aivy-ai-fab-wrap{ bottom: calc(var(--tabbar-h) + var(--player-h-mobile) + var(--safe-b) + 16px); }
 .aivy-ai-fab-wrap .aivy-ai-fab{ position: static; }
+@media (max-width: 1240px){
+  .aivy-ai-fab-wrap{ bottom: calc(var(--player-h) + 14px); }
+  .aivy-ai-panel{ bottom: calc(var(--player-h) + 70px); }
+}
 .aivy-ai-badge{
   position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px;
   border-radius: 999px; background: var(--danger, #e5484d); color: #fff;
@@ -1911,7 +1915,7 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 
 .aivy-ai-panel{
-  position: fixed; right: 12px; bottom: calc(var(--player-h) + 60px); z-index: 55;
+  position: fixed; right: 20px; bottom: 76px; z-index: 55;
   width: 360px; max-width: calc(100vw - 32px); height: 480px; max-height: 64vh;
   display: flex; flex-direction: column;
   background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius-lg);
