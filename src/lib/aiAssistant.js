@@ -1,7 +1,38 @@
 import { API_BASE } from "./api.js";
+import { Api } from "./api.js";
 
 const AI_ENDPOINT = `${API_BASE}/api/ai-chat`;
 const MAX_ROUNDS = 6;
+
+function toTrack(raw) {
+  if (!raw) return null;
+  const id = raw.video_id || raw.videoId || raw.id;
+  if (!id) return null;
+  return {
+    id,
+    videoId: id,
+    title: raw.title,
+    cover: raw.cover || raw.thumbnail || null,
+    artist:
+      typeof raw.artist === "string"
+        ? { name: raw.artist }
+        : raw.artist || (raw.artist_name ? { name: raw.artist_name } : null),
+    album: raw.album || null,
+    duration: raw.duration || null,
+  };
+}
+
+async function resolveTrack(trackId, trackCache) {
+  if (trackCache.has(trackId)) return trackCache.get(trackId);
+  try {
+    const detail = await Api.track(trackId);
+    const track = toTrack(detail);
+    if (track) trackCache.set(trackId, track);
+    return track;
+  } catch {
+    return null;
+  }
+}
 
 async function executeTool(name, input, ctx, trackCache) {
   try {
@@ -60,12 +91,117 @@ async function executeTool(name, input, ctx, trackCache) {
       };
     }
 
+    if (name === "delete_playlist") {
+      const exists = (ctx.playlists || []).some((p) => String(p.id) === String(input.playlist_id));
+      if (!exists) return { error: "playlist_id tidak dikenali. Panggil list_playlists dulu." };
+      await ctx.deletePlaylist(input.playlist_id);
+      return { ok: true };
+    }
+
+    if (name === "rename_playlist") {
+      const ok = await ctx.updatePlaylistMeta(input.playlist_id, {
+        name: input.name,
+        description: input.description,
+        isPublic: input.is_public,
+      });
+      return ok ? { ok: true } : { error: "Gagal mengubah playlist." };
+    }
+
+    if (name === "remove_track_from_playlist") {
+      await ctx.removeFromPlaylist(input.playlist_id, input.track_id);
+      return { ok: true };
+    }
+
+    if (name === "like_track") {
+      const track = await resolveTrack(input.track_id, trackCache);
+      if (!track) return { error: "track_id tidak dikenali." };
+      if (ctx.liked?.has(String(track.videoId || track.id))) return { ok: true, already_liked: true };
+      await ctx.toggleLike(track);
+      return { ok: true, title: track.title };
+    }
+
+    if (name === "unlike_track") {
+      const track = await resolveTrack(input.track_id, trackCache);
+      if (!track) return { error: "track_id tidak dikenali." };
+      if (!ctx.liked?.has(String(track.videoId || track.id))) return { ok: true, already_not_liked: true };
+      await ctx.toggleLike(track);
+      return { ok: true, title: track.title };
+    }
+
+    if (name === "list_liked_tracks") {
+      const rows = await Api.likes();
+      const mapped = (rows || []).slice(0, 50).map((r) => {
+        const track = toTrack(r);
+        if (track) trackCache.set(track.id, track);
+        return { track_id: track?.id, title: r.title, artist: track?.artist?.name || null };
+      });
+      return { tracks: mapped };
+    }
+
+    if (name === "get_recently_played") {
+      const limit = Math.min(Number(input.limit) || 20, 100);
+      const rows = await Api.history(limit);
+      const mapped = (rows || []).map((r) => {
+        const track = toTrack(r);
+        if (track) trackCache.set(track.id, track);
+        return { track_id: track?.id, title: r.title, artist: track?.artist?.name || null, played_at: r.played_at };
+      });
+      return { history: mapped };
+    }
+
+    if (name === "get_similar_tracks") {
+      const seed = await resolveTrack(input.track_id, trackCache);
+      if (!seed) return { error: "track_id tidak dikenali. Panggil search_tracks dulu." };
+      const res = await Api.similar({ trackId: seed.videoId || seed.id });
+      const mapped = (res?.items || []).slice(0, 10).map((r) => {
+        const track = toTrack(r);
+        if (track) trackCache.set(track.id, track);
+        return { track_id: track?.id, title: r.title, artist: track?.artist?.name || null };
+      });
+      return { seed_track: seed.title, tracks: mapped };
+    }
+
+    if (name === "get_lyrics") {
+      const res = await Api.lyrics({ title: input.title, artist: input.artist });
+      if (!res || (!res.plain && !res.synced && !res.wordSynced)) {
+        return { error: "Lirik tidak ditemukan untuk lagu ini." };
+      }
+      return { lyrics: res.plain || null, has_synced_lyrics: !!(res.synced || res.wordSynced) };
+    }
+
+    if (name === "play_playlist") {
+      const detail = await Api.playlist(input.playlist_id);
+      const tracks = (detail?.songs || []).map(toTrack).filter(Boolean);
+      if (!tracks.length) return { error: "Playlist kosong atau tidak ditemukan." };
+      tracks.forEach((tr) => trackCache.set(tr.id, tr));
+      ctx.playList(tracks, 0, "ai-assistant");
+      return { ok: true, playlist_name: detail?.name, track_count: tracks.length };
+    }
+
+    if (name === "search_albums") {
+      const results = await Api.albumSearch(input.query);
+      const mapped = (results || []).slice(0, 10).map((a) => ({
+        album_id: a.id,
+        title: a.title,
+        artist: (typeof a.artist === "string" ? a.artist : a.artist?.name) || null,
+      }));
+      return { albums: mapped };
+    }
+
+    if (name === "play_album") {
+      const detail = await Api.album(input.album_id);
+      const tracks = (detail?.tracks || []).map(toTrack).filter(Boolean);
+      if (!tracks.length) return { error: "Album kosong atau tidak ditemukan." };
+      tracks.forEach((tr) => trackCache.set(tr.id, tr));
+      ctx.playList(tracks, 0, "ai-assistant");
+      return { ok: true, album_title: detail?.title, track_count: tracks.length };
+    }
+
     return { error: `Tool tidak dikenal: ${name}` };
   } catch (err) {
     return { error: err?.message || "Tool gagal dijalankan." };
   }
 }
-
 
 /**
  * @param {string} userText

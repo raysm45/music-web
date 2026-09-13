@@ -3293,6 +3293,83 @@ export function LyricsOverlay() {
   );
 }
 
+// Lightweight markdown-ish renderer for AI chat bubbles (bold, italic, inline code,
+// links and simple bullet/numbered lists) — no extra dependency needed.
+function renderAiMarkdown(raw) {
+  if (!raw) return null;
+
+  const renderInline = (text, keyBase) => {
+    const escaped = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    // Order matters: code first (so ** inside `` isn't touched), then links, bold, italic.
+    const tokens = [];
+    let i = 0;
+    const regex = /(`[^`]+`)|(\[[^\]]+\]\(https?:\/\/[^\s)]+\))|(\*\*[^*]+\*\*)|(\*[^*]+\*)/g;
+    let match;
+    let last = 0;
+    while ((match = regex.exec(escaped))) {
+      if (match.index > last) tokens.push({ type: "text", value: escaped.slice(last, match.index) });
+      const val = match[0];
+      if (val.startsWith("`")) tokens.push({ type: "code", value: val.slice(1, -1) });
+      else if (val.startsWith("[")) {
+        const m = val.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+        tokens.push({ type: "link", value: m?.[1] || val, href: m?.[2] || "#" });
+      } else if (val.startsWith("**")) tokens.push({ type: "b", value: val.slice(2, -2) });
+      else tokens.push({ type: "i", value: val.slice(1, -1) });
+      last = match.index + val.length;
+    }
+    if (last < escaped.length) tokens.push({ type: "text", value: escaped.slice(last) });
+
+    return tokens.map((tk, idx) => {
+      const k = `${keyBase}-${idx}`;
+      if (tk.type === "code") return <code key={k}>{tk.value}</code>;
+      if (tk.type === "b") return <strong key={k}>{tk.value}</strong>;
+      if (tk.type === "i") return <em key={k}>{tk.value}</em>;
+      if (tk.type === "link") return <a key={k} href={tk.href} target="_blank" rel="noreferrer">{tk.value}</a>;
+      return <React.Fragment key={k}>{tk.value}</React.Fragment>;
+    });
+  };
+
+  const lines = raw.replace(/\r\n/g, "\n").split("\n");
+  const blocks = [];
+  let listBuf = [];
+  let listType = null;
+
+  const flushList = () => {
+    if (!listBuf.length) return;
+    const Tag = listType === "ol" ? "ol" : "ul";
+    blocks.push(
+      <Tag key={`list-${blocks.length}`}>
+        {listBuf.map((item, i) => <li key={i}>{renderInline(item, `li-${blocks.length}-${i}`)}</li>)}
+      </Tag>
+    );
+    listBuf = [];
+    listType = null;
+  };
+
+  lines.forEach((line, idx) => {
+    const bullet = line.match(/^\s*[-*•]\s+(.*)/);
+    const numbered = line.match(/^\s*\d+[.)]\s+(.*)/);
+    if (bullet) { listType = "ul"; listBuf.push(bullet[1]); return; }
+    if (numbered) { listType = "ol"; listBuf.push(numbered[1]); return; }
+    flushList();
+    if (line.trim() === "") return;
+    blocks.push(<p key={`p-${idx}`}>{renderInline(line, `p-${idx}`)}</p>);
+  });
+  flushList();
+
+  return blocks;
+}
+
+const AI_QUICK_PROMPTS = [
+  { id: "taylor", tid: "Buatin playlist lagu Taylor Swift", ten: "Make a Taylor Swift playlist" },
+  { id: "play", tid: "Puterin lagu Blinding Lights", ten: "Play Blinding Lights" },
+  { id: "mood", tid: "Rekomendasiin lagu buat santai malam ini", ten: "Recommend chill songs for tonight" },
+  { id: "list", tid: "Lihat playlist aku apa aja", ten: "Show me my playlists" },
+];
+
 export function AiAssistantWidget() {
   const { settings, authUser } = useUI();
   const { playlists, createPlaylist, addToPlaylist, playSingle } = usePlayer();
@@ -3300,8 +3377,11 @@ export function AiAssistantWidget() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [chat, setChat] = useState([]);
+  const [unread, setUnread] = useState(0);
+  const [copiedIdx, setCopiedIdx] = useState(null);
   const historyRef = useRef([]);
   const scrollRef = useRef(null);
+  const inputRef = useRef(null);
 
   const en = settings.language === "en";
   const tt = (id, us) => (en ? us : id);
@@ -3310,40 +3390,78 @@ export function AiAssistantWidget() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [chat, sending]);
 
-  const send = async () => {
-    const text = input.trim();
+  useEffect(() => {
+    if (open) {
+      setUnread(0);
+      inputRef.current?.focus();
+    }
+  }, [open]);
+
+  const pushAssistant = (text) => {
+    setChat((c) => [...c, { role: "assistant", text, at: Date.now() }]);
+    if (!open) setUnread((n) => n + 1);
+  };
+
+  const sendText = async (text) => {
     if (!text || sending) return;
     if (!authUser) {
-      setChat((c) => [...c, { role: "user", text }, { role: "assistant", text: tt("Login dulu ya buat pakai fitur ini (misalnya bikin playlist).", "Please log in first to use this (e.g. creating playlists).") }]);
+      setChat((c) => [...c, { role: "user", text, at: Date.now() }]);
       setInput("");
+      pushAssistant(tt("Login dulu ya buat pakai fitur ini (misalnya bikin playlist).", "Please log in first to use this (e.g. creating playlists)."));
       return;
     }
-    setChat((c) => [...c, { role: "user", text }]);
+    setChat((c) => [...c, { role: "user", text, at: Date.now() }]);
     setInput("");
     setSending(true);
     try {
       const ctx = { search: Api.search, createPlaylist, addToPlaylist, playSingle, playlists };
       const { text: reply, history } = await runAiAssistantTurn(text, historyRef.current, ctx);
       historyRef.current = history;
-      setChat((c) => [...c, { role: "assistant", text: reply }]);
+      pushAssistant(reply);
     } catch (err) {
-      setChat((c) => [...c, { role: "assistant", text: `${tt("Gagal", "Failed")}: ${err?.message || tt("terjadi kesalahan.", "something went wrong.")}` }]);
+      pushAssistant(`${tt("Gagal", "Failed")}: ${err?.message || tt("terjadi kesalahan.", "something went wrong.")}`);
     } finally {
       setSending(false);
     }
   };
 
+  const send = () => sendText(input.trim());
+
+  const resetChat = () => {
+    setChat([]);
+    historyRef.current = [];
+  };
+
+  const copyMessage = (text, idx) => {
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx((v) => (v === idx ? null : v)), 1500);
+    }).catch(() => {});
+  };
+
   return (
     <>
-      <button className="aivy-ai-fab" onClick={() => setOpen((v) => !v)} aria-label="AI Assistant">
-        <Sparkles size={20} />
-      </button>
+      <div className="aivy-ai-fab-wrap">
+        <button className="aivy-ai-fab" onClick={() => setOpen((v) => !v)} aria-label="AI Assistant">
+          <Sparkles size={20} />
+        </button>
+        {!open && unread > 0 && (
+          <span className="aivy-ai-badge">{unread > 9 ? "9+" : unread}</span>
+        )}
+      </div>
 
       {open && (
         <div className="aivy-ai-panel">
           <div className="aivy-ai-head">
             <span className="t"><Sparkles size={15} /> {tt("Asisten AI", "AI Assistant")}</span>
-            <button className="aivy-icon-btn sm" onClick={() => setOpen(false)} aria-label={tt("Tutup", "Close")}><X size={15} /></button>
+            <div className="acts">
+              {chat.length > 0 && (
+                <button className="aivy-icon-btn sm" onClick={resetChat} aria-label={tt("Bersihkan obrolan", "Clear chat")} title={tt("Bersihkan obrolan", "Clear chat")}>
+                  <Trash2 size={14} />
+                </button>
+              )}
+              <button className="aivy-icon-btn sm" onClick={() => setOpen(false)} aria-label={tt("Tutup", "Close")}><X size={15} /></button>
+            </div>
           </div>
 
           <div className="aivy-ai-body" ref={scrollRef}>
@@ -3353,16 +3471,36 @@ export function AiAssistantWidget() {
                   "Coba minta: \"buatin playlist isinya lagu Taylor Swift\" atau \"puterin lagu Blinding Lights\".",
                   "Try asking: \"make me a playlist of Taylor Swift songs\" or \"play Blinding Lights\"."
                 )}
+                <div className="aivy-ai-suggest">
+                  {AI_QUICK_PROMPTS.map((q) => (
+                    <button key={q.id} onClick={() => sendText(tt(q.tid, q.ten))} disabled={sending}>
+                      {tt(q.tid, q.ten)}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {chat.map((m, i) => (
-              <div key={i} className={`aivy-ai-msg ${m.role}`}>{m.text}</div>
+              <div key={i} className={`aivy-ai-msg-wrap ${m.role}`}>
+                <div className={`aivy-ai-msg ${m.role}`}>
+                  {m.role === "assistant" ? renderAiMarkdown(m.text) : m.text}
+                </div>
+                <div className="aivy-ai-msg-meta">
+                  {m.at && <span className="aivy-ai-msg-time">{formatClockTime ? formatClockTime(m.at) : ""}</span>}
+                  {m.role === "assistant" && (
+                    <button className="aivy-icon-btn xs aivy-ai-copy-btn" onClick={() => copyMessage(m.text, i)} aria-label={tt("Salin", "Copy")} title={tt("Salin", "Copy")}>
+                      {copiedIdx === i ? <Check size={11} /> : <Copy size={11} />}
+                    </button>
+                  )}
+                </div>
+              </div>
             ))}
             {sending && <div className="aivy-ai-msg assistant is-typing">{tt("Mikir…", "Thinking…")}</div>}
           </div>
 
           <div className="aivy-ai-input-row">
             <input
+              ref={inputRef}
               className="aivy-ai-input"
               value={input}
               placeholder={tt("Minta AI bikinin playlist, cari lagu, dll…", "Ask the AI to build a playlist, find a song, etc…")}

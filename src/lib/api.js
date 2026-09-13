@@ -49,6 +49,7 @@ export const Api = {
   artist: (q) => apiGet(`/api/artist?q=${encodeURIComponent(q)}`),
   artistQuick: (q) => apiGet(`/api/artist/quick?q=${encodeURIComponent(q)}`),
   album: (id) => apiGet(`/api/album/${id}`),
+  albumSearch: (q) => apiGet(`/api/album?q=${encodeURIComponent(q)}`),
   track: (id) => apiGet(`/api/track/${id}`),
   trackDescription: (videoId) =>
     apiGet(`/api/track/description?videoId=${encodeURIComponent(videoId || "")}`),
@@ -125,4 +126,3 @@ export const Api = {
 
   discordActivityToken: (code) => apiSend("/api/discord-activity/token", "POST", { code }),
 };
-      
