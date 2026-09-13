@@ -210,6 +210,38 @@ async function executeTool(name, input, ctx, trackCache) {
       return { ok: true, album_title: detail?.title, track_count: tracks.length };
     }
 
+    if (name === "get_queue") {
+      const upNext = ctx.upNext || [];
+      const mapped = upNext.map((tr, idx) => ({
+        queue_index: idx,
+        track_id: tr.id,
+        title: tr.title,
+        artist: tr.artist?.name || null,
+      }));
+      return { queue_length: mapped.length, queue: mapped };
+    }
+
+    if (name === "add_to_queue") {
+      const track = trackCache.get(input.track_id);
+      if (!track) return { error: "track_id tidak dikenali. Panggil search_tracks dulu." };
+      if (input.position === "next") {
+        ctx.playNextInQueue(track);
+      } else {
+        ctx.addToQueueEnd(track);
+      }
+      return { ok: true, added: track.title, position: input.position === "next" ? "next" : "end" };
+    }
+
+    if (name === "remove_from_queue") {
+      const idx = Number(input.queue_index);
+      if (!Number.isInteger(idx) || idx < 0) return { error: "queue_index tidak valid." };
+      const upNext = ctx.upNext || [];
+      if (idx >= upNext.length) return { error: "queue_index di luar jangkauan. Panggil get_queue dulu." };
+      const removed = upNext[idx];
+      ctx.removeFromQueue(idx);
+      return { ok: true, removed: removed?.title || null };
+    }
+
     return { error: `Tool tidak dikenal: ${name}` };
   } catch (err) {
     return { error: err?.message || "Tool gagal dijalankan." };
