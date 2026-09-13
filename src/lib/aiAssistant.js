@@ -67,10 +67,12 @@ async function executeTool(name, input, ctx, trackCache) {
 }
 
 
-param {string} userText
-param {Array} history
-param {object} ctx 
-returns {Promise<{ text: string, history: Array }>}
+/**
+ * @param {string} userText
+ * @param {Array} history
+ * @param {object} ctx
+ * @returns {Promise<{ text: string, history: Array }>}
+ */
 export async function runAiAssistantTurn(userText, history, ctx) {
   const trackCache = new Map();
   let messages = [...history, { role: "user", content: userText }];
