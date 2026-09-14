@@ -115,6 +115,7 @@ const DEFAULT_SETTINGS = {
   downloadOverWifiOnly: true,
   hostOnlyControlDefault: false,
   roomVisibilityDefault: "public",
+  livingCover: true,
   equalizer: DEFAULT_EQ,
 };
 

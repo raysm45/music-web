@@ -868,7 +868,7 @@ export function PlayerBar({ onOpenNowPlaying }) {
         {currentTrack ? (
           <>
             <span
-              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""}`}
+              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false && !settings.cdCoverSpin ? "living-cover" : ""}`}
               onClick={handleCoverClick} role="button" tabIndex={0} style={{ cursor: "pointer" }}
               onKeyDown={(e) => { if (e.key === "Enter") handleCoverClick(); }}
             >
@@ -928,10 +928,12 @@ export function MiniPlayer({ onExpand }) {
   if (!currentTrack) return null;
   return (
     <div
-      className="aivy-mini-player" ref={miniRef} onClick={handleExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
+      className={`aivy-mini-player ${isPlaying ? "is-playing" : ""}`} ref={miniRef} onClick={handleExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
       onPointerDown={swipe.onPointerDown} onPointerMove={swipe.onPointerMove} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
     >
-      <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
+      <span className={`aivy-mini-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false ? "living-cover" : ""}`}>
+        <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
+      </span>
       <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
@@ -1388,7 +1390,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
             >
               <div
-                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""}`}
+                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""} ${settings.livingCover !== false && !settings.cdCoverSpin ? "living-cover" : ""}`}
                 ref={(el) => { coverRef.current = el; tilt.ref.current = el; }}
                 style={{ ...tilt.style, ...(dynamicColor ? { "--npx-dynamic": dynamicColor, boxShadow: `0 24px 60px rgba(0,0,0,.5), 0 0 60px -12px ${dynamicColor}` } : {}) }}
                 onPointerMove={settings.tiltCover ? tilt.onMove : undefined}

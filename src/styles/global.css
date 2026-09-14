@@ -628,6 +628,26 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-player-cover.cd-spin img{ border-radius: 50%; }
 .aivy-player.is-playing .aivy-player-cover.cd-spin{ animation-play-state: running; }
 .npx-cover-visualizer{ position: absolute; inset: 0; z-index: 1; opacity: .85; mix-blend-mode: screen; pointer-events: none; }
+
+.living-cover{ overflow: hidden; }
+.living-cover img, .living-cover svg{ will-change: filter; }
+.aivy-player.is-playing .aivy-player-cover.living-cover img,
+.aivy-player.is-playing .aivy-player-cover.living-cover svg,
+.aivy-sheet.is-playing .npx-cover.living-cover img,
+.aivy-sheet.is-playing .npx-cover.living-cover svg{
+  filter: url(#aivy-cover-liquid);
+}
+.aivy-mini-player.is-playing .aivy-mini-cover.living-cover img,
+.aivy-mini-player.is-playing .aivy-mini-cover.living-cover svg{
+  filter: url(#aivy-cover-liquid-sm);
+}
+@media (prefers-reduced-motion: reduce){
+  .living-cover img, .living-cover svg{ filter: none !important; }
+}
+html[data-reduced-motion="true"] .living-cover img,
+html[data-reduced-motion="true"] .living-cover svg{ filter: none !important; }
+.aivy-mini-cover{ position: relative; overflow: hidden; border-radius: 6px; flex-shrink: 0; width: 40px; height: 40px; }
+.aivy-mini-cover.no-round{ border-radius: 4px; }
 .aivy-sheet-visualizer{ position: absolute; inset: 0; z-index: 0; opacity: .9; pointer-events: none; }
 .aivy-visualizer-canvas{ width: 100%; height: 100%; display: block; }
 .aivy-visualizer-canvas.blended{ background: transparent; }
