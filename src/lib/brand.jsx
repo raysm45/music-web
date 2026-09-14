@@ -116,3 +116,92 @@ export function SmartCover({ src, seed, size = 160, radius = 14, style = {}, alt
     />
   );
 }
+
+// --- Animated artwork (Canvas-style video) ---------------------------------
+const ARTWORK_TTL_MS = 60 * 60 * 1000; // 1 hour
+const ARTWORK_TIMEOUT_MS = 5000;
+const artworkCache = new Map(); // key -> { videoUrl: string|null, ts: number }
+const artworkInflight = new Map(); // key -> Promise<string|null>
+
+function artworkKey(title, artist) {
+  return `${String(title || "").trim().toLowerCase()}::${String(artist || "").trim().toLowerCase()}`;
+}
+
+async function fetchAnimatedArtwork(title, artist) {
+  const key = artworkKey(title, artist);
+  const cached = artworkCache.get(key);
+  if (cached && Date.now() - cached.ts < ARTWORK_TTL_MS) return cached.videoUrl;
+  if (artworkInflight.has(key)) return artworkInflight.get(key);
+
+  const promise = (async () => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), ARTWORK_TIMEOUT_MS);
+      const res = await fetch(
+        `https://artwork.boidu.dev/?s=${encodeURIComponent(title)}&a=${encodeURIComponent(artist)}`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`artwork api ${res.status}`);
+      const data = await res.json();
+      const videoUrl = data?.videoUrl || data?.animated || null;
+      artworkCache.set(key, { videoUrl, ts: Date.now() });
+      return videoUrl;
+    } catch {
+      // Cache the miss too (short-ish), so a flaky/slow lookup doesn't get retried on every render.
+      artworkCache.set(key, { videoUrl: null, ts: Date.now() });
+      return null;
+    } finally {
+      artworkInflight.delete(key);
+    }
+  })();
+
+  artworkInflight.set(key, promise);
+  return promise;
+}
+
+function prefersReducedMotion() {
+  if (typeof document !== "undefined" && document.documentElement.dataset.reducedMotion === "true") return true;
+  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return true;
+  return false;
+}
+
+/**
+ * Like SmartCover, but shows a looping animated-artwork video (Canvas-style) when one
+ * exists for the track. Falls back to the plain static SmartCover otherwise — never
+ * applies any distortion/warp effect to the image itself.
+ */
+export function AnimatedCover({ src, seed, size = 160, radius = 14, style = {}, alt = "", title, artist, enabled = true }) {
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [videoFailed, setVideoFailed] = useState(false);
+
+  useEffect(() => {
+    setVideoUrl(null);
+    setVideoFailed(false);
+    if (!enabled || !title || !artist || prefersReducedMotion()) return;
+    let cancelled = false;
+    fetchAnimatedArtwork(title, artist).then((url) => {
+      if (!cancelled) setVideoUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [title, artist, enabled]);
+
+  if (videoUrl && !videoFailed) {
+    return (
+      <video
+        key={videoUrl}
+        src={videoUrl}
+        autoPlay
+        loop
+        muted
+        playsInline
+        width={size}
+        height={size}
+        aria-label={alt}
+        style={{ borderRadius: radius, objectFit: "cover", display: "block", background: "var(--bg-elev-2)", ...style }}
+        onError={() => setVideoFailed(true)}
+      />
+    );
+  }
+  return <SmartCover src={src} seed={seed} size={size} radius={radius} style={style} alt={alt} />;
+}
