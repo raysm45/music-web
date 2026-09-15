@@ -183,7 +183,7 @@ export function AnimatedCover({
 
   return (
     <div
-      className={videoSrc ? "aivy-animated-cover-active" : ""}
+      className="aivy-animated-cover"
       style={{ position: "relative", overflow: "hidden", borderRadius: radius, ...style }}
     >
       <SmartCover
