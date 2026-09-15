@@ -1301,7 +1301,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
       return;
     }
     setArtworkReloadToken((n) => n + 1);
-    pushToast(t("npArtworkReloaded"));
+  };
+  const handleArtworkReloadResult = (status) => {
+    if (status === "success") pushToast(t("npArtworkReloaded"));
+    else if (status === "rate_limited") pushToast(t("npArtworkReloadRateLimited"));
+    else if (status === "not_found") pushToast(t("npArtworkReloadFailed"));
+    else pushToast(t("npArtworkReloadError"));
   };
   const handleFullscreenCoverClick = () => {
     const action = settings.fullscreenCoverClick || "exit";
@@ -1312,7 +1317,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     else if (action === "prev") prev();
   };
   useEffect(() => { if (!open) setUiHidden(false); }, [open]);
-  useEffect(() => { setUiHidden(false); setArtworkReloadToken(0); }, [currentTrack?.id]);
+  useEffect(() => { setUiHidden(false); }, [currentTrack?.id]);
 
   const lyricsMode = !!(open && lyricsOpen);
   const [singMode, setSingMode] = useState(false);
@@ -1424,6 +1429,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                   animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
                   onColor={setServerDominantColor}
                   reloadToken={artworkReloadToken}
+                  onReloadResult={handleArtworkReloadResult}
                 />
               </div>
               <div className="npx-metarow">

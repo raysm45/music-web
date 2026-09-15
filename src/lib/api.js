@@ -8,7 +8,9 @@ async function throwApiError(res) {
     const data = await res.json();
     if (data?.error) message = data.error;
   } catch { }
-  throw new Error(message);
+  const err = new Error(message);
+  err.status = res.status;
+  throw err;
 }
 
 async function apiGet(path) {

@@ -135,27 +135,47 @@ const supportsNativeHls = () => {
  * `reloadToken` (opsional, angka yang naik tiap kali user minta muat ulang
  * lewat menu titik-tiga Now Playing) memaksa fetch ulang: cache memori lokal
  * & cache di server dilewati, jadi artwork animasi dicari ulang dari awal.
+ * Saat itu terjadi, `onReloadResult(status)` dipanggil begitu hasilnya
+ * diketahui, dengan `status` salah satu dari:
+ *  - "success"      : ketemu versi animasinya
+ *  - "not_found"     : lagunya memang ga punya versi animasi
+ *  - "rate_limited"  : kena limit request muat-ulang (HTTP 429)
+ *  - "error"         : gagal karena sebab lain (network, dsb)
+ * biar caller bisa kasih tau user lewat toast yang sesuai.
  */
-function useAnimatedArtwork(song, artist, enabled, reloadToken = 0) {
+function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResult) {
   const [artwork, setArtwork] = useState(null);
   const lastAppliedReload = useRef(reloadToken);
+  const onReloadResultRef = useRef(onReloadResult);
+  onReloadResultRef.current = onReloadResult;
+
   useEffect(() => {
     setArtwork(null);
-    if (!enabled || !song) return undefined;
-    const key = `${song}::${artist || ""}`.toLowerCase();
     const forceReload = reloadToken !== lastAppliedReload.current;
     lastAppliedReload.current = reloadToken;
+
+    if (!enabled || !song) {
+      if (forceReload) onReloadResultRef.current?.("error");
+      return undefined;
+    }
+
+    const key = `${song}::${artist || ""}`.toLowerCase();
     if (forceReload) artworkMemCache.delete(key);
     const hit = !forceReload && artworkMemCache.get(key);
     if (hit) { setArtwork(hit); return undefined; }
+
     let alive = true;
     Api.animatedArtwork(song, artist, forceReload)
       .then((data) => {
-        if (!alive || !data) return;
-        artworkMemCache.set(key, data);
-        setArtwork(data);
+        if (!alive) return;
+        const hasAnimation = !!(data && (data.video || data.animated));
+        if (data) { artworkMemCache.set(key, data); setArtwork(data); }
+        if (forceReload) onReloadResultRef.current?.(hasAnimation ? "success" : "not_found");
       })
-      .catch(() => { /* biarin, tetap fallback ke cover statis */ });
+      .catch((err) => {
+        /* biarin, tetap fallback ke cover statis */
+        if (forceReload) onReloadResultRef.current?.(err?.status === 429 ? "rate_limited" : "error");
+      });
     return () => { alive = false; };
   }, [song, artist, enabled, reloadToken]);
   return artwork;
@@ -175,10 +195,10 @@ function useAnimatedArtwork(song, artist, enabled, reloadToken = 0) {
  */
 export function AnimatedCover({
   src, seed, size = 160, radius = 14, style = {}, alt = "",
-  song, artist, animated = false, reduceMotion = false, onColor, reloadToken = 0,
+  song, artist, animated = false, reduceMotion = false, onColor, reloadToken = 0, onReloadResult,
 }) {
   const [videoReady, setVideoReady] = useState(false);
-  const artwork = useAnimatedArtwork(song, artist, animated && !reduceMotion, reloadToken);
+  const artwork = useAnimatedArtwork(song, artist, animated && !reduceMotion, reloadToken, onReloadResult);
   const onColorRef = useRef(onColor);
   onColorRef.current = onColor;
 
