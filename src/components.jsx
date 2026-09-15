@@ -1296,6 +1296,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const [artworkReloadToken, setArtworkReloadToken] = useState(0);
   const handleMore = () => { if (!currentTrack) return; setMoreOpen(true); };
   const handleReloadArtwork = () => {
+    if (!settings.animatedArtwork) {
+      pushToast(t("npArtworkReloadNeedsSetting"));
+      return;
+    }
     setArtworkReloadToken((n) => n + 1);
     pushToast(t("npArtworkReloaded"));
   };
@@ -1499,7 +1503,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         onOpenAod={() => { setMoreOpen(false); setAodOpen(true); }}
         onNavigate={() => { setMoreOpen(false); onClose(); }}
         onReloadArtwork={() => { setMoreOpen(false); handleReloadArtwork(); }}
-        animatedArtworkEnabled={!!settings.animatedArtwork && !reduceMotion}
       />
       <TrackDetailSheet
         open={detailOpen}
@@ -1519,7 +1522,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   );
 }
 
-export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod, onNavigate, onReloadArtwork, animatedArtworkEnabled }) {
+export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod, onNavigate, onReloadArtwork }) {
   const { navigate } = useRouter();
   const { t, pushToast, openAddToPlaylist } = useUI();
   const { promptCast, volume, muted } = usePlayer();
@@ -1609,7 +1612,7 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
     { key: "playlist", icon: <ListPlus size={20} />, label: t("npAddToPlaylist"), onSelect: handleAddToPlaylist },
     { key: "share", icon: <Share2 size={20} />, label: t("npShare"), onSelect: handleShare },
     { key: "aod", icon: <Moon size={20} />, label: t("npAodMode"), onSelect: onOpenAod },
-    !isLocal && animatedArtworkEnabled && onReloadArtwork
+    !isLocal && onReloadArtwork
       && { key: "reloadArtwork", icon: <RefreshCw size={20} />, label: t("npReloadArtwork"), onSelect: onReloadArtwork },
   ].filter(Boolean);
 
