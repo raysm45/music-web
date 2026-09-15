@@ -131,17 +131,25 @@ const supportsNativeHls = () => {
  * Fetch artwork animasi (video sampul, m3u8/mp4) + warna dominan dari backend
  * (proxy ke artwork.boidu.dev), hanya jika `enabled`. Di-cache per song+artist
  * di memori tab ini biar ganti-ganti tab/re-render ga fetch ulang.
+ *
+ * `reloadToken` (opsional, angka yang naik tiap kali user minta muat ulang
+ * lewat menu titik-tiga Now Playing) memaksa fetch ulang: cache memori lokal
+ * & cache di server dilewati, jadi artwork animasi dicari ulang dari awal.
  */
-function useAnimatedArtwork(song, artist, enabled) {
+function useAnimatedArtwork(song, artist, enabled, reloadToken = 0) {
   const [artwork, setArtwork] = useState(null);
+  const lastAppliedReload = useRef(reloadToken);
   useEffect(() => {
     setArtwork(null);
     if (!enabled || !song) return undefined;
     const key = `${song}::${artist || ""}`.toLowerCase();
-    const hit = artworkMemCache.get(key);
+    const forceReload = reloadToken !== lastAppliedReload.current;
+    lastAppliedReload.current = reloadToken;
+    if (forceReload) artworkMemCache.delete(key);
+    const hit = !forceReload && artworkMemCache.get(key);
     if (hit) { setArtwork(hit); return undefined; }
     let alive = true;
-    Api.animatedArtwork(song, artist)
+    Api.animatedArtwork(song, artist, forceReload)
       .then((data) => {
         if (!alive || !data) return;
         artworkMemCache.set(key, data);
@@ -149,7 +157,7 @@ function useAnimatedArtwork(song, artist, enabled) {
       })
       .catch(() => { /* biarin, tetap fallback ke cover statis */ });
     return () => { alive = false; };
-  }, [song, artist, enabled]);
+  }, [song, artist, enabled, reloadToken]);
   return artwork;
 }
 
@@ -167,10 +175,10 @@ function useAnimatedArtwork(song, artist, enabled) {
  */
 export function AnimatedCover({
   src, seed, size = 160, radius = 14, style = {}, alt = "",
-  song, artist, animated = false, reduceMotion = false, onColor,
+  song, artist, animated = false, reduceMotion = false, onColor, reloadToken = 0,
 }) {
   const [videoReady, setVideoReady] = useState(false);
-  const artwork = useAnimatedArtwork(song, artist, animated && !reduceMotion);
+  const artwork = useAnimatedArtwork(song, artist, animated && !reduceMotion, reloadToken);
   const onColorRef = useRef(onColor);
   onColorRef.current = onColor;
 

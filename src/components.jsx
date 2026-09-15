@@ -7,7 +7,7 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
-  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github, Sparkles,
+  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github, Sparkles, RefreshCw,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -1275,7 +1275,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     liked, toggleLike, loadingAudio, currentTrackHasLyrics, isPlaying, togglePlay, next, prev,
   } = usePlayer();
   const { navigate } = useRouter();
-  const { t, settings, lyricsOpen, toggleLyrics } = useUI();
+  const { t, settings, lyricsOpen, toggleLyrics, pushToast } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
   const clientDynamicColor = useDominantColor(settings.dynamicColors ? currentTrack?.cover : null);
   const [serverDominantColor, setServerDominantColor] = useState(null);
@@ -1293,7 +1293,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [aodOpen, setAodOpen] = useState(false);
   const [uiHidden, setUiHidden] = useState(false);
+  const [artworkReloadToken, setArtworkReloadToken] = useState(0);
   const handleMore = () => { if (!currentTrack) return; setMoreOpen(true); };
+  const handleReloadArtwork = () => {
+    setArtworkReloadToken((n) => n + 1);
+    pushToast(t("npArtworkReloaded"));
+  };
   const handleFullscreenCoverClick = () => {
     const action = settings.fullscreenCoverClick || "exit";
     if (action === "exit") onClose();
@@ -1303,7 +1308,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     else if (action === "prev") prev();
   };
   useEffect(() => { if (!open) setUiHidden(false); }, [open]);
-  useEffect(() => { setUiHidden(false); }, [currentTrack?.id]);
+  useEffect(() => { setUiHidden(false); setArtworkReloadToken(0); }, [currentTrack?.id]);
 
   const lyricsMode = !!(open && lyricsOpen);
   const [singMode, setSingMode] = useState(false);
@@ -1414,6 +1419,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                   song={currentTrack.title} artist={currentTrack.artist?.name}
                   animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
                   onColor={setServerDominantColor}
+                  reloadToken={artworkReloadToken}
                 />
               </div>
               <div className="npx-metarow">
@@ -1492,6 +1498,8 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         onOpenDetail={() => { setMoreOpen(false); setDetailOpen(true); }}
         onOpenAod={() => { setMoreOpen(false); setAodOpen(true); }}
         onNavigate={() => { setMoreOpen(false); onClose(); }}
+        onReloadArtwork={() => { setMoreOpen(false); handleReloadArtwork(); }}
+        animatedArtworkEnabled={!!settings.animatedArtwork && !reduceMotion}
       />
       <TrackDetailSheet
         open={detailOpen}
@@ -1503,12 +1511,15 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         open={aodOpen}
         track={currentTrack}
         onClose={() => setAodOpen(false)}
+        animated={!!settings.animatedArtwork}
+        reduceMotion={reduceMotion}
+        reloadToken={artworkReloadToken}
       />
     </>
   );
 }
 
-export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod, onNavigate }) {
+export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod, onNavigate, onReloadArtwork, animatedArtworkEnabled }) {
   const { navigate } = useRouter();
   const { t, pushToast, openAddToPlaylist } = useUI();
   const { promptCast, volume, muted } = usePlayer();
@@ -1598,6 +1609,8 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
     { key: "playlist", icon: <ListPlus size={20} />, label: t("npAddToPlaylist"), onSelect: handleAddToPlaylist },
     { key: "share", icon: <Share2 size={20} />, label: t("npShare"), onSelect: handleShare },
     { key: "aod", icon: <Moon size={20} />, label: t("npAodMode"), onSelect: onOpenAod },
+    !isLocal && animatedArtworkEnabled && onReloadArtwork
+      && { key: "reloadArtwork", icon: <RefreshCw size={20} />, label: t("npReloadArtwork"), onSelect: onReloadArtwork },
   ].filter(Boolean);
 
   const navItems = [
@@ -1830,7 +1843,7 @@ export function TrackDetailSheet({ open, track, isPreviewClip, onClose }) {
   );
 }
 
-export function AlwaysOnDisplay({ open, track, onClose }) {
+export function AlwaysOnDisplay({ open, track, onClose, animated = false, reduceMotion = false, reloadToken = 0 }) {
   const { t } = useUI();
   const { isPlaying } = usePlayer();
   const [now, setNow] = useState(() => new Date());
@@ -1850,7 +1863,11 @@ export function AlwaysOnDisplay({ open, track, onClose }) {
     <div className={`aivy-aod ${open ? "open" : ""}`} aria-hidden={!open} onClick={onClose}>
       <div className="aivy-aod-clock">{hh}<span className="colon">:</span>{mm}</div>
       <div className="aivy-aod-track">
-        <SmartCover src={track.cover} seed={track.id + track.title} size={28} radius={6} style={{ width: 28, height: 28 }} />
+        <AnimatedCover
+          src={track.cover} seed={track.id + track.title} size={28} radius={6} style={{ width: 28, height: 28 }}
+          song={track.title} artist={track.artist?.name}
+          animated={animated} reduceMotion={reduceMotion} reloadToken={reloadToken}
+        />
         <div className="aivy-aod-meta">
           <div className="t">{track.title}</div>
           <div className="a">{track.artist?.name || "\u2014"}</div>
