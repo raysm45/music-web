@@ -182,7 +182,10 @@ export function AnimatedCover({
   const videoSrc = artwork?.video || (artwork?.animated && supportsNativeHls() ? artwork.animated : null);
 
   return (
-    <div style={{ position: "relative", overflow: "hidden", borderRadius: radius, ...style }}>
+    <div
+      className={videoSrc ? "aivy-animated-cover-active" : ""}
+      style={{ position: "relative", overflow: "hidden", borderRadius: radius, ...style }}
+    >
       <SmartCover
         src={src} seed={seed} size={size} radius={radius} alt={alt}
         style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}

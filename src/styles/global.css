@@ -646,6 +646,13 @@ body.aivy-resizing *{ user-select: none !important; }
 }
 html[data-reduced-motion="true"] .living-cover img,
 html[data-reduced-motion="true"] .living-cover svg{ filter: none !important; }
+/* Artwork animasi (video asli dari boidu/Apple Music) sudah gerak sendiri —
+   efek liquid-distortion "Living Cover" ga perlu dipaksain lagi di atasnya,
+   soalnya malah bikin video-nya keliatan glitch/warping pas nge-blend sama
+   filter SVG punya img di baliknya. Cuma dicabut pas videonya beneran aktif. */
+.aivy-animated-cover-active img,
+.aivy-animated-cover-active svg,
+.aivy-animated-cover-active video{ filter: none !important; }
 .aivy-mini-cover{ position: relative; overflow: hidden; border-radius: 6px; flex-shrink: 0; width: 40px; height: 40px; }
 .aivy-mini-cover.no-round{ border-radius: 4px; }
 .aivy-sheet-visualizer{ position: absolute; inset: 0; z-index: 0; opacity: .9; pointer-events: none; }
