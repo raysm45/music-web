@@ -872,10 +872,7 @@ export function PlayerBar({ onOpenNowPlaying }) {
               onClick={handleCoverClick} role="button" tabIndex={0} style={{ cursor: "pointer" }}
               onKeyDown={(e) => { if (e.key === "Enter") handleCoverClick(); }}
             >
-              <AnimatedCover
-                src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={52} radius={settings.noRoundCover ? 0 : 8}
-                title={currentTrack.title} artist={currentTrack.artist?.name} enabled={settings.livingCover !== false}
-              />
+              <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={52} radius={settings.noRoundCover ? 0 : 8} />
             </span>
             <div className="meta">
               <span className="t">{currentTrack.title}</span>
@@ -935,10 +932,7 @@ export function MiniPlayer({ onExpand }) {
       onPointerDown={swipe.onPointerDown} onPointerMove={swipe.onPointerMove} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
     >
       <span className={`aivy-mini-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false ? "living-cover" : ""}`}>
-        <AnimatedCover
-          src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6}
-          title={currentTrack.title} artist={currentTrack.artist?.name} enabled={settings.livingCover !== false}
-        />
+        <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
       </span>
       <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
@@ -1283,7 +1277,14 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const { navigate } = useRouter();
   const { t, settings, lyricsOpen, toggleLyrics } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
-  const dynamicColor = useDominantColor(settings.dynamicColors ? currentTrack?.cover : null);
+  const clientDynamicColor = useDominantColor(settings.dynamicColors ? currentTrack?.cover : null);
+  const [serverDominantColor, setServerDominantColor] = useState(null);
+  useEffect(() => { setServerDominantColor(null); }, [currentTrack?.id]);
+  // Warna dominan yang dihitung di backend (dari cover statis, lewat endpoint
+  // artwork animasi) diprioritaskan dulu — lebih murah & ga kena masalah
+  // canvas ke-taint CORS seperti ekstraksi warna di client.
+  const dynamicColor = settings.dynamicColors ? (serverDominantColor || clientDynamicColor) : null;
+  const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const tilt = useTilt({ enabled: !!settings.tiltCover, distance: Number(settings.tiltDistance) || 10, speed: Number(settings.tiltSpeed) || 240 });
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
@@ -1408,8 +1409,11 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                   <div className="npx-cover-visualizer" aria-hidden="true"><NowPlayingVisualizer height={320} /></div>
                 )}
                 <AnimatedCover
-                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }}
-                  title={currentTrack.title} artist={currentTrack.artist?.name} enabled={settings.livingCover !== false}
+                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10}
+                  style={{ width: "100%", height: "100%" }}
+                  song={currentTrack.title} artist={currentTrack.artist?.name}
+                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+                  onColor={setServerDominantColor}
                 />
               </div>
               <div className="npx-metarow">
@@ -2441,12 +2445,15 @@ export function QueueHistoryBody() {
 function NowPlayingPane() {
   const { currentTrack, isPreviewClip } = usePlayer();
   const { t, settings } = useUI();
+  const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   if (!currentTrack) return <div className="aivy-empty"><StarMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>;
   return (
     <div className="aivy-nowplaying-pane">
       <AnimatedCover
-        src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={240} radius={16} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }}
-        title={currentTrack.title} artist={currentTrack.artist?.name} enabled={settings.livingCover !== false}
+        src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={240} radius={16}
+        style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }}
+        song={currentTrack.title} artist={currentTrack.artist?.name}
+        animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
       />
       <div className="t">{currentTrack.title}</div>
       <div className="a">{currentTrack.artist?.name}</div>
@@ -3087,7 +3094,7 @@ function useIsMobile(breakpoint = 860) {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu, settings } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu } = useUI();
   const {
     currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration,
   } = usePlayer();
@@ -3222,10 +3229,7 @@ export function LyricsOverlay() {
           <div className="aivy-lyrics-side">
             <div className="aivy-lyrics-track">
               <div className="cover">
-                <AnimatedCover
-                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }}
-                  title={currentTrack.title} artist={currentTrack.artist?.name} enabled={settings.livingCover !== false}
-                />
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }} />
               </div>
               <div className="row">
                 <div className="meta">

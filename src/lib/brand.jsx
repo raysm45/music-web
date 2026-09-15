@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { hashStr } from "./utils.js";
+import { Api } from "./api.js";
 
 export const TENDRIL_PATH =
   "M17.15,16.06 C17.4,16.09 17.75,16.25 17.86,16.33 C18.07,16.51 18.26,16.72 18.41,16.98 " +
@@ -117,91 +118,93 @@ export function SmartCover({ src, seed, size = 160, radius = 14, style = {}, alt
   );
 }
 
-// --- Animated artwork (Canvas-style video) ---------------------------------
-const ARTWORK_TTL_MS = 60 * 60 * 1000; // 1 hour
-const ARTWORK_TIMEOUT_MS = 5000;
-const artworkCache = new Map(); // key -> { videoUrl: string|null, ts: number }
-const artworkInflight = new Map(); // key -> Promise<string|null>
+const artworkMemCache = new Map();
+const supportsNativeHls = () => {
+  if (typeof document === "undefined") return false;
+  try {
+    const v = document.createElement("video");
+    return !!v.canPlayType && v.canPlayType("application/vnd.apple.mpegurl") !== "";
+  } catch { return false; }
+};
 
-function artworkKey(title, artist) {
-  return `${String(title || "").trim().toLowerCase()}::${String(artist || "").trim().toLowerCase()}`;
-}
-
-async function fetchAnimatedArtwork(title, artist) {
-  const key = artworkKey(title, artist);
-  const cached = artworkCache.get(key);
-  if (cached && Date.now() - cached.ts < ARTWORK_TTL_MS) return cached.videoUrl;
-  if (artworkInflight.has(key)) return artworkInflight.get(key);
-
-  const promise = (async () => {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), ARTWORK_TIMEOUT_MS);
-      const res = await fetch(
-        `https://artwork.boidu.dev/?s=${encodeURIComponent(title)}&a=${encodeURIComponent(artist)}`,
-        { signal: controller.signal }
-      );
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`artwork api ${res.status}`);
-      const data = await res.json();
-      const videoUrl = data?.videoUrl || data?.animated || null;
-      artworkCache.set(key, { videoUrl, ts: Date.now() });
-      return videoUrl;
-    } catch {
-      // Cache the miss too (short-ish), so a flaky/slow lookup doesn't get retried on every render.
-      artworkCache.set(key, { videoUrl: null, ts: Date.now() });
-      return null;
-    } finally {
-      artworkInflight.delete(key);
-    }
-  })();
-
-  artworkInflight.set(key, promise);
-  return promise;
-}
-
-function prefersReducedMotion() {
-  if (typeof document !== "undefined" && document.documentElement.dataset.reducedMotion === "true") return true;
-  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return true;
-  return false;
+/**
+ * Fetch artwork animasi (video sampul, m3u8/mp4) + warna dominan dari backend
+ * (proxy ke artwork.boidu.dev), hanya jika `enabled`. Di-cache per song+artist
+ * di memori tab ini biar ganti-ganti tab/re-render ga fetch ulang.
+ */
+function useAnimatedArtwork(song, artist, enabled) {
+  const [artwork, setArtwork] = useState(null);
+  useEffect(() => {
+    setArtwork(null);
+    if (!enabled || !song) return undefined;
+    const key = `${song}::${artist || ""}`.toLowerCase();
+    const hit = artworkMemCache.get(key);
+    if (hit) { setArtwork(hit); return undefined; }
+    let alive = true;
+    Api.animatedArtwork(song, artist)
+      .then((data) => {
+        if (!alive || !data) return;
+        artworkMemCache.set(key, data);
+        setArtwork(data);
+      })
+      .catch(() => { /* biarin, tetap fallback ke cover statis */ });
+    return () => { alive = false; };
+  }, [song, artist, enabled]);
+  return artwork;
 }
 
 /**
- * Like SmartCover, but shows a looping animated-artwork video (Canvas-style) when one
- * exists for the track. Falls back to the plain static SmartCover otherwise — never
- * applies any distortion/warp effect to the image itself.
+ * Sampul untuk layar Now Playing yang mendukung artwork animasi (video loop
+ * dari Apple Music via artwork.boidu.dev), khusus dipakai di tampilan Now
+ * Playing saja. Selalu render cover statis dulu (SmartCover) sebagai lapisan
+ * dasar; video animasi cuma di-fade-in setelah benar-benar siap (`canplay`),
+ * jadi ga pernah ada "flash" kosong sebelum animasinya load.
+ *
+ * `onColor` dipanggil dengan warna dominan (HSL, dihitung di backend dari
+ * cover statis) begitu tersedia — pemanggil bisa memprioritaskan warna ini
+ * dibanding ekstraksi warna di client (yang bisa gagal karena canvas
+ * ke-taint CORS).
  */
-export function AnimatedCover({ src, seed, size = 160, radius = 14, style = {}, alt = "", title, artist, enabled = true }) {
-  const [videoUrl, setVideoUrl] = useState(null);
-  const [videoFailed, setVideoFailed] = useState(false);
+export function AnimatedCover({
+  src, seed, size = 160, radius = 14, style = {}, alt = "",
+  song, artist, animated = false, reduceMotion = false, onColor,
+}) {
+  const [videoReady, setVideoReady] = useState(false);
+  const artwork = useAnimatedArtwork(song, artist, animated && !reduceMotion);
+  const onColorRef = useRef(onColor);
+  onColorRef.current = onColor;
 
+  useEffect(() => { setVideoReady(false); }, [artwork?.video, artwork?.animated]);
   useEffect(() => {
-    setVideoUrl(null);
-    setVideoFailed(false);
-    if (!enabled || !title || !artist || prefersReducedMotion()) return;
-    let cancelled = false;
-    fetchAnimatedArtwork(title, artist).then((url) => {
-      if (!cancelled) setVideoUrl(url);
-    });
-    return () => { cancelled = true; };
-  }, [title, artist, enabled]);
+    if (artwork?.color?.css) onColorRef.current?.(artwork.color.css);
+  }, [artwork?.color?.css]);
 
-  if (videoUrl && !videoFailed) {
-    return (
-      <video
-        key={videoUrl}
-        src={videoUrl}
-        autoPlay
-        loop
-        muted
-        playsInline
-        width={size}
-        height={size}
-        aria-label={alt}
-        style={{ borderRadius: radius, objectFit: "cover", display: "block", background: "var(--bg-elev-2)", ...style }}
-        onError={() => setVideoFailed(true)}
+  const videoSrc = artwork?.video || (artwork?.animated && supportsNativeHls() ? artwork.animated : null);
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", borderRadius: radius, ...style }}>
+      <SmartCover
+        src={src} seed={seed} size={size} radius={radius} alt={alt}
+        style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
       />
-    );
-  }
-  return <SmartCover src={src} seed={seed} size={size} radius={radius} style={style} alt={alt} />;
+      {videoSrc && (
+        <video
+          key={videoSrc}
+          src={videoSrc}
+          muted
+          loop
+          playsInline
+          autoPlay
+          preload="auto"
+          aria-hidden="true"
+          onCanPlay={() => setVideoReady(true)}
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%",
+            objectFit: "cover", opacity: videoReady ? 1 : 0,
+            transition: "opacity 460ms ease",
+          }}
+        />
+      )}
+    </div>
+  );
 }

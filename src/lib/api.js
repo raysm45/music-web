@@ -56,6 +56,12 @@ export const Api = {
   similar: (args) =>
     apiGet(`/api/similar?${args.trackId ? `trackId=${encodeURIComponent(args.trackId)}` : `title=${encodeURIComponent(args.title)}&artist=${encodeURIComponent(args.artist || "")}`}`),
 
+  animatedArtwork: (song, artist) => {
+    const qs = new URLSearchParams({ song: song || "" });
+    if (artist) qs.set("artist", artist);
+    return apiGet(`/api/artwork?${qs.toString()}`);
+  },
+
   lyrics: ({ title, artist, album, duration }) => {
     const qs = new URLSearchParams({ title: title || "" });
     if (artist) qs.set("artist", artist);

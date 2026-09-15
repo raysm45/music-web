@@ -116,6 +116,7 @@ const DEFAULT_SETTINGS = {
   hostOnlyControlDefault: false,
   roomVisibilityDefault: "public",
   livingCover: true,
+  animatedArtwork: false,
   equalizer: DEFAULT_EQ,
 };
 
