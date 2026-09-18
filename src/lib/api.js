@@ -18,6 +18,11 @@ async function apiGet(path) {
   if (!res.ok) await throwApiError(res);
   return res.json();
 }
+async function apiGetPublic(path) {
+  const res = await fetch(`${API_BASE}${path}`, { credentials: "omit" });
+  if (!res.ok) await throwApiError(res);
+  return res.json();
+}
 async function apiSend(path, method, body, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
@@ -62,7 +67,7 @@ export const Api = {
     const qs = new URLSearchParams({ song: song || "" });
     if (artist) qs.set("artist", artist);
     if (refresh) qs.set("refresh", "1");
-    return apiGet(`/api/artwork?${qs.toString()}`);
+    return apiGetPublic(`/api/artwork?${qs.toString()}`);
   },
 
   lyrics: ({ title, artist, album, duration }) => {
