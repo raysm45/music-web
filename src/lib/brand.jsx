@@ -126,23 +126,35 @@ const supportsNativeHls = () => {
     return !!v.canPlayType && v.canPlayType("application/vnd.apple.mpegurl") !== "";
   } catch { return false; }
 };
+let hlsModulePromise = null;
+function loadHlsJs() {
+  if (!hlsModulePromise) {
+    hlsModulePromise = import("hls.js").then((m) => m.default || m);
+  }
+  return hlsModulePromise;
+}
 
-/**
- * Fetch artwork animasi (video sampul, m3u8/mp4) + warna dominan dari backend
- * (proxy ke artwork.boidu.dev), hanya jika `enabled`. Di-cache per song+artist
- * di memori tab ini biar ganti-ganti tab/re-render ga fetch ulang.
- *
- * `reloadToken` (opsional, angka yang naik tiap kali user minta muat ulang
- * lewat menu titik-tiga Now Playing) memaksa fetch ulang: cache memori lokal
- * & cache di server dilewati, jadi artwork animasi dicari ulang dari awal.
- * Saat itu terjadi, `onReloadResult(status)` dipanggil begitu hasilnya
- * diketahui, dengan `status` salah satu dari:
- *  - "success"      : ketemu versi animasinya
- *  - "not_found"     : lagunya memang ga punya versi animasi
- *  - "rate_limited"  : kena limit request muat-ulang (HTTP 429)
- *  - "error"         : gagal karena sebab lain (network, dsb)
- * biar caller bisa kasih tau user lewat toast yang sesuai.
- */
+function useHlsSource(videoEl, src, isM3u8) {
+  useEffect(() => {
+    if (!videoEl || !src) return undefined;
+    if (!isM3u8 || supportsNativeHls()) {
+      videoEl.src = src;
+      return () => { videoEl.removeAttribute("src"); videoEl.load(); };
+    }
+
+    let hls;
+    let cancelled = false;
+    loadHlsJs().then((Hls) => {
+      if (cancelled) return;
+      if (!Hls.isSupported()) { videoEl.src = src; return; }
+      hls = new Hls({ maxBufferLength: 15 });
+      hls.loadSource(src);
+      hls.attachMedia(videoEl);
+    }).catch(() => { if (!cancelled) videoEl.src = src; });
+
+    return () => { cancelled = true; hls?.destroy(); };
+  }, [videoEl, src, isM3u8]);
+}
 function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResult) {
   const [artwork, setArtwork] = useState(null);
   const lastAppliedReload = useRef(reloadToken);
@@ -180,24 +192,12 @@ function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResu
   }, [song, artist, enabled, reloadToken]);
   return artwork;
 }
-
-/**
- * Sampul untuk layar Now Playing yang mendukung artwork animasi (video loop
- * dari Apple Music via artwork.boidu.dev), khusus dipakai di tampilan Now
- * Playing saja. Selalu render cover statis dulu (SmartCover) sebagai lapisan
- * dasar; video animasi cuma di-fade-in setelah benar-benar siap (`canplay`),
- * jadi ga pernah ada "flash" kosong sebelum animasinya load.
- *
- * `onColor` dipanggil dengan warna dominan (HSL, dihitung di backend dari
- * cover statis) begitu tersedia — pemanggil bisa memprioritaskan warna ini
- * dibanding ekstraksi warna di client (yang bisa gagal karena canvas
- * ke-taint CORS).
- */
 export function AnimatedCover({
   src, seed, size = 160, radius = 14, style = {}, alt = "",
   song, artist, animated = false, reduceMotion = false, onColor, reloadToken = 0, onReloadResult,
 }) {
   const [videoReady, setVideoReady] = useState(false);
+  const [videoEl, setVideoEl] = useState(null);
   const artwork = useAnimatedArtwork(song, artist, animated && !reduceMotion, reloadToken, onReloadResult);
   const onColorRef = useRef(onColor);
   onColorRef.current = onColor;
@@ -206,8 +206,9 @@ export function AnimatedCover({
   useEffect(() => {
     if (artwork?.color?.css) onColorRef.current?.(artwork.color.css);
   }, [artwork?.color?.css]);
-
-  const videoSrc = artwork?.video || (artwork?.animated && supportsNativeHls() ? artwork.animated : null);
+  const isM3u8 = !artwork?.video && !!artwork?.animated;
+  const videoSrc = artwork?.video || artwork?.animated || null;
+  useHlsSource(videoEl, videoSrc, isM3u8);
 
   return (
     <div
@@ -221,7 +222,7 @@ export function AnimatedCover({
       {videoSrc && (
         <video
           key={videoSrc}
-          src={videoSrc}
+          ref={setVideoEl}
           muted
           loop
           playsInline
