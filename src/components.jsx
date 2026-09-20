@@ -1426,7 +1426,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                   src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10}
                   style={{ width: "100%", height: "100%" }}
                   song={currentTrack.title} artist={currentTrack.artist?.name}
-                  animated={!!settings.animatedArtwork && open} reduceMotion={reduceMotion}
+                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
                   onColor={setServerDominantColor}
                   reloadToken={artworkReloadToken}
                   onReloadResult={handleArtworkReloadResult}
