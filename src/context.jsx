@@ -101,23 +101,71 @@ const DEFAULT_SETTINGS = {
   autoplay: true,
   crossfadeSeconds: 0,
   volumeDefault: 0.7,
-  theme: "black",
-  language: "id",
-  explicitContent: true,
   normalizeVolume: true,
-  notifyRoomInvite: true,
-  notifyNewFollower: true,
-  autoJoinRoomAudio: true,
-  historyEnabled: true,
-  searchHistoryEnabled: true,
+  explicitContent: true,
+  equalizer: DEFAULT_EQ,
+
+  theme: "black",
+  customThemeCss: "",
+  language: "id",
+  fontFamily: "default",
+  fontUrl: "",
+  fontScale: 100,
   compactRows: false,
+  compactArtists: false,
+  compactAlbums: false,
+  artistBanners: true,
   reducedMotion: false,
   highContrast: false,
-  downloadOverWifiOnly: true,
+
+  waveformSeekbar: false,
+  coverBackground: true,
+  dynamicColors: false,
+  noRoundCover: false,
+  tiltCover: false,
+  tiltDistance: 10,
+  tiltSpeed: 240,
+  cdCoverSpin: false,
+  animatedArtwork: false,
+
+  visualizerEnabled: false,
+  visualizerStyle: "butterchurn",
+  visualizerMode: "solid",
+  visualizerPreset: "auto",
+  visualizerSensitivity: 60,
+  visualizerBrightness: 100,
+  cyclePresets: false,
+  cycleDuration: 30,
+  randomizePresets: false,
+
+  showRecommendedSongs: true,
+  showRecommendedAlbums: true,
+  showRecommendedArtists: true,
+  showJumpBackIn: true,
+  showEditorsPicks: false,
+  shuffleEditorsPicks: false,
+  editorsPicksSource: "current",
+
+  showNavHome: true,
+  showNavSearch: true,
+  showNavLibrary: true,
+  showNavRooms: true,
+  showNavShorts: true,
+  showSideAbout: false,
+  showSideDiscord: false,
+  showSideGithub: false,
+  donationReminders: false,
+  closeModalsOnNavigation: false,
+  interceptBackToCloseModals: false,
+  nowPlayingView: "album",
+  fullscreenCoverClick: "exit",
+
+  notifyRoomInvite: true,
+  autoJoinRoomAudio: true,
   hostOnlyControlDefault: false,
   roomVisibilityDefault: "public",
-  animatedArtwork: false,
-  equalizer: DEFAULT_EQ,
+  historyEnabled: true,
+  searchHistoryEnabled: true,
 };
 
 function loadCachedSettings() {
@@ -165,7 +213,9 @@ export function UIProvider({ children }) {
     if (!authUser) return;
     Api.getSettings()
       .then((s) => {
-        const merged = { ...DEFAULT_SETTINGS, ...s };
+
+        const local = loadCachedSettings();
+        const merged = { ...DEFAULT_SETTINGS, ...local, ...(s || {}) };
         setSettings(merged);
         saveCachedSettings(merged);
         setTheme(typeof merged.theme === "string" && merged.theme ? merged.theme : "black");
@@ -219,7 +269,7 @@ export function UIProvider({ children }) {
     let link = document.getElementById("aivy-gfont");
     if (gq) {
       if (!link) { link = document.createElement("link"); link.id = "aivy-gfont"; link.rel = "stylesheet"; document.head.appendChild(link); }
-      link.href = `https://fonts.googleapis.com/css2?family=${gq}&display=swap`;
+      link.href = `https:
     } else if (link) link.remove();
   }, [settings.fontFamily, settings.fontUrl]);
 

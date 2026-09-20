@@ -22,7 +22,7 @@ export function LibraryPage() {
         <Link to="liked" className="aivy-card" style={{ textAlign: "left" }}>
           <div className="art-wrap">
             <div style={{ width: "100%", aspectRatio: "1", borderRadius: "var(--radius-md)", background: "linear-gradient(135deg, var(--berry), var(--bg-elev-3))", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Heart size={30} color="var(--moss-ink)" fill="var(--moss-ink)" />
+              <Heart size={30} color="var(--accent-ink)" fill="var(--accent-ink)" />
             </div>
           </div>
           <div className="title">{t("navLikedSongs")}</div><div className="sub">{liked.size} {t("songsCount")}</div>
@@ -85,7 +85,7 @@ export function LikedPage() {
   return (
     <div className="aivy-view-enter">
       <div className="aivy-hero">
-        <div className="art"><div style={{ width: 176, height: 176, borderRadius: "var(--radius-lg)", background: "linear-gradient(150deg, var(--berry), var(--bg-elev-3))", display: "flex", alignItems: "center", justifyContent: "center" }}><Heart size={54} color="var(--moss-ink)" fill="var(--moss-ink)" /></div></div>
+        <div className="art"><div style={{ width: 176, height: 176, borderRadius: "var(--radius-lg)", background: "linear-gradient(150deg, var(--berry), var(--bg-elev-3))", display: "flex", alignItems: "center", justifyContent: "center" }}><Heart size={54} color="var(--accent-ink)" fill="var(--accent-ink)" /></div></div>
         <div className="aivy-hero-meta"><div className="eyebrow">{t("playlistLabel")}</div><h1 className="font-display">{t("navLikedSongs")}</h1><div className="stats"><span>{liked.size} {t("songsCount")}</span></div></div>
       </div>
       {likedTracks === null ? null : likedTracks.length > 0 ? (
@@ -443,7 +443,7 @@ export function LibraryLocalPage() {
 
       {localScan.scanning && (
         <div className="aivy-import-tutorial" style={{ marginBottom: 16 }}>
-          <div className="head"><Loader2 size={15} className="aivy-spin" color="var(--moss-strong)" /> Memindai {localScan.checked} / {localScan.total} file...</div>
+          <div className="head"><Loader2 size={15} className="aivy-spin" color="var(--accent-strong)" /> Memindai {localScan.checked} / {localScan.total} file...</div>
           <div className="sub" style={{ fontSize: 13, marginTop: 4 }}>{localScan.found} lagu ditemukan sejauh ini (file di bawah 1 menit dilewati).</div>
         </div>
       )}
@@ -610,7 +610,7 @@ export function ImportPage() {
               {resolveError && <div className="aivy-import-error">{resolveError}</div>}
 
               <div className="aivy-import-tutorial">
-                <div className="head"><ClipboardList size={15} color="var(--moss-strong)" /> Cara salin link playlist YouTube</div>
+                <div className="head"><ClipboardList size={15} color="var(--accent-strong)" /> Cara salin link playlist YouTube</div>
                 <ol>
                   <li>Buka aplikasi atau situs YouTube, lalu buka playlist yang mau diimpor.</li>
                   <li>Ketuk tombol "Bagikan" (ikon panah / titik tiga di atas playlist).</li>
@@ -699,7 +699,7 @@ export function ImportPage() {
         <div>
           {committing || (!result && !commitError) ? (
             <div className="aivy-import-progress-wrap">
-              <Loader2 size={34} className="aivy-spin" color="var(--moss-strong)" />
+              <Loader2 size={34} className="aivy-spin" color="var(--accent-strong)" />
               <div style={{ marginTop: 14, fontWeight: 600 }}>Mengimpor {resolved ? formatSongCount(resolved.count) : "lagu"}...</div>
               <div className="sub" style={{ fontSize: 12.5, color: "var(--ink-faint)", marginTop: 4 }}>Jangan tutup halaman ini dulu ya.</div>
               <div className="aivy-import-progress-track"><div className="aivy-import-progress-fill" style={{ width: `${progress}%` }} /></div>
@@ -716,7 +716,7 @@ export function ImportPage() {
             </div>
           ) : (
             <div className="aivy-import-success">
-              <div className="icon"><Check size={30} color="var(--moss-strong)" /></div>
+              <div className="icon"><Check size={30} color="var(--accent-strong)" /></div>
               <h2>Import selesai</h2>
               <p>
                 Berhasil mengimpor {result.imported} dari {result.total} lagu

@@ -38,7 +38,7 @@ export function TendrilSpinner({ size = 28, color = "currentColor", spin = true 
   );
 }
 
-export function StarLoader({ size = 48, color = "var(--moss-strong)", label }) {
+export function StarLoader({ size = 48, color = "var(--accent-strong)", label }) {
   const stars = [
     { x: 3, y: 5, delay: "0s", scale: 0.36 },
     { x: 16, y: 2, delay: "-0.45s", scale: 0.52 },
@@ -118,8 +118,94 @@ export function SmartCover({ src, seed, size = 160, radius = 14, style = {}, alt
   );
 }
 
+const ARTWORK_CACHE_KEY = "aivy_cache_artwork_v1";
+const ARTWORK_CACHE_TTL = 1000 * 60 * 60 * 12;
+
 const artworkMemCache = new Map();
 const artworkInFlight = new Map();
+
+function loadPersistedArtwork() {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    const raw = sessionStorage.getItem(ARTWORK_CACHE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return;
+    const now = Date.now();
+    for (const [key, entry] of Object.entries(parsed)) {
+      if (entry && entry.at && now - entry.at < ARTWORK_CACHE_TTL) {
+        artworkMemCache.set(key, entry.data);
+      }
+    }
+  } catch {  }
+}
+loadPersistedArtwork();
+
+let persistTimer = null;
+function persistArtworkCache() {
+  if (typeof sessionStorage === "undefined") return;
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try {
+      const now = Date.now();
+      const out = {};
+
+      const entries = [...artworkMemCache.entries()].slice(-60);
+      for (const [key, data] of entries) out[key] = { at: now, data };
+      sessionStorage.setItem(ARTWORK_CACHE_KEY, JSON.stringify(out));
+    } catch {  }
+  }, 800);
+}
+
+function artworkKey(song, artist) {
+  return `${song}::${artist || ""}`.toLowerCase();
+}
+
+function requestArtwork(song, artist, forceReload, reloadToken) {
+  const key = artworkKey(song, artist);
+  const inFlightKey = forceReload ? `${key}::reload:${reloadToken}` : key;
+  let pending = artworkInFlight.get(inFlightKey);
+  if (!pending) {
+    pending = Api.animatedArtwork(song, artist, forceReload).finally(() => {
+      artworkInFlight.delete(inFlightKey);
+    });
+    artworkInFlight.set(inFlightKey, pending);
+  }
+  return pending;
+}
+
+function pickVideoSrc(artwork) {
+  if (!artwork) return null;
+
+  const animated = artwork.animated || null;
+  const video = artwork.video || null;
+  if (animated && /\.m3u8(\?|$)/i.test(animated)) return animated;
+  return video || animated;
+}
+
+export function prefetchAnimatedArtwork(song, artist) {
+  if (!song) return;
+  const key = artworkKey(song, artist);
+  if (artworkMemCache.has(key) || artworkInFlight.has(key)) return;
+  requestArtwork(song, artist, false, 0)
+    .then((data) => {
+      if (!data) return;
+      artworkMemCache.set(key, data);
+      persistArtworkCache();
+      const src = pickVideoSrc(data);
+
+      if (src && typeof document !== "undefined" && !/\.m3u8(\?|$)/i.test(src)) {
+        const link = document.createElement("link");
+        link.rel = "prefetch";
+        link.as = "video";
+        link.href = src;
+        document.head.appendChild(link);
+        setTimeout(() => link.remove(), 30000);
+      }
+    })
+    .catch(() => {});
+}
+
 const supportsNativeHls = () => {
   if (typeof document === "undefined") return false;
   try {
@@ -140,6 +226,7 @@ function useHlsSource(videoEl, src, isM3u8) {
     if (!videoEl || !src) return undefined;
     if (!isM3u8 || supportsNativeHls()) {
       videoEl.src = src;
+      videoEl.load();
       return () => { videoEl.removeAttribute("src"); videoEl.load(); };
     }
 
@@ -147,15 +234,22 @@ function useHlsSource(videoEl, src, isM3u8) {
     let cancelled = false;
     loadHlsJs().then((Hls) => {
       if (cancelled) return;
-      if (!Hls.isSupported()) { videoEl.src = src; return; }
-      hls = new Hls({ maxBufferLength: 60, maxMaxBufferLength: 120, backBufferLength: Infinity });
+      if (!Hls.isSupported()) { videoEl.src = src; videoEl.load(); return; }
+      hls = new Hls({
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        backBufferLength: 30,
+        lowLatencyMode: false,
+        startFragPrefetch: true,
+      });
       hls.loadSource(src);
       hls.attachMedia(videoEl);
-    }).catch(() => { if (!cancelled) videoEl.src = src; });
+    }).catch(() => { if (!cancelled) { videoEl.src = src; videoEl.load(); } });
 
     return () => { cancelled = true; hls?.destroy(); };
   }, [videoEl, src, isM3u8]);
 }
+
 function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResult) {
   const [artwork, setArtwork] = useState(null);
   const lastAppliedReload = useRef(reloadToken);
@@ -163,38 +257,35 @@ function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResu
   onReloadResultRef.current = onReloadResult;
 
   useEffect(() => {
-    setArtwork(null);
     const forceReload = reloadToken !== lastAppliedReload.current;
     lastAppliedReload.current = reloadToken;
 
     if (!enabled || !song) {
+      setArtwork(null);
       if (forceReload) onReloadResultRef.current?.("error");
       return undefined;
     }
 
-    const key = `${song}::${artist || ""}`.toLowerCase();
+    const key = artworkKey(song, artist);
     if (forceReload) artworkMemCache.delete(key);
-    const hit = !forceReload && artworkMemCache.get(key);
+    const hit = !forceReload ? artworkMemCache.get(key) : null;
     if (hit) { setArtwork(hit); return undefined; }
 
+    setArtwork(null);
+
     let alive = true;
-    const inFlightKey = forceReload ? `${key}::reload:${reloadToken}` : key;
-    let pending = artworkInFlight.get(inFlightKey);
-    if (!pending) {
-      pending = Api.animatedArtwork(song, artist, forceReload).finally(() => {
-        artworkInFlight.delete(inFlightKey);
-      });
-      artworkInFlight.set(inFlightKey, pending);
-    }
-    pending
+    requestArtwork(song, artist, forceReload, reloadToken)
       .then((data) => {
-        if (!alive) return;
         const hasAnimation = !!(data && (data.video || data.animated));
-        if (data) { artworkMemCache.set(key, data); setArtwork(data); }
+        if (data) {
+          artworkMemCache.set(key, data);
+          persistArtworkCache();
+          if (alive) setArtwork(data);
+        }
         if (forceReload) onReloadResultRef.current?.(hasAnimation ? "success" : "not_found");
       })
       .catch((err) => {
-        /* biarin, tetap fallback ke cover statis */
+        
         if (forceReload) onReloadResultRef.current?.(err?.status === 429 ? "rate_limited" : "error");
       });
     return () => { alive = false; };
@@ -211,13 +302,40 @@ export function AnimatedCover({
   const onColorRef = useRef(onColor);
   onColorRef.current = onColor;
 
-  useEffect(() => { setVideoReady(false); }, [artwork?.video, artwork?.animated]);
+  const videoSrc = pickVideoSrc(artwork);
+  const isM3u8 = !!videoSrc && /\.m3u8(\?|$)/i.test(videoSrc);
+
+  useEffect(() => { setVideoReady(false); }, [videoSrc]);
   useEffect(() => {
     if (artwork?.color?.css) onColorRef.current?.(artwork.color.css);
   }, [artwork?.color?.css]);
-  const videoSrc = artwork?.video || artwork?.animated || null;
-  const isM3u8 = !!videoSrc && /\.m3u8(\?|$)/i.test(videoSrc);
+
   useHlsSource(videoEl, videoSrc, isM3u8);
+
+  useEffect(() => {
+    if (!videoEl || !videoSrc) return undefined;
+    let cancelled = false;
+    const tryPlay = () => {
+      if (cancelled) return;
+      const p = videoEl.play?.();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    };
+    const onReady = () => { setVideoReady(true); tryPlay(); };
+    videoEl.addEventListener("loadeddata", onReady);
+    videoEl.addEventListener("canplay", onReady);
+    videoEl.addEventListener("stalled", tryPlay);
+
+    const onVisible = () => { if (!document.hidden) tryPlay(); };
+    document.addEventListener("visibilitychange", onVisible);
+    if (videoEl.readyState >= 2) onReady();
+    return () => {
+      cancelled = true;
+      videoEl.removeEventListener("loadeddata", onReady);
+      videoEl.removeEventListener("canplay", onReady);
+      videoEl.removeEventListener("stalled", tryPlay);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [videoEl, videoSrc]);
 
   return (
     <div
@@ -237,8 +355,9 @@ export function AnimatedCover({
           playsInline
           autoPlay
           preload="auto"
+          poster={src || undefined}
+          disablePictureInPicture
           aria-hidden="true"
-          onCanPlay={() => setVideoReady(true)}
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%",
             objectFit: "cover", opacity: videoReady ? 1 : 0,

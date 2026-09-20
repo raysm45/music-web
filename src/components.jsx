@@ -14,7 +14,7 @@ import {
   SIDEBAR_MIN_W, SIDEBAR_MAX_W, RIGHTPANEL_MIN_W, RIGHTPANEL_MAX_W,
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
-import { CoverArt, SmartCover, AnimatedCover, StarMark, StarLoader } from "./lib/brand.jsx";
+import { CoverArt, SmartCover, AnimatedCover, StarMark, StarLoader, prefetchAnimatedArtwork } from "./lib/brand.jsx";
 import { formatTime, formatDuration, relativeTime, formatClockTime, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "./lib/utils.js";
 import { runAiAssistantTurn } from "./lib/aiAssistant.js";
 import { Api } from "./lib/api.js";
@@ -746,7 +746,7 @@ export function AddToPlaylistModal() {
             <button key={pl.id} onClick={() => handleAdd(pl.id)}>
               <Library size={15} color="var(--ink-faint)" />
               <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.name}</span>
-              {targets.every((tr) => pl.songs?.some((s) => s.id === tr.id)) && <Check size={15} color="var(--moss-strong)" />}
+              {targets.every((tr) => pl.songs?.some((s) => s.id === tr.id)) && <Check size={15} color="var(--accent-strong)" />}
             </button>
           ))}
           {!playlists.length && <div className="eyebrow" style={{ padding: "8px 10px" }}>{t("noPlaylistsYet")}</div>}
@@ -847,10 +847,18 @@ export function TransportButtons({ big = false, minimal = false }) {
 }
 
 export function PlayerBar({ onOpenNowPlaying }) {
-  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics, isPlaying } = usePlayer();
+  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics, isPlaying, upNext } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics, sidebarQueueOpen, toggleSidebarQueue, t, settings } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
+
+  const nextUpTrack = upNext?.[0];
+  useEffect(() => {
+    if (!settings.animatedArtwork || settings.reducedMotion) return;
+    if (!nextUpTrack?.title) return;
+    const id = setTimeout(() => prefetchAnimatedArtwork(nextUpTrack.title, nextUpTrack.artist?.name), 1500);
+    return () => clearTimeout(id);
+  }, [nextUpTrack?.title, nextUpTrack?.artist?.name, settings.animatedArtwork, settings.reducedMotion]);
   const handleCoverClick = () => {
     if (!currentTrack) return;
     const mode = settings.nowPlayingView || "album";
@@ -1054,7 +1062,7 @@ function useDominantColor(src) {
         const boost = max - min < 28 ? 1.25 : 1.08;
         const cl = (v) => Math.max(0, Math.min(255, Math.round(128 + (v - 128) * boost)));
         if (alive) setColor(`rgb(${cl(r)}, ${cl(g)}, ${cl(b)})`);
-      } catch { /* CORS-tainted canvas, ignore */ }
+      } catch {  }
     };
     img.onerror = () => {};
     img.src = src;
@@ -1280,9 +1288,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const clientDynamicColor = useDominantColor(settings.dynamicColors ? currentTrack?.cover : null);
   const [serverDominantColor, setServerDominantColor] = useState(null);
   useEffect(() => { setServerDominantColor(null); }, [currentTrack?.id]);
-  // Warna dominan yang dihitung di backend (dari cover statis, lewat endpoint
-  // artwork animasi) diprioritaskan dulu — lebih murah & ga kena masalah
-  // canvas ke-taint CORS seperti ekstraksi warna di client.
+
   const dynamicColor = settings.dynamicColors ? (serverDominantColor || clientDynamicColor) : null;
   const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const tilt = useTilt({ enabled: !!settings.tiltCover, distance: Number(settings.tiltDistance) || 10, speed: Number(settings.tiltSpeed) || 240 });
@@ -1561,7 +1567,7 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
         onClose();
         return;
       } catch {
-        /* user cancelled share sheet, fall back to copy */
+        
       }
     }
     navigator.clipboard?.writeText(url);
@@ -2788,7 +2794,7 @@ export function Sidebar() {
         >
           <PanelLeft size={18} />
         </button>
-        <Link to="home" className="aivy-brand"><StarMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">cosmicx</div></Link>
+        <Link to="home" className="aivy-brand"><StarMark size={26} color="var(--accent-strong)" className="mark" /><div className="word font-display">cosmicx</div></Link>
       </div>
       <nav className="aivy-nav">
         {visibleNavItems.map(({ route, labelKey, icon: Icon }) => (
@@ -2814,8 +2820,8 @@ export function Sidebar() {
       {showAnySideLinks && (
         <div className="aivy-side-links">
           {settings.showSideAbout && <a href="/about" className="aivy-side-link"><Info size={13} /> {t("language") === "en" ? "About" : "Tentang"}</a>}
-          {settings.showSideDiscord && <a href="https://discord.gg/" target="_blank" rel="noreferrer" className="aivy-side-link"><Users size={13} /> Discord</a>}
-          {settings.showSideGithub && <a href="https://github.com/" target="_blank" rel="noreferrer" className="aivy-side-link"><Github size={13} /> GitHub</a>}
+          {settings.showSideDiscord && <a href="https:
+          {settings.showSideGithub && <a href="https:
         </div>
       )}
       <div className="aivy-side-footer">
@@ -2872,7 +2878,7 @@ export function TopBar({ isMobile }) {
     <div className={`aivy-topbar ${scrolled ? "scrolled" : ""}`}>
       {isMobile ? (
         <>
-          {name !== "home" ? <button className="aivy-navbtn" onClick={back} aria-label={t("previous")}><ArrowLeft size={16} /></button> : <StarMark size={20} color="var(--moss-strong)" />}
+          {name !== "home" ? <button className="aivy-navbtn" onClick={back} aria-label={t("previous")}><ArrowLeft size={16} /></button> : <StarMark size={20} color="var(--accent-strong)" />}
           <span className="aivy-topbar-title font-display" style={{ fontSize: 15 }}>{titleMap[name] ?? ""}</span>
         </>
       ) : (
@@ -3129,8 +3135,8 @@ export function LyricsOverlay() {
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
   const [lyricsUnsynced, setLyricsUnsynced] = useState(false);
-  const resolvedTheme = (typeof document !== "undefined" && document.documentElement?.dataset?.theme) || "dark";
-  const isLightResolved = ["light", "white", "latte"].includes(resolvedTheme);
+  const resolvedTheme = (typeof document !== "undefined" && document.documentElement?.dataset?.theme) || "black";
+  const isLightResolved = ["white", "latte"].includes(resolvedTheme);
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
@@ -3199,15 +3205,15 @@ export function LyricsOverlay() {
     canvas.width = 800; canvas.height = 800;
     const ctx = canvas.getContext("2d");
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, "#21251A");
-    grad.addColorStop(1, "#12140F");
+    grad.addColorStop(0, "#1A1A1A");
+    grad.addColorStop(1, "#000000");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ECE8D9";
+    ctx.fillStyle = "#F2F2F2";
     ctx.font = "600 42px Georgia, serif";
     ctx.textAlign = "center";
     wrapCanvasText(ctx, line, canvas.width / 2, 380, 680, 54);
-    ctx.fillStyle = "#676B57";
+    ctx.fillStyle = "#8A8A8A";
     ctx.font = "500 22px sans-serif";
     ctx.fillText(`${currentTrack.artist?.name || ""} \u00b7 ${currentTrack.title || ""}`, canvas.width / 2, canvas.height - 80);
     canvas.toBlob((blob) => {
@@ -3348,8 +3354,6 @@ export function LyricsOverlay() {
   );
 }
 
-// Lightweight markdown-ish renderer for AI chat bubbles (bold, italic, inline code,
-// links and simple bullet/numbered lists) — no extra dependency needed.
 function renderAiMarkdown(raw) {
   if (!raw) return null;
 
@@ -3358,7 +3362,7 @@ function renderAiMarkdown(raw) {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
-    // Order matters: code first (so ** inside `` isn't touched), then links, bold, italic.
+
     const tokens = [];
     let i = 0;
     const regex = /(`[^`]+`)|(\[[^\]]+\]\(https?:\/\/[^\s)]+\))|(\*\*[^*]+\*\*)|(\*[^*]+\*)/g;
@@ -3441,7 +3445,6 @@ export function AiAssistantWidget() {
   const wasOpenRef = useRef(false);
   const closeTimerRef = useRef(null);
 
-  // Play a brief closing animation instead of unmounting the panel instantly.
   useEffect(() => {
     if (open) {
       clearTimeout(closeTimerRef.current);
