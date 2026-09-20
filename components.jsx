@@ -7,14 +7,14 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
-  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github, Sparkles,
+  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github, Sparkles, RefreshCw,
 } from "lucide-react";
 import {
   usePlayer, useUI,
   SIDEBAR_MIN_W, SIDEBAR_MAX_W, RIGHTPANEL_MIN_W, RIGHTPANEL_MAX_W,
 } from "./context.jsx";
 import { useRouter, Link } from "./router.jsx";
-import { CoverArt, SmartCover, StarMark, StarLoader } from "./lib/brand.jsx";
+import { CoverArt, SmartCover, AnimatedCover, StarMark, StarLoader, prefetchAnimatedArtwork } from "./lib/brand.jsx";
 import { formatTime, formatDuration, relativeTime, formatClockTime, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "./lib/utils.js";
 import { runAiAssistantTurn } from "./lib/aiAssistant.js";
 import { Api } from "./lib/api.js";
@@ -580,7 +580,7 @@ export function shuffleArray(arr) {
   return out;
 }
 
-export function FlipList({ items, getKey, renderItem, className, as: Tag = "div", stagger = true }) {
+export function FlipList({ items, getKey, renderItem, className, as: Tag = "div" }) {
   const containerRef = useRef(null);
   const prevRectsRef = useRef(new Map());
   const animsRef = useRef(new Map());
@@ -618,12 +618,7 @@ export function FlipList({ items, getKey, renderItem, className, as: Tag = "div"
         const dy = oldRect.top - newRect.top;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
 
-        // Staggering (each row starting slightly after the previous one) reads
-        // nicely for small reorders — a single row moving up or down — but
-        // when most/all rows move at once (e.g. shuffling the whole list) it
-        // reads as a wave cascading from the top instead of one clean shuffle.
-        // So large-scale reorders (stagger=false) animate every row together.
-        const delay = stagger ? Math.min(moved * 9, 160) : 0;
+        const delay = Math.min(moved * 9, 160);
         const anim = node.animate(
           [
             { transform: `translate(${dx}px, ${dy}px)` },
@@ -640,7 +635,7 @@ export function FlipList({ items, getKey, renderItem, className, as: Tag = "div"
     }
     prevRectsRef.current = newRects;
     firstRef.current = false;
-  }, [orderKey, stagger]);
+  }, [orderKey]);
 
   return (
     <Tag ref={containerRef} className={className}>
@@ -751,7 +746,7 @@ export function AddToPlaylistModal() {
             <button key={pl.id} onClick={() => handleAdd(pl.id)}>
               <Library size={15} color="var(--ink-faint)" />
               <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.name}</span>
-              {targets.every((tr) => pl.songs?.some((s) => s.id === tr.id)) && <Check size={15} color="var(--moss-strong)" />}
+              {targets.every((tr) => pl.songs?.some((s) => s.id === tr.id)) && <Check size={15} color="var(--accent-strong)" />}
             </button>
           ))}
           {!playlists.length && <div className="eyebrow" style={{ padding: "8px 10px" }}>{t("noPlaylistsYet")}</div>}
@@ -852,10 +847,18 @@ export function TransportButtons({ big = false, minimal = false }) {
 }
 
 export function PlayerBar({ onOpenNowPlaying }) {
-  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics, isPlaying } = usePlayer();
+  const { currentTrack, liked, toggleLike, isPreviewClip, loadingAudio, currentTrackHasLyrics, isPlaying, upNext } = usePlayer();
   const { navigate } = useRouter();
   const { toggleLyrics, sidebarQueueOpen, toggleSidebarQueue, t, settings } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
+
+  const nextUpTrack = upNext?.[0];
+  useEffect(() => {
+    if (!settings.animatedArtwork || settings.reducedMotion) return;
+    if (!nextUpTrack?.title) return;
+    const id = setTimeout(() => prefetchAnimatedArtwork(nextUpTrack.title, nextUpTrack.artist?.name), 1500);
+    return () => clearTimeout(id);
+  }, [nextUpTrack?.title, nextUpTrack?.artist?.name, settings.animatedArtwork, settings.reducedMotion]);
   const handleCoverClick = () => {
     if (!currentTrack) return;
     const mode = settings.nowPlayingView || "album";
@@ -873,7 +876,7 @@ export function PlayerBar({ onOpenNowPlaying }) {
         {currentTrack ? (
           <>
             <span
-              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""}`}
+              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false && !settings.cdCoverSpin ? "living-cover" : ""}`}
               onClick={handleCoverClick} role="button" tabIndex={0} style={{ cursor: "pointer" }}
               onKeyDown={(e) => { if (e.key === "Enter") handleCoverClick(); }}
             >
@@ -933,10 +936,12 @@ export function MiniPlayer({ onExpand }) {
   if (!currentTrack) return null;
   return (
     <div
-      className="aivy-mini-player" ref={miniRef} onClick={handleExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
+      className={`aivy-mini-player ${isPlaying ? "is-playing" : ""}`} ref={miniRef} onClick={handleExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
       onPointerDown={swipe.onPointerDown} onPointerMove={swipe.onPointerMove} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
     >
-      <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
+      <span className={`aivy-mini-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false ? "living-cover" : ""}`}>
+        <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
+      </span>
       <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
@@ -1057,7 +1062,7 @@ function useDominantColor(src) {
         const boost = max - min < 28 ? 1.25 : 1.08;
         const cl = (v) => Math.max(0, Math.min(255, Math.round(128 + (v - 128) * boost)));
         if (alive) setColor(`rgb(${cl(r)}, ${cl(g)}, ${cl(b)})`);
-      } catch { /* CORS-tainted canvas, ignore */ }
+      } catch {  }
     };
     img.onerror = () => {};
     img.src = src;
@@ -1278,9 +1283,14 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     liked, toggleLike, loadingAudio, currentTrackHasLyrics, isPlaying, togglePlay, next, prev,
   } = usePlayer();
   const { navigate } = useRouter();
-  const { t, settings, lyricsOpen, toggleLyrics } = useUI();
+  const { t, settings, lyricsOpen, toggleLyrics, pushToast } = useUI();
   const { registerFill, registerThumb, getRatio, onSeekRatio, currentTime, duration } = useScrubberBinding();
-  const dynamicColor = useDominantColor(settings.dynamicColors ? currentTrack?.cover : null);
+  const clientDynamicColor = useDominantColor(settings.dynamicColors ? currentTrack?.cover : null);
+  const [serverDominantColor, setServerDominantColor] = useState(null);
+  useEffect(() => { setServerDominantColor(null); }, [currentTrack?.id]);
+
+  const dynamicColor = settings.dynamicColors ? (serverDominantColor || clientDynamicColor) : null;
+  const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const tilt = useTilt({ enabled: !!settings.tiltCover, distance: Number(settings.tiltDistance) || 10, speed: Number(settings.tiltSpeed) || 240 });
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const lyricsDisabled = !currentTrack || !currentTrackHasLyrics;
@@ -1289,7 +1299,21 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [aodOpen, setAodOpen] = useState(false);
   const [uiHidden, setUiHidden] = useState(false);
+  const [artworkReloadToken, setArtworkReloadToken] = useState(0);
   const handleMore = () => { if (!currentTrack) return; setMoreOpen(true); };
+  const handleReloadArtwork = () => {
+    if (!settings.animatedArtwork) {
+      pushToast(t("npArtworkReloadNeedsSetting"));
+      return;
+    }
+    setArtworkReloadToken((n) => n + 1);
+  };
+  const handleArtworkReloadResult = (status) => {
+    if (status === "success") pushToast(t("npArtworkReloaded"));
+    else if (status === "rate_limited") pushToast(t("npArtworkReloadRateLimited"));
+    else if (status === "not_found") pushToast(t("npArtworkReloadFailed"));
+    else pushToast(t("npArtworkReloadError"));
+  };
   const handleFullscreenCoverClick = () => {
     const action = settings.fullscreenCoverClick || "exit";
     if (action === "exit") onClose();
@@ -1393,7 +1417,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
             >
               <div
-                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""}`}
+                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""} ${settings.livingCover !== false && !settings.cdCoverSpin ? "living-cover" : ""}`}
                 ref={(el) => { coverRef.current = el; tilt.ref.current = el; }}
                 style={{ ...tilt.style, ...(dynamicColor ? { "--npx-dynamic": dynamicColor, boxShadow: `0 24px 60px rgba(0,0,0,.5), 0 0 60px -12px ${dynamicColor}` } : {}) }}
                 onPointerMove={settings.tiltCover ? tilt.onMove : undefined}
@@ -1404,7 +1428,15 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                 {settings.visualizerEnabled && settings.visualizerMode === "blended" && (
                   <div className="npx-cover-visualizer" aria-hidden="true"><NowPlayingVisualizer height={320} /></div>
                 )}
-                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10} style={{ width: "100%", height: "100%" }} />
+                <AnimatedCover
+                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10}
+                  style={{ width: "100%", height: "100%" }}
+                  song={currentTrack.title} artist={currentTrack.artist?.name}
+                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+                  onColor={setServerDominantColor}
+                  reloadToken={artworkReloadToken}
+                  onReloadResult={handleArtworkReloadResult}
+                />
               </div>
               <div className="npx-metarow">
                 <div className="npx-titles" ref={metaRef}>
@@ -1482,6 +1514,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         onOpenDetail={() => { setMoreOpen(false); setDetailOpen(true); }}
         onOpenAod={() => { setMoreOpen(false); setAodOpen(true); }}
         onNavigate={() => { setMoreOpen(false); onClose(); }}
+        onReloadArtwork={() => { setMoreOpen(false); handleReloadArtwork(); }}
       />
       <TrackDetailSheet
         open={detailOpen}
@@ -1493,12 +1526,15 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
         open={aodOpen}
         track={currentTrack}
         onClose={() => setAodOpen(false)}
+        animated={!!settings.animatedArtwork}
+        reduceMotion={reduceMotion}
+        reloadToken={artworkReloadToken}
       />
     </>
   );
 }
 
-export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod, onNavigate }) {
+export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDetail, onOpenAod, onNavigate, onReloadArtwork }) {
   const { navigate } = useRouter();
   const { t, pushToast, openAddToPlaylist } = useUI();
   const { promptCast, volume, muted } = usePlayer();
@@ -1531,7 +1567,7 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
         onClose();
         return;
       } catch {
-        /* user cancelled share sheet, fall back to copy */
+        
       }
     }
     navigator.clipboard?.writeText(url);
@@ -1588,6 +1624,8 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
     { key: "playlist", icon: <ListPlus size={20} />, label: t("npAddToPlaylist"), onSelect: handleAddToPlaylist },
     { key: "share", icon: <Share2 size={20} />, label: t("npShare"), onSelect: handleShare },
     { key: "aod", icon: <Moon size={20} />, label: t("npAodMode"), onSelect: onOpenAod },
+    !isLocal && onReloadArtwork
+      && { key: "reloadArtwork", icon: <RefreshCw size={20} />, label: t("npReloadArtwork"), onSelect: onReloadArtwork },
   ].filter(Boolean);
 
   const navItems = [
@@ -1820,7 +1858,7 @@ export function TrackDetailSheet({ open, track, isPreviewClip, onClose }) {
   );
 }
 
-export function AlwaysOnDisplay({ open, track, onClose }) {
+export function AlwaysOnDisplay({ open, track, onClose, animated = false, reduceMotion = false, reloadToken = 0 }) {
   const { t } = useUI();
   const { isPlaying } = usePlayer();
   const [now, setNow] = useState(() => new Date());
@@ -1840,7 +1878,11 @@ export function AlwaysOnDisplay({ open, track, onClose }) {
     <div className={`aivy-aod ${open ? "open" : ""}`} aria-hidden={!open} onClick={onClose}>
       <div className="aivy-aod-clock">{hh}<span className="colon">:</span>{mm}</div>
       <div className="aivy-aod-track">
-        <SmartCover src={track.cover} seed={track.id + track.title} size={28} radius={6} style={{ width: 28, height: 28 }} />
+        <AnimatedCover
+          src={track.cover} seed={track.id + track.title} size={28} radius={6} style={{ width: 28, height: 28 }}
+          song={track.title} artist={track.artist?.name}
+          animated={animated && open} reduceMotion={reduceMotion} reloadToken={reloadToken}
+        />
         <div className="aivy-aod-meta">
           <div className="t">{track.title}</div>
           <div className="a">{track.artist?.name || "\u2014"}</div>
@@ -2434,11 +2476,17 @@ export function QueueHistoryBody() {
 
 function NowPlayingPane() {
   const { currentTrack, isPreviewClip } = usePlayer();
-  const { t } = useUI();
+  const { t, settings } = useUI();
+  const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   if (!currentTrack) return <div className="aivy-empty"><StarMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>;
   return (
     <div className="aivy-nowplaying-pane">
-      <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={240} radius={16} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+      <AnimatedCover
+        src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={240} radius={16}
+        style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }}
+        song={currentTrack.title} artist={currentTrack.artist?.name}
+        animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+      />
       <div className="t">{currentTrack.title}</div>
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
@@ -2746,7 +2794,7 @@ export function Sidebar() {
         >
           <PanelLeft size={18} />
         </button>
-        <Link to="home" className="aivy-brand"><StarMark size={26} color="var(--moss-strong)" className="mark" /><div className="word font-display">cosmicx</div></Link>
+        <Link to="home" className="aivy-brand"><StarMark size={26} color="var(--accent-strong)" className="mark" /><div className="word font-display">cosmicx</div></Link>
       </div>
       <nav className="aivy-nav">
         {visibleNavItems.map(({ route, labelKey, icon: Icon }) => (
@@ -2830,7 +2878,7 @@ export function TopBar({ isMobile }) {
     <div className={`aivy-topbar ${scrolled ? "scrolled" : ""}`}>
       {isMobile ? (
         <>
-          {name !== "home" ? <button className="aivy-navbtn" onClick={back} aria-label={t("previous")}><ArrowLeft size={16} /></button> : <StarMark size={20} color="var(--moss-strong)" />}
+          {name !== "home" ? <button className="aivy-navbtn" onClick={back} aria-label={t("previous")}><ArrowLeft size={16} /></button> : <StarMark size={20} color="var(--accent-strong)" />}
           <span className="aivy-topbar-title font-display" style={{ fontSize: 15 }}>{titleMap[name] ?? ""}</span>
         </>
       ) : (
@@ -3078,16 +3126,17 @@ function useIsMobile(breakpoint = 860) {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu, settings } = useUI();
   const {
     currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration,
   } = usePlayer();
+  const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
   const [lyricsUnsynced, setLyricsUnsynced] = useState(false);
-  const resolvedTheme = (typeof document !== "undefined" && document.documentElement?.dataset?.theme) || "dark";
-  const isLightResolved = ["light", "white", "latte"].includes(resolvedTheme);
+  const resolvedTheme = (typeof document !== "undefined" && document.documentElement?.dataset?.theme) || "black";
+  const isLightResolved = ["white", "latte"].includes(resolvedTheme);
   const trackKey = currentTrack?.id;
   const isLiked = currentTrack && liked.has(String(currentTrack.videoId || currentTrack.id));
   const nextTrack = upNext?.[0];
@@ -3156,15 +3205,15 @@ export function LyricsOverlay() {
     canvas.width = 800; canvas.height = 800;
     const ctx = canvas.getContext("2d");
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, "#21251A");
-    grad.addColorStop(1, "#12140F");
+    grad.addColorStop(0, "#1A1A1A");
+    grad.addColorStop(1, "#000000");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ECE8D9";
+    ctx.fillStyle = "#F2F2F2";
     ctx.font = "600 42px Georgia, serif";
     ctx.textAlign = "center";
     wrapCanvasText(ctx, line, canvas.width / 2, 380, 680, 54);
-    ctx.fillStyle = "#676B57";
+    ctx.fillStyle = "#8A8A8A";
     ctx.font = "500 22px sans-serif";
     ctx.fillText(`${currentTrack.artist?.name || ""} \u00b7 ${currentTrack.title || ""}`, canvas.width / 2, canvas.height - 80);
     canvas.toBlob((blob) => {
@@ -3213,7 +3262,12 @@ export function LyricsOverlay() {
           <div className="aivy-lyrics-side">
             <div className="aivy-lyrics-track">
               <div className="cover">
-                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }} />
+                <AnimatedCover
+                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6}
+                  style={{ width: "100%", height: "100%" }}
+                  song={currentTrack.title} artist={currentTrack.artist?.name}
+                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+                />
               </div>
               <div className="row">
                 <div className="meta">
@@ -3300,8 +3354,6 @@ export function LyricsOverlay() {
   );
 }
 
-// Lightweight markdown-ish renderer for AI chat bubbles (bold, italic, inline code,
-// links and simple bullet/numbered lists) — no extra dependency needed.
 function renderAiMarkdown(raw) {
   if (!raw) return null;
 
@@ -3310,7 +3362,7 @@ function renderAiMarkdown(raw) {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
-    // Order matters: code first (so ** inside `` isn't touched), then links, bold, italic.
+
     const tokens = [];
     let i = 0;
     const regex = /(`[^`]+`)|(\[[^\]]+\]\(https?:\/\/[^\s)]+\))|(\*\*[^*]+\*\*)|(\*[^*]+\*)/g;
@@ -3393,7 +3445,6 @@ export function AiAssistantWidget() {
   const wasOpenRef = useRef(false);
   const closeTimerRef = useRef(null);
 
-  // Play a brief closing animation instead of unmounting the panel instantly.
   useEffect(() => {
     if (open) {
       clearTimeout(closeTimerRef.current);

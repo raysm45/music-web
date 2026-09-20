@@ -187,7 +187,7 @@ export function UIProvider({ children }) {
   const [settings, setSettings] = useState(loadCachedSettings);
   const [theme, setTheme] = useState(() => {
     const cached = loadCachedSettings();
-    return typeof cached.theme === "string" && cached.theme ? cached.theme : "black";
+    return typeof cached.theme === "string" && cached.theme && cached.theme !== "dark" ? cached.theme : "black";
   });
   const [toasts, setToasts] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
@@ -213,12 +213,11 @@ export function UIProvider({ children }) {
     if (!authUser) return;
     Api.getSettings()
       .then((s) => {
-
         const local = loadCachedSettings();
         const merged = { ...DEFAULT_SETTINGS, ...local, ...(s || {}) };
         setSettings(merged);
         saveCachedSettings(merged);
-        setTheme(typeof merged.theme === "string" && merged.theme ? merged.theme : "black");
+        setTheme(typeof merged.theme === "string" && merged.theme && merged.theme !== "dark" ? merged.theme : "black");
       })
       .catch(() => {});
   }, [authUser]);
@@ -269,7 +268,7 @@ export function UIProvider({ children }) {
     let link = document.getElementById("aivy-gfont");
     if (gq) {
       if (!link) { link = document.createElement("link"); link.id = "aivy-gfont"; link.rel = "stylesheet"; document.head.appendChild(link); }
-      link.href = `https:
+      link.href = `https://fonts.googleapis.com/css2?family=${gq}&display=swap`;
     } else if (link) link.remove();
   }, [settings.fontFamily, settings.fontUrl]);
 

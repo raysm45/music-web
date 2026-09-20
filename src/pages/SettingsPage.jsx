@@ -406,7 +406,7 @@ export function SettingsPage() {
           mono
           value={settings.fontUrl || ""}
           onChange={(v) => set("fontUrl")(v.trim())}
-          placeholder="https:
+          placeholder="https://…/MyFont.woff2"
         />
         <SliderRow
           label={tt("Ukuran font", "Font size")}
