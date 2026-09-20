@@ -3120,7 +3120,7 @@ function useIsMobile(breakpoint = 860) {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu, settings } = useUI();
   const {
     currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration,
   } = usePlayer();
@@ -3128,6 +3128,8 @@ export function LyricsOverlay() {
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
   const [lyricsUnsynced, setLyricsUnsynced] = useState(false);
+  const [lyricsDynamicColor, setLyricsDynamicColor] = useState(null);
+  const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const resolvedTheme = (typeof document !== "undefined" && document.documentElement?.dataset?.theme) || "dark";
   const isLightResolved = ["light", "white", "latte"].includes(resolvedTheme);
   const trackKey = currentTrack?.id;
@@ -3188,6 +3190,8 @@ export function LyricsOverlay() {
       observer?.disconnect();
     };
   }, [lyricsOpen, trackKey]);
+
+  useEffect(() => { setLyricsDynamicColor(null); }, [trackKey]);
 
   const activeLineText = currentTrack?.title || "";
 
@@ -3254,8 +3258,17 @@ export function LyricsOverlay() {
         <div className="aivy-lyrics-main">
           <div className="aivy-lyrics-side">
             <div className="aivy-lyrics-track">
-              <div className="cover">
-                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }} />
+              <div
+                className="cover"
+                style={lyricsDynamicColor ? { boxShadow: `0 20px 50px rgba(0,0,0,.55), 0 0 60px -12px ${lyricsDynamicColor}` } : undefined}
+              >
+                <AnimatedCover
+                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6}
+                  style={{ width: "100%", height: "100%" }}
+                  song={currentTrack.title} artist={currentTrack.artist?.name}
+                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+                  onColor={setLyricsDynamicColor}
+                />
               </div>
               <div className="row">
                 <div className="meta">
