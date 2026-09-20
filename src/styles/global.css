@@ -629,28 +629,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-player.is-playing .aivy-player-cover.cd-spin{ animation-play-state: running; }
 .npx-cover-visualizer{ position: absolute; inset: 0; z-index: 1; opacity: .85; mix-blend-mode: screen; pointer-events: none; }
 
-.living-cover{ overflow: hidden; }
-.living-cover img, .living-cover svg{ will-change: filter; }
-.aivy-player.is-playing .aivy-player-cover.living-cover img,
-.aivy-player.is-playing .aivy-player-cover.living-cover svg,
-.aivy-sheet.is-playing .npx-cover.living-cover img,
-.aivy-sheet.is-playing .npx-cover.living-cover svg{
-  filter: url(#aivy-cover-liquid);
-}
-.aivy-mini-player.is-playing .aivy-mini-cover.living-cover img,
-.aivy-mini-player.is-playing .aivy-mini-cover.living-cover svg{
-  filter: url(#aivy-cover-liquid-sm);
-}
-@media (prefers-reduced-motion: reduce){
-  .living-cover img, .living-cover svg{ filter: none !important; }
-}
-html[data-reduced-motion="true"] .living-cover img,
-html[data-reduced-motion="true"] .living-cover svg{ filter: none !important; }
-/* Layar Now Playing pakai AnimatedCover (artwork animasi) — efek liquid-
-   distortion "Living Cover" dimatiin total di sini, baik pas masih static
-   (nunggu animasinya siap) maupun pas videonya udah jalan, biar konsisten
-   dan ga bentrok sama gerakan video aslinya. Cover di tempat lain (mini
-   player, dsb) yang masih pakai SmartCover polos ga kepengaruh. */
 .aivy-animated-cover img,
 .aivy-animated-cover svg,
 .aivy-animated-cover video{ filter: none !important; }

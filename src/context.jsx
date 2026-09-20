@@ -51,6 +51,7 @@ export const RIGHTPANEL_MAX_W = 440;
 export const RIGHTPANEL_COLLAPSED_W = 56;
 export const RIGHTPANEL_PEEK_W = 52;
 const PANEL_PREFS_KEY = "aivy_panel_prefs";
+const SETTINGS_CACHE_KEY = "aivy_settings_cache_v1";
 const PLAYBACK_STATE_KEY = "aivy_playback_state_v1";
 const PLAYBACK_STATE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_PANEL_PREFS = {
@@ -115,16 +116,31 @@ const DEFAULT_SETTINGS = {
   downloadOverWifiOnly: true,
   hostOnlyControlDefault: false,
   roomVisibilityDefault: "public",
-  livingCover: true,
   animatedArtwork: false,
   equalizer: DEFAULT_EQ,
 };
 
+function loadCachedSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_CACHE_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, ...parsed };
+  } catch { return DEFAULT_SETTINGS; }
+}
+function saveCachedSettings(s) {
+  try { localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(s)); } catch {}
+}
+
 export function UIProvider({ children }) {
   const [authUser, setAuthUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [theme, setTheme] = useState("black");
+  const [settings, setSettings] = useState(loadCachedSettings);
+  const [theme, setTheme] = useState(() => {
+    const cached = loadCachedSettings();
+    return typeof cached.theme === "string" && cached.theme ? cached.theme : "black";
+  });
   const [toasts, setToasts] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
   const [addToPlaylistTarget, setAddToPlaylistTarget] = useState(null);
@@ -148,7 +164,12 @@ export function UIProvider({ children }) {
   useEffect(() => {
     if (!authUser) return;
     Api.getSettings()
-      .then((s) => { setSettings(s); setTheme(typeof s.theme === "string" && s.theme ? s.theme : "black"); })
+      .then((s) => {
+        const merged = { ...DEFAULT_SETTINGS, ...s };
+        setSettings(merged);
+        saveCachedSettings(merged);
+        setTheme(typeof merged.theme === "string" && merged.theme ? merged.theme : "black");
+      })
       .catch(() => {});
   }, [authUser]);
 
@@ -258,7 +279,11 @@ export function UIProvider({ children }) {
   }
 
   const updateSettings = useCallback((patch) => {
-    setSettings((s) => ({ ...s, ...patch }));
+    setSettings((s) => {
+      const next = { ...s, ...patch };
+      saveCachedSettings(next);
+      return next;
+    });
     if (patch.theme) setTheme(patch.theme);
     pendingSettingsPatchRef.current = { ...pendingSettingsPatchRef.current, ...patch };
     flushSettingsRef.current(() => pushToast(t("toastSettingsSaveFailed")));
@@ -266,6 +291,7 @@ export function UIProvider({ children }) {
 
   const resetSettings = useCallback(async () => {
     setSettings(DEFAULT_SETTINGS);
+    saveCachedSettings(DEFAULT_SETTINGS);
     setTheme("black");
     try { await Api.resetSettings(); } catch {  }
   }, []);
