@@ -868,7 +868,7 @@ export function PlayerBar({ onOpenNowPlaying }) {
         {currentTrack ? (
           <>
             <span
-              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""}`}
+              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false && !settings.cdCoverSpin ? "living-cover" : ""}`}
               onClick={handleCoverClick} role="button" tabIndex={0} style={{ cursor: "pointer" }}
               onKeyDown={(e) => { if (e.key === "Enter") handleCoverClick(); }}
             >
@@ -931,7 +931,7 @@ export function MiniPlayer({ onExpand }) {
       className={`aivy-mini-player ${isPlaying ? "is-playing" : ""}`} ref={miniRef} onClick={handleExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
       onPointerDown={swipe.onPointerDown} onPointerMove={swipe.onPointerMove} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
     >
-      <span className={`aivy-mini-cover ${settings.noRoundCover ? "no-round" : ""}`}>
+      <span className={`aivy-mini-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false ? "living-cover" : ""}`}>
         <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
       </span>
       <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
@@ -1411,7 +1411,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
             >
               <div
-                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""}`}
+                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""} ${settings.livingCover !== false && !settings.cdCoverSpin ? "living-cover" : ""}`}
                 ref={(el) => { coverRef.current = el; tilt.ref.current = el; }}
                 style={{ ...tilt.style, ...(dynamicColor ? { "--npx-dynamic": dynamicColor, boxShadow: `0 24px 60px rgba(0,0,0,.5), 0 0 60px -12px ${dynamicColor}` } : {}) }}
                 onPointerMove={settings.tiltCover ? tilt.onMove : undefined}
@@ -1426,7 +1426,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                   src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10}
                   style={{ width: "100%", height: "100%" }}
                   song={currentTrack.title} artist={currentTrack.artist?.name}
-                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+                  animated={!!settings.animatedArtwork && open} reduceMotion={reduceMotion}
                   onColor={setServerDominantColor}
                   reloadToken={artworkReloadToken}
                   onReloadResult={handleArtworkReloadResult}
@@ -1875,7 +1875,7 @@ export function AlwaysOnDisplay({ open, track, onClose, animated = false, reduce
         <AnimatedCover
           src={track.cover} seed={track.id + track.title} size={28} radius={6} style={{ width: 28, height: 28 }}
           song={track.title} artist={track.artist?.name}
-          animated={animated} reduceMotion={reduceMotion} reloadToken={reloadToken}
+          animated={animated && open} reduceMotion={reduceMotion} reloadToken={reloadToken}
         />
         <div className="aivy-aod-meta">
           <div className="t">{track.title}</div>
@@ -3120,7 +3120,7 @@ function useIsMobile(breakpoint = 860) {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu, settings } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu } = useUI();
   const {
     currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration,
   } = usePlayer();
@@ -3128,8 +3128,6 @@ export function LyricsOverlay() {
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
   const [lyricsUnsynced, setLyricsUnsynced] = useState(false);
-  const [lyricsDynamicColor, setLyricsDynamicColor] = useState(null);
-  const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const resolvedTheme = (typeof document !== "undefined" && document.documentElement?.dataset?.theme) || "dark";
   const isLightResolved = ["light", "white", "latte"].includes(resolvedTheme);
   const trackKey = currentTrack?.id;
@@ -3190,8 +3188,6 @@ export function LyricsOverlay() {
       observer?.disconnect();
     };
   }, [lyricsOpen, trackKey]);
-
-  useEffect(() => { setLyricsDynamicColor(null); }, [trackKey]);
 
   const activeLineText = currentTrack?.title || "";
 
@@ -3258,17 +3254,8 @@ export function LyricsOverlay() {
         <div className="aivy-lyrics-main">
           <div className="aivy-lyrics-side">
             <div className="aivy-lyrics-track">
-              <div
-                className="cover"
-                style={lyricsDynamicColor ? { boxShadow: `0 20px 50px rgba(0,0,0,.55), 0 0 60px -12px ${lyricsDynamicColor}` } : undefined}
-              >
-                <AnimatedCover
-                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6}
-                  style={{ width: "100%", height: "100%" }}
-                  song={currentTrack.title} artist={currentTrack.artist?.name}
-                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
-                  onColor={setLyricsDynamicColor}
-                />
+              <div className="cover">
+                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }} />
               </div>
               <div className="row">
                 <div className="meta">

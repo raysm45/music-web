@@ -119,6 +119,7 @@ export function SmartCover({ src, seed, size = 160, radius = 14, style = {}, alt
 }
 
 const artworkMemCache = new Map();
+const artworkInFlight = new Map();
 const supportsNativeHls = () => {
   if (typeof document === "undefined") return false;
   try {
@@ -177,7 +178,15 @@ function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResu
     if (hit) { setArtwork(hit); return undefined; }
 
     let alive = true;
-    Api.animatedArtwork(song, artist, forceReload)
+    const inFlightKey = forceReload ? `${key}::reload:${reloadToken}` : key;
+    let pending = artworkInFlight.get(inFlightKey);
+    if (!pending) {
+      pending = Api.animatedArtwork(song, artist, forceReload).finally(() => {
+        artworkInFlight.delete(inFlightKey);
+      });
+      artworkInFlight.set(inFlightKey, pending);
+    }
+    pending
       .then((data) => {
         if (!alive) return;
         const hasAnimation = !!(data && (data.video || data.animated));
