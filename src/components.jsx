@@ -3120,10 +3120,11 @@ function useIsMobile(breakpoint = 860) {
 }
 
 export function LyricsOverlay() {
-  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu } = useUI();
+  const { lyricsOpen, closeLyrics, pushToast, t, openMobileQueue, openContextMenu, settings } = useUI();
   const {
     currentTrack, currentTime, seekTo, isPreviewClip, liked, toggleLike, upNext, duration,
   } = usePlayer();
+  const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [fontSize, setFontSize] = useState("md");
   const [shareOpen, setShareOpen] = useState(false);
   const [singMode, setSingMode] = useState(false);
@@ -3255,7 +3256,12 @@ export function LyricsOverlay() {
           <div className="aivy-lyrics-side">
             <div className="aivy-lyrics-track">
               <div className="cover">
-                <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6} style={{ width: "100%", height: "100%" }} />
+                <AnimatedCover
+                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={6}
+                  style={{ width: "100%", height: "100%" }}
+                  song={currentTrack.title} artist={currentTrack.artist?.name}
+                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+                />
               </div>
               <div className="row">
                 <div className="meta">

@@ -148,7 +148,7 @@ function useHlsSource(videoEl, src, isM3u8) {
     loadHlsJs().then((Hls) => {
       if (cancelled) return;
       if (!Hls.isSupported()) { videoEl.src = src; return; }
-      hls = new Hls({ maxBufferLength: 15 });
+      hls = new Hls({ maxBufferLength: 60, maxMaxBufferLength: 120, backBufferLength: Infinity });
       hls.loadSource(src);
       hls.attachMedia(videoEl);
     }).catch(() => { if (!cancelled) videoEl.src = src; });
@@ -215,8 +215,8 @@ export function AnimatedCover({
   useEffect(() => {
     if (artwork?.color?.css) onColorRef.current?.(artwork.color.css);
   }, [artwork?.color?.css]);
-  const isM3u8 = !artwork?.video && !!artwork?.animated;
   const videoSrc = artwork?.video || artwork?.animated || null;
+  const isM3u8 = !!videoSrc && /\.m3u8(\?|$)/i.test(videoSrc);
   useHlsSource(videoEl, videoSrc, isM3u8);
 
   return (
