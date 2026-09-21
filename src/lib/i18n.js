@@ -14,6 +14,7 @@ const dict = {
     playAudio: "Putar Audio",
     videoUnavailable: "Video tidak tersedia",
     unknownTitle: "Tanpa judul",
+    openInYoutube: "Buka di YouTube",
 
     navHome: "Beranda",
     navSearch: "Cari",
@@ -438,6 +439,7 @@ const dict = {
     playAudio: "Play Audio",
     videoUnavailable: "Video unavailable",
     unknownTitle: "Untitled",
+    openInYoutube: "Open in YouTube",
 
     navHome: "Home",
     navSearch: "Search",

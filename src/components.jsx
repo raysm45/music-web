@@ -8,6 +8,7 @@ import {
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
   Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github, Sparkles, RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -3748,6 +3749,11 @@ export function MusicVideoView({ video, onClose, onAudioPlay }) {
   const meta = [video.views, year, video.duration ? formatDuration(video.duration) : null]
     .filter(Boolean)
     .join(" \u00b7 ");
+  const poster = video.cover || video.thumbnail || null;
+  const openExternal = () => {
+    if (!vId) return;
+    window.open(`https://www.youtube.com/watch?v=${encodeURIComponent(vId)}`, "_blank", "noopener");
+  };
 
   return (
     <div className="aivy-mv-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={video.title || t("musicVideos")}>
@@ -3760,13 +3766,16 @@ export function MusicVideoView({ video, onClose, onAudioPlay }) {
           {vId ? (
             <iframe
               className="aivy-mv-frame"
-              src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(vId)}?autoplay=1&playsinline=1&rel=0&modestbranding=1`}
+              src={`https://www.youtube.com/embed/${encodeURIComponent(vId)}?autoplay=1&playsinline=1&rel=0&modestbranding=1`}
               title={video.title || t("musicVideos")}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />
           ) : (
-            <div className="aivy-mv-na">{t("videoUnavailable")}</div>
+            <div className="aivy-mv-na">
+              {poster ? <img src={poster} alt="" /> : null}
+              <span>{t("videoUnavailable")}</span>
+            </div>
           )}
         </div>
         <div className="aivy-mv-info">
@@ -3774,12 +3783,19 @@ export function MusicVideoView({ video, onClose, onAudioPlay }) {
             <div className="aivy-mv-title">{video.title || t("unknownTitle")}</div>
             {artistName ? <div className="aivy-mv-artist">{artistName}</div> : null}
             {meta ? <div className="aivy-mv-meta">{meta}</div> : null}
+            {vId ? (
+              <button type="button" className="aivy-mv-open-yt" onClick={openExternal}>
+                <ExternalLink size={13} /> {t("openInYoutube")}
+              </button>
+            ) : null}
           </div>
-          {onAudioPlay ? (
-            <button className="aivy-mv-audio-btn" onClick={onAudioPlay}>
-              <Music2 size={16} /> {t("playAudio")}
-            </button>
-          ) : null}
+          <div className="aivy-mv-acts">
+            {onAudioPlay ? (
+              <button type="button" className="aivy-mv-audio-btn" onClick={onAudioPlay}>
+                <Music2 size={16} /> {t("playAudio")}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
