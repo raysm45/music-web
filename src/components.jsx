@@ -83,7 +83,10 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
       if (signed < 0) { reset(); return; }
       st.dragging = true;
       st.dragStartTime = Date.now();
-      if (dragRef?.current) dragRef.current.style.transition = "none";
+      if (dragRef?.current) {
+        dragRef.current.style.transition = "none";
+        dragRef.current.style.willChange = "transform";
+      }
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     }
     if (st.dragging) { try { e.preventDefault(); } catch {} }
@@ -95,7 +98,7 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
   }, [direction, dragRef]);
 
   const finish = useCallback((commit) => {
-    if (dragRef?.current) { dragRef.current.style.transition = ""; dragRef.current.style.transform = ""; }
+    if (dragRef?.current) { dragRef.current.style.transition = ""; dragRef.current.style.transform = ""; dragRef.current.style.willChange = ""; }
     if (commit) onTrigger();
     reset();
   }, [dragRef, onTrigger]);
@@ -982,10 +985,33 @@ function useHeroFlip(mode, targets) {
   const firstRects = useRef(null);
   const cleanupTimer = useRef(null);
 
+  const resetStyles = () => {
+    targets.forEach(({ ref }) => {
+      const el = ref.current;
+      if (!el) return;
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.transformOrigin = "";
+      el.style.backfaceVisibility = "";
+      el.style.willChange = "";
+    });
+  };
+
   const capture = () => {
     const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) { firstRects.current = null; return; }
-    firstRects.current = targets.map(({ ref }) => (ref.current ? ref.current.getBoundingClientRect() : null));
+    // Baca dulu semua rect (tanpa menulis di antaranya => hanya 1x layout),
+    // baru promote layer-nya. Compositor jadi sudah siap sebelum React
+    // mengubah layout, sehingga frame pertama animasi tidak perlu upload
+    // texture baru di tengah transisi.
+    const rects = targets.map(({ ref }) => (ref.current ? ref.current.getBoundingClientRect() : null));
+    targets.forEach(({ ref }) => {
+      const el = ref.current;
+      if (!el) return;
+      el.style.willChange = "transform";
+      el.style.backfaceVisibility = "hidden";
+    });
+    firstRects.current = rects;
   };
 
   useLayoutEffect(() => {
@@ -993,39 +1019,44 @@ function useHeroFlip(mode, targets) {
     firstRects.current = null;
     if (!firstRectsList) return undefined;
 
-    const play = (el, firstRect, { uniform = false } = {}) => {
+    // FASE 1 — baca seluruh posisi akhir lebih dulu (1x layout untuk semua).
+    const plans = [];
+    targets.forEach(({ ref, uniform }, i) => {
+      const el = ref.current;
+      const firstRect = firstRectsList[i];
       if (!el || !firstRect || !firstRect.width || !firstRect.height) return;
       const last = el.getBoundingClientRect();
       if (!last.width || !last.height) return;
-      const dx = firstRect.left - last.left;
-      const dy = firstRect.top - last.top;
-      let sx = firstRect.width / last.width;
-      let sy = firstRect.height / last.height;
-      if (uniform) {
-        sx = sy;
-      }
-      el.style.willChange = "transform";
+      const sy = firstRect.height / last.height;
+      plans.push({
+        el,
+        dx: firstRect.left - last.left,
+        dy: firstRect.top - last.top,
+        sx: uniform ? sy : firstRect.width / last.width,
+        sy,
+      });
+    });
+
+    if (!plans.length) { resetStyles(); return undefined; }
+
+    // FASE 2 — tulis semua transform "invert" sekaligus.
+    plans.forEach(({ el, dx, dy, sx, sy }) => {
       el.style.transition = "none";
       el.style.transformOrigin = "top left";
       el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
-      void el.offsetWidth;
+    });
+
+    // FASE 3 — satu kali flush style/layout untuk semua elemen sekaligus.
+    void plans[0].el.offsetWidth;
+
+    // FASE 4 — lepas ke posisi akhir; mulai dari sini murni kerja compositor.
+    plans.forEach(({ el }) => {
       el.style.transition = `transform ${HERO_FLIP_MS}ms cubic-bezier(.22,.85,.32,1)`;
       el.style.transform = "translate(0px, 0px) scale(1, 1)";
-    };
-
-    targets.forEach(({ ref, uniform }, i) => play(ref.current, firstRectsList[i], { uniform }));
+    });
 
     clearTimeout(cleanupTimer.current);
-    cleanupTimer.current = setTimeout(() => {
-      targets.forEach(({ ref }) => {
-        const el = ref.current;
-        if (!el) return;
-        el.style.transition = "";
-        el.style.transform = "";
-        el.style.transformOrigin = "";
-        el.style.willChange = "";
-      });
-    }, HERO_FLIP_MS + 40);
+    cleanupTimer.current = setTimeout(resetStyles, HERO_FLIP_MS + 40);
 
     return () => clearTimeout(cleanupTimer.current);
   }, [mode]);
@@ -1100,7 +1131,7 @@ const VISUALIZER_COLOR_SETS = {
   matrix: ["#39ff88", "#0fae4f", "#0a2a12"],
 };
 
-export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brightness = 100, preset = "auto", height = 220 }) {
+export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brightness = 100, preset = "auto", height = 220, running = true }) {
   const { getAnalyser, isPlaying } = usePlayer();
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
@@ -1110,6 +1141,9 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
+    // Saat sheet tertutup canvas tidak terlihat sama sekali, jadi loop rAF
+    // dimatikan total daripada terus menggambar di belakang layar.
+    if (!running) return undefined;
     const ctx2d = canvas.getContext("2d");
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const colors = VISUALIZER_COLOR_SETS[preset] || VISUALIZER_COLOR_SETS.auto;
@@ -1125,14 +1159,24 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
+    // Dipakai ulang tiap frame: sebelumnya 2 Uint8Array dialokasikan 60x/detik
+    // yang bikin GC sering jalan dan menimbulkan stutter di HP entry-level.
+    let freqBuf = null;
+    let timeBuf = null;
+
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
       const w = canvas.width, h = canvas.height;
       const analyser = getAnalyser?.();
       let freq = null, time = null;
       if (analyser) {
-        freq = new Uint8Array(analyser.frequencyBinCount);
-        time = new Uint8Array(analyser.frequencyBinCount);
+        const bins = analyser.frequencyBinCount;
+        if (!freqBuf || freqBuf.length !== bins) {
+          freqBuf = new Uint8Array(bins);
+          timeBuf = new Uint8Array(bins);
+        }
+        freq = freqBuf;
+        time = timeBuf;
         analyser.getByteFrequencyData(freq);
         analyser.getByteTimeDomainData(time);
       }
@@ -1238,17 +1282,18 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
     };
     draw();
     return () => { cancelAnimationFrame(rafRef.current); ro.disconnect(); };
-  }, [style, mode, sensitivity, brightness, preset, getAnalyser, isPlaying]);
+  }, [style, mode, sensitivity, brightness, preset, getAnalyser, isPlaying, running]);
 
   return <canvas ref={canvasRef} className={`aivy-visualizer-canvas ${mode}`} style={{ ...style, height }} />;
 }
 
-export function NowPlayingVisualizer() {
+export function NowPlayingVisualizer({ running = true }) {
   const { settings } = useUI();
   const [cyclePreset, setCyclePreset] = useState(settings.visualizerPreset || "auto");
   const presets = Object.keys(VISUALIZER_COLOR_SETS);
 
   useEffect(() => {
+    if (!running) return undefined;
     if (!settings.cyclePresets) { setCyclePreset(settings.visualizerPreset || "auto"); return undefined; }
     const durMs = Math.max(3, Number(settings.cycleDuration) || 30) * 1000;
     const id = setInterval(() => {
@@ -1262,7 +1307,7 @@ export function NowPlayingVisualizer() {
       });
     }, durMs);
     return () => clearInterval(id);
-  }, [settings.cyclePresets, settings.cycleDuration, settings.randomizePresets, settings.visualizerPreset]);
+  }, [running, settings.cyclePresets, settings.cycleDuration, settings.randomizePresets, settings.visualizerPreset]);
 
   if (!settings.visualizerEnabled) return null;
   return (
@@ -1272,9 +1317,12 @@ export function NowPlayingVisualizer() {
       sensitivity={Number(settings.visualizerSensitivity) || 60}
       brightness={Number(settings.visualizerBrightness) || 100}
       preset={cyclePreset}
+      running={running}
     />
   );
 }
+
+const NPX_COVER_FILL_STYLE = { width: "100%", height: "100%" };
 
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const {
@@ -1313,6 +1361,11 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     else if (status === "not_found") pushToast(t("npArtworkReloadFailed"));
     else pushToast(t("npArtworkReloadError"));
   };
+  // Dibungkus ref supaya identitasnya stabil — kalau tidak, memo cover di
+  // bawah ikut batal tiap kali `timeupdate` memicu render ulang sheet.
+  const reloadResultRef = useRef(handleArtworkReloadResult);
+  reloadResultRef.current = handleArtworkReloadResult;
+  const onReloadResultStable = useCallback((status) => reloadResultRef.current(status), []);
   const handleFullscreenCoverClick = () => {
     const action = settings.fullscreenCoverClick || "exit";
     if (action === "exit") onClose();
@@ -1347,6 +1400,24 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const trackKey = currentTrack?.id;
   useEffect(() => { setSingMode(false); setLyricsUnsynced(false); }, [trackKey]);
   useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
+
+  // Pre-mount <am-lyrics> sesaat setelah sheet selesai dibuka (saat idle),
+  // supaya saat tombol lirik ditekan animasinya tidak harus berbagi main
+  // thread dengan mount Lit + fetch lirik. Wrapper-nya masih opacity:0 /
+  // flex-basis:0 jadi tidak ada perubahan tampilan.
+  useEffect(() => {
+    if (!open || lyricsMounted || lyricsDisabled) return undefined;
+    let idleId = null;
+    const idle = typeof window !== "undefined" && window.requestIdleCallback;
+    const timer = setTimeout(() => {
+      if (idle) idleId = window.requestIdleCallback(() => setLyricsMounted(true), { timeout: 2000 });
+      else setLyricsMounted(true);
+    }, 500);
+    return () => {
+      clearTimeout(timer);
+      if (idleId != null && window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+    };
+  }, [open, lyricsMounted, lyricsDisabled]);
 
   const handleLyricsToggle = () => { captureHeroFlip(); toggleLyrics(); };
 
@@ -1387,6 +1458,30 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
 
   const remaining = Math.max(0, (duration || 0) - (currentTime || 0));
 
+  // Sheet ikut render ulang tiap `timeupdate` (~4x/detik) hanya demi label
+  // waktu. Bagian berat di bawah di-memo supaya subtree-nya dilewati React,
+  // terutama saat animasi buka/tutup sedang berjalan.
+  const coverArt = useMemo(() => (
+    <AnimatedCover
+      src={currentTrack?.cover} seed={(currentTrack?.id || "") + (currentTrack?.title || "")} size={320} radius={10}
+      style={NPX_COVER_FILL_STYLE}
+      song={currentTrack?.title} artist={currentTrack?.artist?.name}
+      animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+      onColor={setServerDominantColor}
+      reloadToken={artworkReloadToken}
+      onReloadResult={onReloadResultStable}
+    />
+  ), [currentTrack?.cover, currentTrack?.id, currentTrack?.title, currentTrack?.artist?.name, settings.animatedArtwork, reduceMotion, artworkReloadToken, onReloadResultStable]);
+
+  const showSheetVisualizer = !!settings.visualizerEnabled && settings.visualizerMode === "solid";
+  const showCoverVisualizer = !!settings.visualizerEnabled && settings.visualizerMode === "blended";
+  const sheetVisualizer = useMemo(() => (
+    showSheetVisualizer ? <div className="aivy-sheet-visualizer" aria-hidden="true"><NowPlayingVisualizer running={open} /></div> : null
+  ), [showSheetVisualizer, open]);
+  const coverVisualizer = useMemo(() => (
+    showCoverVisualizer ? <div className="npx-cover-visualizer" aria-hidden="true"><NowPlayingVisualizer running={open} /></div> : null
+  ), [showCoverVisualizer, open]);
+
   return (
     <>
       <div className={`aivy-sheet-backdrop ${open ? "open" : ""}`} onClick={handleGrabberTap} />
@@ -1398,9 +1493,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             aria-hidden="true"
           />
         )}
-        {settings.visualizerEnabled && settings.visualizerMode === "solid" && (
-          <div className="aivy-sheet-visualizer" aria-hidden="true"><NowPlayingVisualizer /></div>
-        )}
+        {sheetVisualizer}
         <div
           className="aivy-sheet-grabber-row"
           onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
@@ -1424,18 +1517,8 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                 onClick={handleFullscreenCoverClick}
                 role="button" tabIndex={0}
               >
-                {settings.visualizerEnabled && settings.visualizerMode === "blended" && (
-                  <div className="npx-cover-visualizer" aria-hidden="true"><NowPlayingVisualizer height={320} /></div>
-                )}
-                <AnimatedCover
-                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10}
-                  style={{ width: "100%", height: "100%" }}
-                  song={currentTrack.title} artist={currentTrack.artist?.name}
-                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
-                  onColor={setServerDominantColor}
-                  reloadToken={artworkReloadToken}
-                  onReloadResult={handleArtworkReloadResult}
-                />
+                {coverVisualizer}
+                {coverArt}
               </div>
               <div className="npx-metarow">
                 <div className="npx-titles" ref={metaRef}>
