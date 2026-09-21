@@ -1,160 +1,501 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Play, Shuffle, Check, Mic2, UserPlus } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Play, Pause, Shuffle, Info, Star, MoreHorizontal, ChevronRight, X } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { TrackRow, CardAlbum, CardArtist, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray } from "../components.jsx";
+import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
+/* ============================================================
+   Artist page — Apple Music style
+   Hero full-bleed + fade ke warna solid yang diambil dari artwork,
+   lalu body gelap solid berisi Latest Release / Top Songs / rail.
+   ============================================================ */
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0, s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+  }
+  return [h, s, l];
+}
+
+/**
+ * Ambil warna dominan dari artwork lalu turunkan jadi:
+ *  - bg      : warna solid gelap untuk latar halaman (seperti cokelat tua di Apple Music)
+ *  - accent  : warna terang untuk tombol Play
+ *  - ink     : warna ikon di atas accent
+ * Gagal (CORS / gambar tidak ada) => null, komponen fallback ke token tema.
+ */
+function useArtworkTint(src) {
+  const [tint, setTint] = useState(null);
+  useEffect(() => {
+    if (!src) { setTint(null); return undefined; }
+    let alive = true;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (!alive) return;
+      try {
+        const canvas = document.createElement("canvas");
+        const size = 28;
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        let r = 0, g = 0, b = 0, w = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 32) continue;
+          // bobot lebih besar untuk piksel yang berwarna (bukan abu-abu)
+          const mx = Math.max(data[i], data[i + 1], data[i + 2]);
+          const mn = Math.min(data[i], data[i + 1], data[i + 2]);
+          const weight = 0.35 + (mx - mn) / 255;
+          r += data[i] * weight; g += data[i + 1] * weight; b += data[i + 2] * weight; w += weight;
+        }
+        if (!w) return;
+        const [h, s] = rgbToHsl(r / w, g / w, b / w);
+        const hue = Math.round(h);
+        const sat = Math.round(Math.min(46, Math.max(14, s * 100)));
+        if (alive) {
+          setTint({
+            bg: `hsl(${hue} ${sat}% 9%)`,
+            accent: `hsl(${hue} ${Math.min(70, sat + 26)}% 76%)`,
+            accentInk: `hsl(${hue} ${Math.min(60, sat + 10)}% 12%)`,
+          });
+        }
+      } catch { /* canvas ter-taint oleh CORS — pakai fallback tema */ }
+    };
+    img.onerror = () => {};
+    img.src = src;
+    return () => { alive = false; };
+  }, [src]);
+  return tint;
+}
+
+function releaseYear(value) {
+  if (!value) return "";
+  const s = String(value);
+  const m = s.match(/\d{4}/);
+  return m ? m[0] : "";
+}
+
+function formatReleaseDate(value, lang) {
+  if (!value) return "";
+  const s = String(value);
+  if (/^\d{4}$/.test(s.trim())) return s.trim();
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return releaseYear(s);
+  return d.toLocaleDateString(lang === "en" ? "en-US" : "id-ID", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function albumKindLabel(album, t) {
+  const raw = String(album?.type || album?.albumType || "").toLowerCase();
+  if (raw.includes("single")) return "Single";
+  if (raw.includes("ep")) return "EP";
+  if (raw.includes("album")) return t("albumLabel");
+  const title = String(album?.title || "");
+  if (/\bsingle\b/i.test(title)) return "Single";
+  if (/\bEP\b/.test(title)) return "EP";
+  return t("albumLabel");
+}
+
+/* ---------- Baris lagu ala Top Songs Apple Music ---------- */
+function AmSongRow({ track, index, list }) {
+  const { currentTrack, isPlaying, togglePlay, playList } = usePlayer();
+  const { openContextMenu, t } = useUI();
+  const isCurrent = currentTrack && currentTrack.id === track.id;
+  const items = useTrackMenuItems(track);
+
+  const play = () => {
+    if (isCurrent) { togglePlay(); return; }
+    playList(list, index);
+  };
+  const openMenu = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    openContextMenu(e.clientX, e.clientY, items);
+  };
+
+  const sub = [track.album?.title || track.albumTitle, releaseYear(track.album?.releaseDate || track.releaseDate || track.year)]
+    .filter(Boolean).join(" \u00b7 ");
+
+  return (
+    <div
+      className={`aivy-am-song ${isCurrent ? "is-current" : ""}`}
+      onClick={play}
+      onContextMenu={openMenu}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); play(); } }}
+    >
+      <span className="art">
+        <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={5} style={{ width: 44, height: 44 }} />
+        <span className="hover-play">{isCurrent && isPlaying ? <Pause size={15} /> : <Play size={15} fill="currentColor" />}</span>
+      </span>
+      <span className="meta">
+        <span className="t">
+          {track.explicit && <span className="aivy-explicit-badge" title="Explicit">E</span>}
+          {track.title}
+        </span>
+        {sub && <span className="s">{sub}</span>}
+      </span>
+      <button className="dots" onClick={openMenu} aria-label={t("menuMore")}><MoreHorizontal size={17} /></button>
+    </div>
+  );
+}
+
+/* ---------- Kartu di rail horizontal ---------- */
+function AmTile({ cover, seed, title, sub, onClick, onPlay, variant = "square" }) {
+  return (
+    <div className={`aivy-am-tile is-${variant}`} onClick={onClick} role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(e) => { if (onClick && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onClick(); } }}>
+      <div className="art">
+        <SmartCover src={cover} seed={seed} size={240} radius={0} style={{ width: "100%", height: "100%" }} />
+        {onPlay && (
+          <button className="tile-play" onClick={(e) => { e.stopPropagation(); onPlay(); }} aria-label="Play">
+            <Play size={15} fill="currentColor" />
+          </button>
+        )}
+      </div>
+      <div className="t">{title}</div>
+      {sub ? <div className="s">{sub}</div> : null}
+    </div>
+  );
+}
+
+function AmSectionHead({ title, onClick }) {
+  if (!onClick) return <div className="aivy-am-head"><h2>{title}</h2></div>;
+  return (
+    <button className="aivy-am-head is-link" onClick={onClick}>
+      <h2>{title}</h2><ChevronRight size={18} />
+    </button>
+  );
+}
+
 export function ArtistPage() {
-  const { params } = useRouter();
+  const { params, navigate } = useRouter();
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [following, setFollowing] = useState(false);
-  const [showAllTracks, setShowAllTracks] = useState(false);
+  const [favorite, setFavorite] = useState(false);
+  const [showAllSongs, setShowAllSongs] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [heroVideoUrl, setHeroVideoUrl] = useState(null);
+  const [heroArtwork, setHeroArtwork] = useState(null);
   const [videoBroken, setVideoBroken] = useState(false);
   const mediaRef = useRef(null);
   const pageRef = useRef(null);
+  const heroRef = useRef(null);
   const { playList } = usePlayer();
   const { pushToast, t, settings } = useUI();
 
-  // Mode immersive: ubah sidebar kiri & panel kanan jadi glassmorphism
   useEffect(() => {
     document.body.classList.add("aivy-artist-immersive");
-    return () => document.body.classList.remove("aivy-artist-immersive");
+    return () => {
+      document.body.classList.remove("aivy-artist-immersive");
+      document.body.style.removeProperty("--artist-bg");
+      document.body.style.removeProperty("--artist-accent");
+      document.body.style.removeProperty("--artist-accent-ink");
+    };
   }, []);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    setShowAllTracks(false);
+    setShowAllSongs(false);
+    setAboutOpen(false);
     setVideoBroken(false);
+    setHeroVideoUrl(null);
+    setHeroArtwork(null);
+    document.getElementById("aivy-content-scroll")?.scrollTo({ top: 0 });
     Api.artist(params.id).then((res) => {
       if (!alive) return;
       setArtist(res);
       setLoading(false);
       if (res?.name) {
         Api.appleMusicHero(res.name)
-          .then((h) => { if (alive && h?.video?.url) setHeroVideoUrl(Api.appleMusicVideoUrl(h.video.url)); })
+          .then((h) => {
+            if (!alive) return;
+            if (h?.video?.url) setHeroVideoUrl(Api.appleMusicVideoUrl(h.video.url));
+            if (h?.artwork?.url) setHeroArtwork(h.artwork.url);
+          })
           .catch(() => {});
-      } else {
-        setHeroVideoUrl(null);
       }
     }).catch(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [params.id]);
 
-  // Scroll to blur: semakin jauh discroll, background hero makin blur
+  const posterImg = heroArtwork || artist?.banner || artist?.image || null;
+  const tintSource = artist?.image || artist?.banner || artist?.albums?.[0]?.cover || null;
+  const tint = useArtworkTint(tintSource);
+
+  // Sebarkan warna hasil artwork ke <body> supaya sidebar, topbar & player ikut menyatu
   useEffect(() => {
+    if (!tint) return undefined;
+    document.body.style.setProperty("--artist-bg", tint.bg);
+    document.body.style.setProperty("--artist-accent", tint.accent);
+    document.body.style.setProperty("--artist-accent-ink", tint.accentInk);
+    return undefined;
+  }, [tint]);
+
+  /* Scroll: gambar hero ikut naik 1:1 lalu tertutup body gelap (seperti Apple Music asli) */
+  useEffect(() => {
+    if (!artist) return undefined;
     const scroller = document.getElementById("aivy-content-scroll");
-    if (!scroller) return;
-    const onScroll = () => {
+    if (!scroller) return undefined;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const heroH = heroRef.current?.offsetHeight || Math.round((window.innerHeight || 800) * 0.78);
       const top = scroller.scrollTop;
-      const h = window.innerHeight || 800;
-      const progress = Math.min(1, top / (h * 0.9));
-      const blur = Math.round(progress * 32);
-      const zoom = (1.05 + progress * 0.07).toFixed(3);
-      if (mediaRef.current) {
-        mediaRef.current.style.setProperty("--blur-px", `${blur}px`);
-        mediaRef.current.style.setProperty("--zoom", zoom);
-      }
-      if (pageRef.current) pageRef.current.style.setProperty("--hero-dim", progress.toFixed(3));
+      const shift = Math.min(top, heroH);
+      if (mediaRef.current) mediaRef.current.style.setProperty("--am-shift", `${-shift}px`);
+      if (pageRef.current) pageRef.current.style.setProperty("--am-progress", Math.min(1, top / Math.max(1, heroH * 0.7)).toFixed(3));
     };
-    onScroll();
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    apply();
     scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => scroller.removeEventListener("scroll", onScroll);
-  }, []);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      scroller.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [artist]);
+
+  useEffect(() => {
+    if (!aboutOpen) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") setAboutOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [aboutOpen]);
 
   const topTracks = useMemo(() => filterExplicit(artist?.topTracks, settings) || [], [artist, settings]);
 
-  if (loading) return <SkeletonHeroPage round rows={5} />;
-  if (!artist) return <ViewNotFound label={t("artistLabel")} />;
+  const albums = useMemo(() => {
+    const list = Array.isArray(artist?.albums) ? [...artist.albums] : [];
+    return list.sort((a, b) => String(b.releaseDate || "").localeCompare(String(a.releaseDate || "")));
+  }, [artist]);
 
-  const tracks = showAllTracks ? topTracks : topTracks.slice(0, 5);
-  const posterImg = artist.banner || artist.image;
+  const latest = albums[0] || null;
+  const otherReleases = albums.slice(1);
+  const musicVideos = artist?.musicVideos || artist?.videos || [];
+  const playlists = artist?.playlists || artist?.artistPlaylists || [];
+
+  const playAlbum = useCallback(async (albumId) => {
+    try {
+      const full = await Api.album(albumId);
+      if (full?.tracks?.length) playList(full.tracks, 0);
+    } catch { /* biarkan senyap — user bisa buka halaman album-nya */ }
+  }, [playList]);
+
+  if (loading) return <div className="aivy-am-fallback"><SkeletonHeroPage round rows={5} /></div>;
+  if (!artist) return <div className="aivy-am-fallback"><ViewNotFound label={t("artistLabel")} /></div>;
+
+  const songs = showAllSongs ? topTracks : topTracks.slice(0, 9);
   const showHeroVideo = heroVideoUrl && !videoBroken;
+  const hasAbout = !!(artist.bio || artist.tags?.length || artist.listeners);
 
   return (
-    <div ref={pageRef} className="aivy-view-enter aivy-artist-page">
-      <div ref={mediaRef} className="aivy-artist-media" aria-hidden="true">
+    <div ref={pageRef} className="aivy-view-enter aivy-am-page">
+      {/* ---------- Hero media: full-bleed ke atas & tepi kanan ---------- */}
+      <div ref={mediaRef} className="aivy-am-media" aria-hidden="true">
         {showHeroVideo ? (
           <video
             src={heroVideoUrl}
-            poster={posterImg}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
+            poster={posterImg || undefined}
+            autoPlay muted loop playsInline preload="metadata"
             onError={() => setVideoBroken(true)}
           />
         ) : (
-          <div className="aivy-artist-bg-img">
-            <SmartCover src={posterImg} seed={"artist-bg" + artist.id + artist.name} size={1400} radius={0} style={{ width: "100%", height: "100%" }} />
-          </div>
+          <SmartCover src={posterImg} seed={"artist-bg" + artist.id + artist.name} size={1600} radius={0} style={{ width: "100%", height: "100%" }} />
         )}
-        <div className="aivy-artist-media-shade" />
+        <div className="aivy-am-media-scrim" />
       </div>
 
-      <header className="aivy-artist-hero">
-        <div className="aivy-artist-hero-inner">
-          <div className="eyebrow aivy-artist-eyebrow"><Mic2 size={13} /> {t("artistLabel")}</div>
-          <h1 className="aivy-artist-title">{artist.name}</h1>
-          {artist.listeners ? (
-            <div className="aivy-artist-stats">
-              {artist.listeners.toLocaleString(settings.language === "en" ? "en-US" : "id-ID")} {t("listenersMonthly")}
-            </div>
-          ) : null}
-          <div className="aivy-artist-actions">
+      {/* ---------- Identitas artis ---------- */}
+      <header ref={heroRef} className="aivy-am-hero">
+        <div className="aivy-am-hero-inner">
+          <h1 className="aivy-am-name">{artist.name}</h1>
+          <div className="aivy-am-actions">
             <button
-              className="aivy-play-btn is-hero aivy-artist-play"
-              style={{ width: 62, height: 62 }}
+              className="aivy-am-ghost"
+              onClick={() => setAboutOpen(true)}
+              disabled={!hasAbout}
+              aria-label={t("aboutArtist")}
+              title={t("aboutArtist")}
+            >
+              <Info size={18} />
+            </button>
+            <button
+              className="aivy-am-cta"
               onClick={() => topTracks.length && playList(topTracks, 0)}
               aria-label={t("playAll")}
               title={t("playAll")}
             >
-              <Play size={26} fill="currentColor" />
+              <Play size={25} fill="currentColor" />
             </button>
             <button
-              className={`aivy-icon-btn-solid aivy-artist-ghost-btn ${following ? "active" : ""}`}
-              onClick={() => { setFollowing((f) => !f); pushToast(following ? `${t("unfollowedToast")} ${artist.name}` : `${t("followedToast")} ${artist.name}`); }}
+              className={`aivy-am-ghost ${favorite ? "active" : ""}`}
+              onClick={() => {
+                setFavorite((f) => !f);
+                pushToast(favorite ? `${t("unfollowedToast")} ${artist.name}` : `${t("followedToast")} ${artist.name}`);
+              }}
+              aria-pressed={favorite}
+              aria-label={t("favorite")}
+              title={t("favorite")}
             >
-              {following ? <Check size={18} /> : <UserPlus size={18} />}
-              <span>{following ? t("following") : t("follow")}</span>
+              <Star size={18} fill={favorite ? "currentColor" : "none"} />
             </button>
           </div>
         </div>
       </header>
 
-      <div className="aivy-artist-body">
-        <div className="aivy-artist-body-inner">
-          {artist.tags?.length > 0 && <div className="aivy-tagrow">{artist.tags.map((tag) => <span key={tag} className="aivy-chip">{tag}</span>)}</div>}
-          {artist.bio && <p className="aivy-bio">{artist.bio}</p>}
+      {/* ---------- Body solid ---------- */}
+      <div className="aivy-am-body">
+        <div className="aivy-am-body-inner">
+          <div className={`aivy-am-topgrid ${latest ? "" : "is-single"}`}>
+            {latest && (
+              <section className="aivy-am-block">
+                <AmSectionHead title={t("latestRelease")} />
+                <div className="aivy-am-latest" onClick={() => navigate("album", { params: { id: latest.id } })} role="button" tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter") navigate("album", { params: { id: latest.id } }); }}>
+                  <div className="art">
+                    <SmartCover src={latest.cover} seed={"album" + latest.id + latest.title} size={320} radius={0} style={{ width: "100%", height: "100%" }} />
+                    <button className="tile-play" onClick={(e) => { e.stopPropagation(); playAlbum(latest.id); }} aria-label={t("playAlbum")}>
+                      <Play size={16} fill="currentColor" />
+                    </button>
+                  </div>
+                  <div className="meta">
+                    {formatReleaseDate(latest.releaseDate, settings.language) && (
+                      <div className="date">{formatReleaseDate(latest.releaseDate, settings.language)}</div>
+                    )}
+                    <div className="title">{latest.title}</div>
+                    <div className="sub">
+                      {albumKindLabel(latest, t)}
+                      {latest.trackCount ? ` \u00b7 ${latest.trackCount} ${t("trackCountLabel")}` : ""}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
 
-          {tracks?.length > 0 && (
-            <section className="aivy-section">
-              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("popularSongs")}</h2></div>
-              <div>{tracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={topTracks} showAlbum queueMode="context" />)}</div>
-              {topTracks.length > 5 && <button className="aivy-chip" style={{ marginTop: 10 }} onClick={() => setShowAllTracks((s) => !s)}>{showAllTracks ? t("showLess") : `${t("showMore")} ${topTracks.length - 5} ${t("more")}`}</button>}
+            {songs.length > 0 && (
+              <section className="aivy-am-block">
+                <AmSectionHead
+                  title={t("topSongs")}
+                  onClick={topTracks.length > 9 ? () => setShowAllSongs((s) => !s) : undefined}
+                />
+                <div className="aivy-am-songgrid">
+                  {songs.map((tr, i) => <AmSongRow key={tr.id} track={tr} index={i} list={topTracks} />)}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {musicVideos.length > 0 && (
+            <section className="aivy-am-block">
+              <AmSectionHead title={t("musicVideos")} />
+              <div className="aivy-am-rail aivy-scroll">
+                {musicVideos.map((v) => (
+                  <AmTile
+                    key={v.id || v.url || v.title}
+                    variant="video"
+                    cover={v.thumbnail || v.cover}
+                    seed={"mv" + (v.id || v.title)}
+                    title={v.title}
+                    sub={releaseYear(v.releaseDate || v.year)}
+                    onClick={v.videoId ? () => navigate("shorts", { params: { id: v.videoId } }) : undefined}
+                  />
+                ))}
+              </div>
             </section>
           )}
 
-          {artist.albums?.length > 0 && (
-            <section className="aivy-section">
-              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("latestRelease")}</h2></div>
-              <div className="aivy-grid">{artist.albums.map((a) => <CardAlbum key={a.id} album={a} />)}</div>
+          {otherReleases.length > 0 && (
+            <section className="aivy-am-block">
+              <AmSectionHead title={t("singlesEps")} />
+              <div className="aivy-am-rail aivy-scroll">
+                {otherReleases.map((a) => (
+                  <AmTile
+                    key={a.id}
+                    cover={a.cover}
+                    seed={"album" + a.id + a.title}
+                    title={a.title}
+                    sub={releaseYear(a.releaseDate)}
+                    onClick={() => navigate("album", { params: { id: a.id } })}
+                    onPlay={() => playAlbum(a.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {playlists.length > 0 && (
+            <section className="aivy-am-block">
+              <AmSectionHead title={t("artistPlaylists")} />
+              <div className="aivy-am-rail aivy-scroll">
+                {playlists.map((p) => (
+                  <AmTile
+                    key={p.id}
+                    cover={p.cover}
+                    seed={"pl" + p.id + p.title}
+                    title={p.title || p.name}
+                    sub={p.subtitle || ""}
+                    onClick={() => navigate("playlist", { params: { id: p.id } })}
+                  />
+                ))}
+              </div>
             </section>
           )}
 
           {artist.relatedArtists?.length > 0 && (
-            <section className="aivy-section">
-              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("similarTo")} {artist.name}</h2></div>
-              <div className="aivy-grid">{artist.relatedArtists.map((a) => <CardArtist key={a.id} artist={a} />)}</div>
+            <section className="aivy-am-block">
+              <AmSectionHead title={t("similarArtists")} />
+              <div className="aivy-am-rail aivy-scroll">
+                {artist.relatedArtists.map((a) => (
+                  <AmTile
+                    key={a.id}
+                    variant="round"
+                    cover={a.image}
+                    seed={"artist" + a.id + a.name}
+                    title={a.name}
+                    onClick={() => navigate("artist", { params: { id: a.id } })}
+                  />
+                ))}
+              </div>
             </section>
           )}
         </div>
       </div>
+
+      {/* ---------- Popover Info (tombol "i") ---------- */}
+      {aboutOpen && (
+        <div className="aivy-am-about-backdrop" onClick={() => setAboutOpen(false)} role="presentation">
+          <div className="aivy-am-about aivy-scroll" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("aboutArtist")}>
+            <button className="close" onClick={() => setAboutOpen(false)} aria-label={t("close")}><X size={17} /></button>
+            <div className="eyebrow">{t("artistLabel")}</div>
+            <h3>{artist.name}</h3>
+            {artist.listeners ? (
+              <div className="listeners">
+                {artist.listeners.toLocaleString(settings.language === "en" ? "en-US" : "id-ID")} {t("listenersMonthly")}
+              </div>
+            ) : null}
+            {artist.tags?.length > 0 && (
+              <div className="aivy-tagrow" style={{ padding: "12px 0 0" }}>
+                {artist.tags.map((tag) => <span key={tag} className="aivy-chip">{tag}</span>)}
+              </div>
+            )}
+            {artist.bio && <p>{artist.bio}</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
