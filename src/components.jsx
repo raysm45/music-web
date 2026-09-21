@@ -1470,8 +1470,13 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
       onColor={setServerDominantColor}
       reloadToken={artworkReloadToken}
       onReloadResult={onReloadResultStable}
+      active={open}
     />
-  ), [currentTrack?.cover, currentTrack?.id, currentTrack?.title, currentTrack?.artist?.name, settings.animatedArtwork, reduceMotion, artworkReloadToken, onReloadResultStable]);
+  // NowPlayingSheet ini selalu ter-mount begitu ada lagu diputar (bukan
+  // cuma saat sheet dibuka), jadi tanpa `active={open}` videonya bakal
+  // terus di-decode di background walau sheet tertutup/off-screen —
+  // itu yang bikin animasi buka jadi rebutan GPU/CPU dengan decode video.
+  ), [currentTrack?.cover, currentTrack?.id, currentTrack?.title, currentTrack?.artist?.name, settings.animatedArtwork, reduceMotion, artworkReloadToken, onReloadResultStable, open]);
 
   const showSheetVisualizer = !!settings.visualizerEnabled && settings.visualizerMode === "solid";
   const showCoverVisualizer = !!settings.visualizerEnabled && settings.visualizerMode === "blended";

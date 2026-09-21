@@ -321,6 +321,12 @@ function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResu
 export function AnimatedCover({
   src, seed, size = 160, radius = 14, style = {}, alt = "",
   song, artist, animated = false, reduceMotion = false, onColor, reloadToken = 0, onReloadResult,
+  // Saat `active` false, video di-pause dan tidak di-decode (kontennya tetap
+  // ter-fetch/ter-buffer di background biar instan pas active jadi true
+  // lagi). Dipakai supaya cover video di sheet yang sedang tertutup/off-screen
+  // tidak terus-terusan decode dan berebut GPU/CPU dengan animasi buka-tutup.
+  // Default true supaya semua pemanggilan lama tidak berubah perilakunya.
+  active = true,
 }) {
   const [videoReady, setVideoReady] = useState(false);
   const [videoEl, setVideoEl] = useState(null);
@@ -333,6 +339,8 @@ export function AnimatedCover({
 
   const videoSrc = pickVideoSrc(artwork);
   const isM3u8 = !!videoSrc && /\.m3u8(\?|$)/i.test(videoSrc);
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   useEffect(() => { setVideoReady(false); setPlaybackFailed(false); setErrorDetail(""); setShowErrorDetail(false); }, [videoSrc]);
   useEffect(() => {
@@ -349,7 +357,7 @@ export function AnimatedCover({
     if (!videoEl || !videoSrc) return undefined;
     let cancelled = false;
     const tryPlay = () => {
-      if (cancelled) return;
+      if (cancelled || !activeRef.current) return;
       const p = videoEl.play?.();
       if (p && typeof p.catch === "function") {
         p.catch((err) => {
@@ -378,7 +386,7 @@ export function AnimatedCover({
 
     const onVisible = () => { if (!document.hidden) tryPlay(); };
     document.addEventListener("visibilitychange", onVisible);
-    if (videoEl.readyState >= 2) onReady();
+    if (videoEl.readyState >= 2 && activeRef.current) onReady();
     return () => {
       cancelled = true;
       videoEl.removeEventListener("loadeddata", onReady);
@@ -388,6 +396,22 @@ export function AnimatedCover({
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [videoEl, videoSrc, isM3u8, song, artist, src]);
+
+  // Pause/resume berdasarkan `active`, terlepas dari efek setup di atas
+  // (yang sengaja tidak dependen ke `active` supaya listener tidak
+  // dipasang-lepas ulang tiap kali sheet dibuka/ditutup).
+  useEffect(() => {
+    const v = videoEl;
+    if (!v) return;
+    if (active) {
+      if (v.paused) {
+        const p = v.play?.();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      }
+    } else if (!v.paused) {
+      v.pause();
+    }
+  }, [active, videoEl]);
 
   return (
     <div
@@ -423,7 +447,7 @@ export function AnimatedCover({
           muted
           loop
           playsInline
-          autoPlay
+          autoPlay={active}
           preload="auto"
           poster={src || undefined}
           disablePictureInPicture
