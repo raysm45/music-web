@@ -3725,3 +3725,63 @@ export function AiAssistantWidget() {
     </>
   );
 }
+
+/* ---------- Music Video viewer: tampilan khusus untuk video musik (PC & mobile) ---------- */
+export function MusicVideoView({ video, onClose, onAudioPlay }) {
+  const { t } = useUI();
+
+  useEffect(() => {
+    if (!video) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    document.body.classList.add("aivy-video-open");
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.classList.remove("aivy-video-open");
+    };
+  }, [video, onClose]);
+
+  if (!video) return null;
+  const vId = video.videoId || video.id || null;
+  const artistName = video.artist?.name || video.artists?.[0]?.name || "";
+  const year = video.year || (video.releaseDate ? String(video.releaseDate).slice(0, 4) : null);
+  const meta = [video.views, year, video.duration ? formatDuration(video.duration) : null]
+    .filter(Boolean)
+    .join(" \u00b7 ");
+
+  return (
+    <div className="aivy-mv-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={video.title || t("musicVideos")}>
+      <div className="aivy-mv-card" onClick={(e) => e.stopPropagation()}>
+        <div className="aivy-mv-top">
+          <span className="aivy-mv-badge"><Film size={15} /> {t("musicVideos")}</span>
+          <button className="aivy-mv-close" onClick={onClose} aria-label={t("close")}><X size={22} /></button>
+        </div>
+        <div className="aivy-mv-stage">
+          {vId ? (
+            <iframe
+              className="aivy-mv-frame"
+              src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(vId)}?autoplay=1&playsinline=1&rel=0&modestbranding=1`}
+              title={video.title || t("musicVideos")}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          ) : (
+            <div className="aivy-mv-na">{t("videoUnavailable")}</div>
+          )}
+        </div>
+        <div className="aivy-mv-info">
+          <div className="aivy-mv-titles">
+            <div className="aivy-mv-title">{video.title || t("unknownTitle")}</div>
+            {artistName ? <div className="aivy-mv-artist">{artistName}</div> : null}
+            {meta ? <div className="aivy-mv-meta">{meta}</div> : null}
+          </div>
+          {onAudioPlay ? (
+            <button className="aivy-mv-audio-btn" onClick={onAudioPlay}>
+              <Music2 size={16} /> {t("playAudio")}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}

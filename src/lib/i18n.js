@@ -11,6 +11,9 @@ const dict = {
     delete: "Hapus",
     save: "Simpan",
     close: "Tutup",
+    playAudio: "Putar Audio",
+    videoUnavailable: "Video tidak tersedia",
+    unknownTitle: "Tanpa judul",
 
     navHome: "Beranda",
     navSearch: "Cari",
@@ -432,6 +435,9 @@ const dict = {
     delete: "Delete",
     save: "Save",
     close: "Close",
+    playAudio: "Play Audio",
+    videoUnavailable: "Video unavailable",
+    unknownTitle: "Untitled",
 
     navHome: "Home",
     navSearch: "Search",

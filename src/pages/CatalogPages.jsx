@@ -3,7 +3,7 @@ import { Play, Pause, Shuffle, Info, Star, MoreHorizontal, ChevronRight, X } fro
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems, HoverRail } from "../components.jsx";
+import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems, HoverRail, MusicVideoView } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
 const TOP_SONGS_PREVIEW = 15;
@@ -197,6 +197,7 @@ export function ArtistPage() {
   const [favorite, setFavorite] = useState(false);
   const [showAllSongs, setShowAllSongs] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [videoModal, setVideoModal] = useState(null);
   const [heroVideoUrl, setHeroVideoUrl] = useState(null);
   const [heroArtwork, setHeroArtwork] = useState(null);
   const [heroBgColor, setHeroBgColor] = useState(null);
@@ -314,7 +315,13 @@ export function ArtistPage() {
   const musicVideos = artist?.musicVideos || artist?.videos || [];
   const playlists = artist?.playlists || artist?.artistPlaylists || [];
 
-  const playMusicVideo = useCallback((v) => {
+  const openMusicVideo = useCallback((v) => {
+    const videoId = v?.videoId || v?.id;
+    if (!videoId) return;
+    setVideoModal(v);
+  }, []);
+
+  const playMusicVideoAudio = useCallback((v) => {
     const videoId = v?.videoId || v?.id;
     if (!videoId) return;
     playSingle({
@@ -468,8 +475,8 @@ export function ArtistPage() {
                     seed={"mv" + (v.id || v.title)}
                     title={v.title}
                     sub={[v.views, releaseYear(v.releaseDate || v.year)].filter(Boolean).join(" \u00b7 ")}
-                    onClick={() => playMusicVideo(v)}
-                    onPlay={() => playMusicVideo(v)}
+                    onClick={() => openMusicVideo(v)}
+                    onPlay={() => openMusicVideo(v)}
                   />
                 ))}
               </HoverRail>
@@ -553,6 +560,14 @@ export function ArtistPage() {
             {artist.bio && <p>{artist.bio}</p>}
           </div>
         </div>
+      )}
+
+      {videoModal && (
+        <MusicVideoView
+          video={videoModal}
+          onClose={() => setVideoModal(null)}
+          onAudioPlay={() => { playMusicVideoAudio(videoModal); setVideoModal(null); }}
+        />
       )}
     </div>
   );
