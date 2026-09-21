@@ -126,7 +126,7 @@ const DEFAULT_SETTINGS = {
   tiltDistance: 10,
   tiltSpeed: 240,
   cdCoverSpin: false,
-  animatedArtwork: false,
+  animatedArtwork: true,
 
   visualizerEnabled: false,
   visualizerStyle: "butterchurn",
