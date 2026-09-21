@@ -252,6 +252,7 @@ function useHlsSource(videoEl, src, isM3u8) {
 
 function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResult) {
   const [artwork, setArtwork] = useState(null);
+  const [status, setStatus] = useState("idle"); // idle | loading | found | notfound | error
   const lastAppliedReload = useRef(reloadToken);
   const onReloadResultRef = useRef(onReloadResult);
   onReloadResultRef.current = onReloadResult;
@@ -262,6 +263,7 @@ function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResu
 
     if (!enabled || !song) {
       setArtwork(null);
+      setStatus("idle");
       if (forceReload) onReloadResultRef.current?.("error");
       return undefined;
     }
@@ -269,9 +271,14 @@ function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResu
     const key = artworkKey(song, artist);
     if (forceReload) artworkMemCache.delete(key);
     const hit = !forceReload ? artworkMemCache.get(key) : null;
-    if (hit) { setArtwork(hit); return undefined; }
+    if (hit) {
+      setArtwork(hit);
+      setStatus(hit.video || hit.animated ? "found" : "notfound");
+      return undefined;
+    }
 
     setArtwork(null);
+    setStatus("loading");
 
     let alive = true;
     requestArtwork(song, artist, forceReload, reloadToken)
@@ -282,15 +289,17 @@ function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResu
           persistArtworkCache();
           if (alive) setArtwork(data);
         }
+        if (alive) setStatus(hasAnimation ? "found" : "notfound");
         if (forceReload) onReloadResultRef.current?.(hasAnimation ? "success" : "not_found");
       })
       .catch((err) => {
-        
+        console.error("[animatedArtwork] failed to fetch artwork for", song, artist, err);
+        if (alive) setStatus("error");
         if (forceReload) onReloadResultRef.current?.(err?.status === 429 ? "rate_limited" : "error");
       });
     return () => { alive = false; };
   }, [song, artist, enabled, reloadToken]);
-  return artwork;
+  return { artwork, status };
 }
 export function AnimatedCover({
   src, seed, size = 160, radius = 14, style = {}, alt = "",
@@ -298,7 +307,7 @@ export function AnimatedCover({
 }) {
   const [videoReady, setVideoReady] = useState(false);
   const [videoEl, setVideoEl] = useState(null);
-  const artwork = useAnimatedArtwork(song, artist, animated && !reduceMotion, reloadToken, onReloadResult);
+  const { artwork, status } = useAnimatedArtwork(song, artist, animated && !reduceMotion, reloadToken, onReloadResult);
   const onColorRef = useRef(onColor);
   onColorRef.current = onColor;
 
@@ -346,6 +355,11 @@ export function AnimatedCover({
         src={src} seed={seed} size={size} radius={radius} alt={alt}
         style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
       />
+      {animated && !reduceMotion && status === "loading" && (
+        <div className="aivy-animated-cover-loading" aria-hidden="true">
+          <span className="dot" /><span className="dot" /><span className="dot" />
+        </div>
+      )}
       {videoSrc && (
         <video
           key={videoSrc}
