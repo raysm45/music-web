@@ -55,6 +55,13 @@ export const Api = {
   },
   artist: (q) => apiGet(`/api/artist?q=${encodeURIComponent(q)}`),
   artistQuick: (q) => apiGet(`/api/artist/quick?q=${encodeURIComponent(q)}`),
+
+  // Apple Music: video hero artist (1 rendisi paling HD) + proxy stream
+  appleMusicHero: (name, country = "us") =>
+    apiGetPublic(`/api/apple-music/artist-hero?q=${encodeURIComponent(name)}&country=${encodeURIComponent(country)}`),
+  appleMusicSearch: (q, limit = 5) =>
+    apiGetPublic(`/api/apple-music/search?q=${encodeURIComponent(q)}&country=us&limit=${limit}`),
+  appleMusicVideoUrl: (url) => `${API_BASE}/api/apple-music/video?u=${encodeURIComponent(url)}`,
   album: (id) => apiGet(`/api/album/${id}`),
   albumSearch: (q) => apiGet(`/api/album?q=${encodeURIComponent(q)}`),
   track: (id) => apiGet(`/api/track/${id}`),

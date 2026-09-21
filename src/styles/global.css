@@ -903,15 +903,87 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-tagrow{ display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 2px 0; }
 @media (max-width: 640px){ .aivy-hero{ flex-direction: column; align-items: flex-start; gap: 14px; padding-top: 14px; } }
 
-.aivy-artist-banner{ position: relative; margin: -6px -28px 0; height: clamp(280px, 36vw, 400px); overflow: hidden; background: var(--bg-elev-2); }
-.aivy-artist-banner img{ width: 100%; height: 100%; }
-.aivy-artist-banner-fade{ position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, var(--bg) 92%); }
-.aivy-artist-hero{ margin-top: -184px; position: relative; z-index: 1; align-items: flex-end; }
-.aivy-artist-hero .art{ border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,.35); border: 3px solid var(--bg); }
-.aivy-artist-hero .art img, .aivy-artist-hero .art svg{ border-radius: 50%; }
+/* ================= Artist immersive page (white paper design) ================= */
+.aivy-artist-page{ position: relative; min-width: 0; margin: -6px -20px -40px -28px; }
+.aivy-artist-page .aivy-artist-media{
+  position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  background: var(--bg-elev-2);
+}
+.aivy-artist-media :is(video, img, canvas, svg){
+  width: 100%; height: 100%; object-fit: cover;
+  filter: blur(var(--blur-px, 0px)) brightness(calc(1 - var(--hero-dim, 0) * 0.35)) saturate(calc(1 - var(--hero-dim, 0) * 0.25));
+  transform: scale(var(--zoom, 1.05));
+}
+.aivy-artist-media-shade{
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 12%, rgba(0,0,0,.18) 0%, rgba(0,0,0,0) 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 30%, transparent) 0%, rgba(0,0,0,0) 34% 62%, var(--bg) 100%);
+  opacity: calc(0.85 + var(--hero-dim, 0) * 0.15);
+}
+.aivy-artist-hero{
+  position: relative; z-index: 1;
+  min-height: min(78vh, 720px);
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 64px 28px 120px;
+}
+.aivy-artist-hero-inner{ max-width: 920px; margin: 0 auto; }
+.aivy-artist-eyebrow{ justify-content: center; color: color-mix(in srgb, var(--ink) 82%, transparent); text-shadow: 0 1px 12px rgba(0,0,0,.35); }
+.aivy-artist-title{
+  font-family: var(--font-display);
+  font-size: clamp(34px, 7.5vw, 96px);
+  font-weight: 800; line-height: 1.02; letter-spacing: -0.035em;
+  margin: 14px 0 10px; overflow-wrap: anywhere;
+  background: linear-gradient(180deg, #fff 0%, #d9d9d9 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 6px 26px rgba(0,0,0,.45));
+}
+.aivy-artist-stats{ font-size: 14px; font-weight: 600; color: color-mix(in srgb, var(--ink) 78%, transparent); text-shadow: 0 1px 10px rgba(0,0,0,.4); }
+.aivy-artist-actions{ display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 26px; }
+.aivy-artist-play{ box-shadow: 0 12px 34px rgba(0,0,0,.45); }
+.aivy-artist-ghost-btn{
+  width: auto; height: 44px; padding: 0 20px; gap: 8px; border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--bg-elev) 52%, transparent);
+  backdrop-filter: blur(14px) saturate(150%); -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  color: var(--ink); font-weight: 600; font-size: 13.5px;
+}
+.aivy-artist-ghost-btn:hover{ background: color-mix(in srgb, var(--bg-elev-2) 62%, transparent); }
+.aivy-artist-ghost-btn.active{ background: var(--accent-strong); color: var(--accent-ink); }
+.aivy-artist-body{
+  position: relative; z-index: 2;
+  background: var(--bg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  margin: -56px 0 0;
+  padding: 34px 26px 40px 30px;
+  box-shadow: 0 -28px 60px rgba(0,0,0,.5);
+}
+.aivy-artist-body .aivy-artist-body-inner{ max-width: 1240px; }
 @media (max-width: 860px){
-  .aivy-artist-banner{ margin: -6px -16px 0; height: 320px; }
-  .aivy-artist-hero{ margin-top: -256px; }
+  .aivy-artist-page{ margin: -6px -16px -24px; }
+  .aivy-artist-hero{ min-height: 62vh; padding: 48px 18px 96px; }
+  .aivy-artist-title{ font-size: clamp(30px, 10vw, 56px); }
+  .aivy-artist-body{ margin-right: 0; padding: 26px 18px 32px; }
+}
+
+/* Glassmorphism sidebar & right panel saat artist immersive */
+body.aivy-artist-immersive .aivy-sidebar{
+  background: color-mix(in srgb, var(--bg-elev) 42%, transparent);
+  backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border-right: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  z-index: 3;
+}
+body.aivy-artist-immersive .aivy-rightpanel,
+body.aivy-artist-immersive .aivy-rightpanel-rail{
+  background: color-mix(in srgb, var(--bg-elev) 42%, transparent);
+  backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border-left: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  z-index: 3;
+}
+body.aivy-artist-immersive .aivy-topbar{ position: relative; z-index: 2; background: transparent; }
+body.aivy-artist-immersive .aivy-topbar.scrolled{
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
 
 .aivy-playlist-banner{ position: relative; margin: -6px -28px 0; height: clamp(220px, 34vw, 380px); overflow: hidden; background: var(--bg-elev-2); }

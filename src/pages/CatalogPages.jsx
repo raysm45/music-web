@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Play, Shuffle, Check } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Play, Shuffle, Check, Mic2, UserPlus } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
@@ -12,16 +12,59 @@ export function ArtistPage() {
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState(false);
   const [showAllTracks, setShowAllTracks] = useState(false);
+  const [heroVideoUrl, setHeroVideoUrl] = useState(null);
+  const [videoBroken, setVideoBroken] = useState(false);
+  const mediaRef = useRef(null);
+  const pageRef = useRef(null);
   const { playList } = usePlayer();
   const { pushToast, t, settings } = useUI();
+
+  // Mode immersive: ubah sidebar kiri & panel kanan jadi glassmorphism
+  useEffect(() => {
+    document.body.classList.add("aivy-artist-immersive");
+    return () => document.body.classList.remove("aivy-artist-immersive");
+  }, []);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setShowAllTracks(false);
-    Api.artist(params.id).then((res) => { if (alive) { setArtist(res); setLoading(false); } }).catch(() => { if (alive) setLoading(false); });
+    setVideoBroken(false);
+    Api.artist(params.id).then((res) => {
+      if (!alive) return;
+      setArtist(res);
+      setLoading(false);
+      if (res?.name) {
+        Api.appleMusicHero(res.name)
+          .then((h) => { if (alive && h?.video?.url) setHeroVideoUrl(Api.appleMusicVideoUrl(h.video.url)); })
+          .catch(() => {});
+      } else {
+        setHeroVideoUrl(null);
+      }
+    }).catch(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [params.id]);
+
+  // Scroll to blur: semakin jauh discroll, background hero makin blur
+  useEffect(() => {
+    const scroller = document.getElementById("aivy-content-scroll");
+    if (!scroller) return;
+    const onScroll = () => {
+      const top = scroller.scrollTop;
+      const h = window.innerHeight || 800;
+      const progress = Math.min(1, top / (h * 0.9));
+      const blur = Math.round(progress * 32);
+      const zoom = (1.05 + progress * 0.07).toFixed(3);
+      if (mediaRef.current) {
+        mediaRef.current.style.setProperty("--blur-px", `${blur}px`);
+        mediaRef.current.style.setProperty("--zoom", zoom);
+      }
+      if (pageRef.current) pageRef.current.style.setProperty("--hero-dim", progress.toFixed(3));
+    };
+    onScroll();
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, []);
 
   const topTracks = useMemo(() => filterExplicit(artist?.topTracks, settings) || [], [artist, settings]);
 
@@ -29,48 +72,89 @@ export function ArtistPage() {
   if (!artist) return <ViewNotFound label={t("artistLabel")} />;
 
   const tracks = showAllTracks ? topTracks : topTracks.slice(0, 5);
+  const posterImg = artist.banner || artist.image;
+  const showHeroVideo = heroVideoUrl && !videoBroken;
 
   return (
-    <div className="aivy-view-enter aivy-artist-page">
-      {settings.artistBanners !== false && (
-        <div className="aivy-artist-banner">
-          <SmartCover src={artist.banner || artist.image} seed={"banner" + artist.id + artist.name} size={1200} radius={0} style={{ width: "100%", height: "100%" }} />
-          <div className="aivy-artist-banner-fade" />
+    <div ref={pageRef} className="aivy-view-enter aivy-artist-page">
+      <div ref={mediaRef} className="aivy-artist-media" aria-hidden="true">
+        {showHeroVideo ? (
+          <video
+            src={heroVideoUrl}
+            poster={posterImg}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onError={() => setVideoBroken(true)}
+          />
+        ) : (
+          <div className="aivy-artist-bg-img">
+            <SmartCover src={posterImg} seed={"artist-bg" + artist.id + artist.name} size={1400} radius={0} style={{ width: "100%", height: "100%" }} />
+          </div>
+        )}
+        <div className="aivy-artist-media-shade" />
+      </div>
+
+      <header className="aivy-artist-hero">
+        <div className="aivy-artist-hero-inner">
+          <div className="eyebrow aivy-artist-eyebrow"><Mic2 size={13} /> {t("artistLabel")}</div>
+          <h1 className="aivy-artist-title">{artist.name}</h1>
+          {artist.listeners ? (
+            <div className="aivy-artist-stats">
+              {artist.listeners.toLocaleString(settings.language === "en" ? "en-US" : "id-ID")} {t("listenersMonthly")}
+            </div>
+          ) : null}
+          <div className="aivy-artist-actions">
+            <button
+              className="aivy-play-btn is-hero aivy-artist-play"
+              style={{ width: 62, height: 62 }}
+              onClick={() => topTracks.length && playList(topTracks, 0)}
+              aria-label={t("playAll")}
+              title={t("playAll")}
+            >
+              <Play size={26} fill="currentColor" />
+            </button>
+            <button
+              className={`aivy-icon-btn-solid aivy-artist-ghost-btn ${following ? "active" : ""}`}
+              onClick={() => { setFollowing((f) => !f); pushToast(following ? `${t("unfollowedToast")} ${artist.name}` : `${t("followedToast")} ${artist.name}`); }}
+            >
+              {following ? <Check size={18} /> : <UserPlus size={18} />}
+              <span>{following ? t("following") : t("follow")}</span>
+            </button>
+          </div>
         </div>
-      )}
-      <div className="aivy-hero aivy-artist-hero">
-        <div className="art round"><SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={176} radius={999} style={{ width: 176, height: 176, borderRadius: "50%" }} /></div>
-        <div className="aivy-hero-meta">
-          <div className="eyebrow">{t("artistLabel")}</div>
-          <h1 className="font-display">{artist.name}</h1>
-          <div className="stats"><span>{artist.listeners?.toLocaleString(settings.language === "en" ? "en-US" : "id-ID")} {t("listenersMonthly")}</span></div>
+      </header>
+
+      <div className="aivy-artist-body">
+        <div className="aivy-artist-body-inner">
+          {artist.tags?.length > 0 && <div className="aivy-tagrow">{artist.tags.map((tag) => <span key={tag} className="aivy-chip">{tag}</span>)}</div>}
+          {artist.bio && <p className="aivy-bio">{artist.bio}</p>}
+
+          {tracks?.length > 0 && (
+            <section className="aivy-section">
+              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("popularSongs")}</h2></div>
+              <div>{tracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={topTracks} showAlbum queueMode="context" />)}</div>
+              {topTracks.length > 5 && <button className="aivy-chip" style={{ marginTop: 10 }} onClick={() => setShowAllTracks((s) => !s)}>{showAllTracks ? t("showLess") : `${t("showMore")} ${topTracks.length - 5} ${t("more")}`}</button>}
+            </section>
+          )}
+
+          {artist.albums?.length > 0 && (
+            <section className="aivy-section">
+              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("latestRelease")}</h2></div>
+              <div className="aivy-grid">{artist.albums.map((a) => <CardAlbum key={a.id} album={a} />)}</div>
+            </section>
+          )}
+
+          {artist.relatedArtists?.length > 0 && (
+            <section className="aivy-section">
+              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("similarTo")} {artist.name}</h2></div>
+              <div className="aivy-grid">{artist.relatedArtists.map((a) => <CardArtist key={a.id} artist={a} />)}</div>
+            </section>
+          )}
         </div>
       </div>
-      <div className="aivy-hero-actions">
-        <button className="aivy-play-btn is-hero" style={{ width: 52, height: 52 }} onClick={() => topTracks.length && playList(topTracks, 0)} aria-label={t("playAll")}><Play size={22} fill="currentColor" /></button>
-        <button className={following ? "aivy-chip active" : "aivy-btn-ghost"} onClick={() => { setFollowing((f) => !f); pushToast(following ? `${t("unfollowedToast")} ${artist.name}` : `${t("followedToast")} ${artist.name}`); }}>
-          {following ? <><Check size={14} /> {t("following")}</> : t("follow")}
-        </button>
-      </div>
-      {artist.tags?.length > 0 && <div className="aivy-tagrow">{artist.tags.map((tag) => <span key={tag} className="aivy-chip">{tag}</span>)}</div>}
-      {artist.bio && <p className="aivy-bio">{artist.bio}</p>}
-      {tracks?.length > 0 && (
-        <section className="aivy-section">
-          <div className="aivy-section-head"><h2 className="aivy-section-title">{t("popularSongs")}</h2></div>
-          <div>{tracks.map((tr, i) => <TrackRow key={tr.id} track={tr} index={i} list={topTracks} showAlbum queueMode="context" />)}</div>
-          {topTracks.length > 5 && <button className="aivy-chip" style={{ marginTop: 10 }} onClick={() => setShowAllTracks((s) => !s)}>{showAllTracks ? t("showLess") : `${t("showMore")} ${topTracks.length - 5} ${t("more")}`}</button>}
-        </section>
-      )}
-      {artist.albums?.length > 0 && (
-        <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{t("albumsLabel")}</h2></div>
-          <div className="aivy-grid">{artist.albums.map((a) => <CardAlbum key={a.id} album={a} />)}</div>
-        </section>
-      )}
-      {artist.relatedArtists?.length > 0 && (
-        <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{t("similarTo")} {artist.name}</h2></div>
-          <div className="aivy-grid">{artist.relatedArtists.map((a) => <CardArtist key={a.id} artist={a} />)}</div>
-        </section>
-      )}
     </div>
   );
 }
