@@ -210,7 +210,12 @@ const supportsNativeHls = () => {
   if (typeof document === "undefined") return false;
   try {
     const v = document.createElement("video");
-    return !!v.canPlayType && v.canPlayType("application/vnd.apple.mpegurl") !== "";
+    if (!v.canPlayType) return false;
+    // Some Android browsers/WebViews return "maybe" for this MIME type without
+    // actually being able to play HLS, which used to make us skip hls.js and
+    // hand them a raw .m3u8 URL (fails with MEDIA_ERR_SRC_NOT_SUPPORTED).
+    // Only trust "probably" (what Safari/iOS reports) as real native support.
+    return v.canPlayType("application/vnd.apple.mpegurl") === "probably";
   } catch { return false; }
 };
 let hlsModulePromise = null;
@@ -225,6 +230,7 @@ function useHlsSource(videoEl, src, isM3u8, onError) {
   useEffect(() => {
     if (!videoEl || !src) return undefined;
     if (!isM3u8 || supportsNativeHls()) {
+      console.log("[animatedArtwork] playing via native <video> src", { isM3u8, native: supportsNativeHls(), src });
       videoEl.src = src;
       videoEl.load();
       return () => { videoEl.removeAttribute("src"); videoEl.load(); };
@@ -234,7 +240,11 @@ function useHlsSource(videoEl, src, isM3u8, onError) {
     let cancelled = false;
     loadHlsJs().then((Hls) => {
       if (cancelled) return;
-      if (!Hls.isSupported()) { videoEl.src = src; videoEl.load(); return; }
+      if (!Hls.isSupported()) {
+        console.warn("[animatedArtwork] hls.js loaded but Hls.isSupported() is false, falling back to native src", { src });
+        videoEl.src = src; videoEl.load(); return;
+      }
+      console.log("[animatedArtwork] playing via hls.js", { src });
       hls = new Hls({
         maxBufferLength: 30,
         maxMaxBufferLength: 60,
@@ -427,4 +437,4 @@ export function AnimatedCover({
       )}
     </div>
   );
-}
+  }
