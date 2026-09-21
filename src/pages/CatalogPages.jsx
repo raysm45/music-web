@@ -200,6 +200,8 @@ export function ArtistPage() {
   const [heroVideoUrl, setHeroVideoUrl] = useState(null);
   const [heroArtwork, setHeroArtwork] = useState(null);
   const [heroBgColor, setHeroBgColor] = useState(null);
+  const [heroInfo, setHeroInfo] = useState(null);
+  const [logoBroken, setLogoBroken] = useState(false);
   const [videoBroken, setVideoBroken] = useState(false);
   const mediaRef = useRef(null);
   const pageRef = useRef(null);
@@ -225,6 +227,8 @@ export function ArtistPage() {
     setVideoBroken(false);
     setHeroVideoUrl(null);
     setHeroArtwork(null);
+    setHeroInfo(null);
+    setLogoBroken(false);
     document.getElementById("aivy-content-scroll")?.scrollTo({ top: 0 });
     Api.artist(params.id).then((res) => {
       if (!alive) return;
@@ -234,6 +238,7 @@ export function ArtistPage() {
         Api.appleMusicHero(res.name)
           .then((h) => {
             if (!alive) return;
+            setHeroInfo(h);
             const chosen = pickHeroRendition(h);
             if (chosen?.url) setHeroVideoUrl(Api.appleMusicVideoUrl(chosen.url));
             const poster = h?.previewFrame?.url || h?.artwork?.url;
@@ -335,6 +340,8 @@ export function ArtistPage() {
 
   const songs = showAllSongs ? topTracks : topTracks.slice(0, TOP_SONGS_PREVIEW);
   const showHeroVideo = heroVideoUrl && !videoBroken;
+  const heroLogoUrl = heroInfo?.customName?.url ? Api.appleMusicVideoUrl(heroInfo.customName.url) : null;
+  const showLogo = heroLogoUrl && !logoBroken;
   const hasAbout = !!(artist.bio || artist.tags?.length || artist.listeners);
 
   return (
@@ -363,7 +370,16 @@ export function ArtistPage() {
       {}
       <header ref={heroRef} className="aivy-am-hero">
         <div className="aivy-am-hero-inner">
-          <h1 className="aivy-am-name">{artist.name}</h1>
+          {showLogo ? (
+            <img
+              className="aivy-artist-title-logo"
+              src={heroLogoUrl}
+              alt={artist.name}
+              onError={() => setLogoBroken(true)}
+            />
+          ) : (
+            <h1 className="aivy-am-name">{artist.name}</h1>
+          )}
           <div className="aivy-am-actions">
             <button
               className="aivy-am-ghost"
