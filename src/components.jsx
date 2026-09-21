@@ -2819,8 +2819,8 @@ export function Sidebar() {
       {showAnySideLinks && (
         <div className="aivy-side-links">
           {settings.showSideAbout && <a href="/about" className="aivy-side-link"><Info size={13} /> {t("language") === "en" ? "About" : "Tentang"}</a>}
-          {settings.showSideDiscord && <a href="https:
-          {settings.showSideGithub && <a href="https:
+          {settings.showSideDiscord && <a href="https://discord.gg/" target="_blank" rel="noreferrer" className="aivy-side-link"><Users size={13} /> Discord</a>}
+          {settings.showSideGithub && <a href="https://github.com/" target="_blank" rel="noreferrer" className="aivy-side-link"><Github size={13} /> GitHub</a>}
         </div>
       )}
       <div className="aivy-side-footer">
