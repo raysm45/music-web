@@ -577,8 +577,19 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-sheet{ position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; height: 100dvh; background: #16180f; display: flex; flex-direction: column; transform: translateY(100%) translateZ(0); backface-visibility: hidden; contain: layout paint; transition: transform var(--dur-slow) var(--ease); box-shadow: var(--shadow-sheet); overflow: hidden; will-change: transform; --sheet-ink: #f5f5f5; --sheet-ink-dim: rgba(245,245,245,.66); --sheet-ink-faint: rgba(245,245,245,.42); --sheet-line: rgba(255,255,255,.14); --sheet-elev: rgba(255,255,255,.08); }
 .aivy-sheet.open{ transform: translateY(0) translateZ(0); }
 .aivy-sheet-bg{
-  position: absolute; inset: -10%; z-index: 0; background-size: cover; background-position: center;
-  filter: blur(34px) saturate(1.5) brightness(.55); transform: scale(1.15) translateZ(0); pointer-events: none;
+  /* Per spesifikasi CSS, `filter` dirender pada UKURAN LAYOUT elemen ini
+     (sebelum `transform` diterapkan pada tahap compositing). Jadi kotaknya
+     sengaja dibikin kecil (30% dari ukuran aslinya secara linear, cuma
+     ~6% dari luasnya) lalu di-scale balik lewat transform supaya tampilan
+     akhir identik — tapi blur Gaussian-nya cuma perlu memproses ~16x lebih
+     sedikit piksel. Ini yang paling berat di seluruh sheet buat GPU
+     kelas bawah, karena biasanya box ini setinggi layar penuh (100dvh).
+     inset 35% -> lebar/tinggi kotak = 30% parent.
+     scale 4.6 = (1.2/0.3) * 1.15, biar hasil akhir sama persis kayak semula.
+     blur 8.5px = (34*1.15) / 4.6, biar radius blur yang KELIHATAN di layar
+     tetap sama walau dihitung di kotak yang lebih kecil. */
+  position: absolute; inset: 35%; z-index: 0; background-size: cover; background-position: center;
+  filter: blur(8.5px) saturate(1.5) brightness(.55); transform: scale(4.6) translateZ(0); pointer-events: none;
   backface-visibility: hidden; contain: paint;
 }
 .aivy-sheet-bg::after{ content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%); }
