@@ -221,7 +221,7 @@ function loadHlsJs() {
   return hlsModulePromise;
 }
 
-function useHlsSource(videoEl, src, isM3u8) {
+function useHlsSource(videoEl, src, isM3u8, onError) {
   useEffect(() => {
     if (!videoEl || !src) return undefined;
     if (!isM3u8 || supportsNativeHls()) {
@@ -242,12 +242,19 @@ function useHlsSource(videoEl, src, isM3u8) {
         lowLatencyMode: false,
         startFragPrefetch: true,
       });
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        console.error("[animatedArtwork] hls.js error", { src, fatal: data?.fatal, type: data?.type, details: data?.details });
+        if (data?.fatal) onError?.(data);
+      });
       hls.loadSource(src);
       hls.attachMedia(videoEl);
-    }).catch(() => { if (!cancelled) { videoEl.src = src; videoEl.load(); } });
+    }).catch((err) => {
+      console.error("[animatedArtwork] failed to load hls.js, falling back to native video src", err);
+      if (!cancelled) { videoEl.src = src; videoEl.load(); }
+    });
 
     return () => { cancelled = true; hls?.destroy(); };
-  }, [videoEl, src, isM3u8]);
+  }, [videoEl, src, isM3u8, onError]);
 }
 
 function useAnimatedArtwork(song, artist, enabled, reloadToken = 0, onReloadResult) {
@@ -307,6 +314,7 @@ export function AnimatedCover({
 }) {
   const [videoReady, setVideoReady] = useState(false);
   const [videoEl, setVideoEl] = useState(null);
+  const [playbackFailed, setPlaybackFailed] = useState(false);
   const { artwork, status } = useAnimatedArtwork(song, artist, animated && !reduceMotion, reloadToken, onReloadResult);
   const onColorRef = useRef(onColor);
   onColorRef.current = onColor;
@@ -314,12 +322,13 @@ export function AnimatedCover({
   const videoSrc = pickVideoSrc(artwork);
   const isM3u8 = !!videoSrc && /\.m3u8(\?|$)/i.test(videoSrc);
 
-  useEffect(() => { setVideoReady(false); }, [videoSrc]);
+  useEffect(() => { setVideoReady(false); setPlaybackFailed(false); }, [videoSrc]);
   useEffect(() => {
     if (artwork?.color?.css) onColorRef.current?.(artwork.color.css);
   }, [artwork?.color?.css]);
 
-  useHlsSource(videoEl, videoSrc, isM3u8);
+  const handleHlsFatalError = useRef(() => setPlaybackFailed(true)).current;
+  useHlsSource(videoEl, videoSrc, isM3u8, handleHlsFatalError);
 
   useEffect(() => {
     if (!videoEl || !videoSrc) return undefined;
@@ -327,12 +336,23 @@ export function AnimatedCover({
     const tryPlay = () => {
       if (cancelled) return;
       const p = videoEl.play?.();
-      if (p && typeof p.catch === "function") p.catch(() => {});
+      if (p && typeof p.catch === "function") {
+        p.catch((err) => console.error("[animatedArtwork] video.play() rejected", src ? { song, artist } : {}, err));
+      }
     };
     const onReady = () => { setVideoReady(true); tryPlay(); };
+    const onError = () => {
+      const mediaError = videoEl.error;
+      console.error("[animatedArtwork] <video> failed to load/play", {
+        song, artist, videoSrc, isM3u8,
+        code: mediaError?.code, message: mediaError?.message,
+      });
+      setPlaybackFailed(true);
+    };
     videoEl.addEventListener("loadeddata", onReady);
     videoEl.addEventListener("canplay", onReady);
     videoEl.addEventListener("stalled", tryPlay);
+    videoEl.addEventListener("error", onError);
 
     const onVisible = () => { if (!document.hidden) tryPlay(); };
     document.addEventListener("visibilitychange", onVisible);
@@ -342,9 +362,10 @@ export function AnimatedCover({
       videoEl.removeEventListener("loadeddata", onReady);
       videoEl.removeEventListener("canplay", onReady);
       videoEl.removeEventListener("stalled", tryPlay);
+      videoEl.removeEventListener("error", onError);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [videoEl, videoSrc]);
+  }, [videoEl, videoSrc, isM3u8, song, artist, src]);
 
   return (
     <div
@@ -355,12 +376,15 @@ export function AnimatedCover({
         src={src} seed={seed} size={size} radius={radius} alt={alt}
         style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
       />
-      {animated && !reduceMotion && status === "loading" && (
+      {animated && !reduceMotion && (status === "loading" || (videoSrc && !videoReady && !playbackFailed)) && (
         <div className="aivy-animated-cover-loading" aria-hidden="true">
           <span className="dot" /><span className="dot" /><span className="dot" />
         </div>
       )}
-      {videoSrc && (
+      {playbackFailed && (
+        <div className="aivy-animated-cover-loading is-error" aria-hidden="true" title="Video animasi gagal diputar, cek console">!</div>
+      )}
+      {videoSrc && !playbackFailed && (
         <video
           key={videoSrc}
           ref={setVideoEl}
