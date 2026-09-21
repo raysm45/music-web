@@ -315,6 +315,8 @@ export function AnimatedCover({
   const [videoReady, setVideoReady] = useState(false);
   const [videoEl, setVideoEl] = useState(null);
   const [playbackFailed, setPlaybackFailed] = useState(false);
+  const [errorDetail, setErrorDetail] = useState("");
+  const [showErrorDetail, setShowErrorDetail] = useState(false);
   const { artwork, status } = useAnimatedArtwork(song, artist, animated && !reduceMotion, reloadToken, onReloadResult);
   const onColorRef = useRef(onColor);
   onColorRef.current = onColor;
@@ -322,12 +324,15 @@ export function AnimatedCover({
   const videoSrc = pickVideoSrc(artwork);
   const isM3u8 = !!videoSrc && /\.m3u8(\?|$)/i.test(videoSrc);
 
-  useEffect(() => { setVideoReady(false); setPlaybackFailed(false); }, [videoSrc]);
+  useEffect(() => { setVideoReady(false); setPlaybackFailed(false); setErrorDetail(""); setShowErrorDetail(false); }, [videoSrc]);
   useEffect(() => {
     if (artwork?.color?.css) onColorRef.current?.(artwork.color.css);
   }, [artwork?.color?.css]);
 
-  const handleHlsFatalError = useRef(() => setPlaybackFailed(true)).current;
+  const handleHlsFatalError = useRef((data) => {
+    setPlaybackFailed(true);
+    setErrorDetail(`hls: ${data?.type || "?"} / ${data?.details || "?"}`);
+  }).current;
   useHlsSource(videoEl, videoSrc, isM3u8, handleHlsFatalError);
 
   useEffect(() => {
@@ -337,17 +342,24 @@ export function AnimatedCover({
       if (cancelled) return;
       const p = videoEl.play?.();
       if (p && typeof p.catch === "function") {
-        p.catch((err) => console.error("[animatedArtwork] video.play() rejected", src ? { song, artist } : {}, err));
+        p.catch((err) => {
+          console.error("[animatedArtwork] video.play() rejected", { song, artist }, err);
+          setPlaybackFailed(true);
+          setErrorDetail(`play() ditolak: ${err?.name || ""} ${err?.message || err}`);
+        });
       }
     };
     const onReady = () => { setVideoReady(true); tryPlay(); };
+    const MEDIA_ERROR_LABELS = { 1: "dibatalkan", 2: "gagal jaringan", 3: "gagal decode/format", 4: "format/URL tidak didukung" };
     const onError = () => {
       const mediaError = videoEl.error;
+      const label = MEDIA_ERROR_LABELS[mediaError?.code] || "unknown";
       console.error("[animatedArtwork] <video> failed to load/play", {
         song, artist, videoSrc, isM3u8,
         code: mediaError?.code, message: mediaError?.message,
       });
       setPlaybackFailed(true);
+      setErrorDetail(`video error ${mediaError?.code ?? "?"} (${label}): ${videoSrc}`);
     };
     videoEl.addEventListener("loadeddata", onReady);
     videoEl.addEventListener("canplay", onReady);
@@ -382,7 +394,17 @@ export function AnimatedCover({
         </div>
       )}
       {playbackFailed && (
-        <div className="aivy-animated-cover-loading is-error" aria-hidden="true" title="Video animasi gagal diputar, cek console">!</div>
+        <button
+          type="button"
+          className="aivy-animated-cover-loading is-error"
+          onClick={(e) => { e.stopPropagation(); setShowErrorDetail((v) => !v); }}
+          title={errorDetail}
+        >!</button>
+      )}
+      {playbackFailed && showErrorDetail && (
+        <div className="aivy-animated-cover-errbox" onClick={(e) => e.stopPropagation()}>
+          {errorDetail || "Video animasi gagal diputar (tidak ada detail error)."}
+        </div>
       )}
       {videoSrc && !playbackFailed && (
         <video
