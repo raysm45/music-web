@@ -3768,7 +3768,8 @@ export function MusicVideoView({ video, onClose, onAudioPlay }) {
     const onKey = (e) => {
       if (e.key === "Escape") {
         if (document.fullscreenElement) {
-          document.exitFullscreen?.().catch(() => {});
+          const p = document.exitFullscreen?.();
+          if (p && typeof p.catch === "function") p.catch(() => {});
           return;
         }
         onClose?.();
@@ -3896,8 +3897,13 @@ export function MusicVideoView({ video, onClose, onAudioPlay }) {
     setMuted(v.muted);
   };
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    else stageRef.current?.requestFullscreen?.().catch(() => {});
+    if (document.fullscreenElement) {
+      const p = document.exitFullscreen?.();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } else {
+      const el = stageRef.current;
+      if (el?.requestFullscreen) el.requestFullscreen().catch(() => {});
+    }
   };
 
   if (!video) return null;
