@@ -112,6 +112,25 @@ export const Api = {
     }
   },
 
+  // Stream music VIDEO (dedicated player, bukan embed YouTube).
+  // Ticket khusus kind=video, lalu cek type-nya (hls / mp4) via meta
+  // supaya frontend tahu pakai hls.js atau <video> native, dan biar
+  // resolve yt-dlp keburu kepanaskan sebelum <video> mulai buffering.
+  async musicVideoStream(videoId) {
+    if (!videoId) throw new Error("videoId kosong");
+    const quality = getPreferredAudioQuality();
+    const ticket = await apiSend("/api/stream-ticket", "POST", { videoId, quality, kind: "video" });
+    if (!ticket?.sid) throw new Error("tiket video kosong");
+    const sid = encodeURIComponent(ticket.sid);
+    const url = `${API_BASE}/api/s/${sid}`;
+    let type = "mp4";
+    try {
+      const meta = await apiGet(`/api/s/${sid}?meta=1`);
+      if (meta?.ok && (meta.type === "hls" || meta.type === "mp4")) type = meta.type;
+    } catch { /* meta gagal -> coba native mp4 dulu */ }
+    return { url, type };
+  },
+
   trackAudioInfo: (videoId) =>
     apiGet(`/api/track/audio-info?videoId=${encodeURIComponent(videoId || "")}&quality=${getPreferredAudioQuality()}`),
 

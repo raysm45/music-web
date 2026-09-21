@@ -7,7 +7,7 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
-  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github, Sparkles, RefreshCw,
+  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Maximize, Minimize, Github, Sparkles, RefreshCw,
   ExternalLink,
 } from "lucide-react";
 import {
@@ -3730,10 +3730,50 @@ export function AiAssistantWidget() {
 /* ---------- Music Video viewer: tampilan khusus untuk video musik (PC & mobile) ---------- */
 export function MusicVideoView({ video, onClose, onAudioPlay }) {
   const { t } = useUI();
+  const stageRef = useRef(null);
+  const videoRef = useRef(null);
+  const hlsRef = useRef(null);
+  const controlsTimer = useRef(null);
+  const playingRef = useRef(false);
 
+  const [src, setSrc] = useState(null);
+  const [streamType, setStreamType] = useState("mp4");
+  const [status, setStatus] = useState("idle"); // loading | ready | error
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [controlsHidden, setControlsHidden] = useState(false);
+
+  const vId = video?.videoId || video?.id || null;
+
+  const markPlaying = useCallback((v) => {
+    playingRef.current = v;
+    setPlaying(v);
+  }, []);
+
+  const pokeControls = useCallback(() => {
+    setControlsHidden(false);
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = setTimeout(() => {
+      if (playingRef.current) setControlsHidden(true);
+    }, 2600);
+  }, []);
+
+  // tutup modal: Esc (saat fullscreen, Esc keluar fullscreen dulu) + scroll lock
   useEffect(() => {
     if (!video) return undefined;
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (document.fullscreenElement) {
+          document.exitFullscreen?.().catch(() => {});
+          return;
+        }
+        onClose?.();
+      }
+    };
     window.addEventListener("keydown", onKey);
     document.body.classList.add("aivy-video-open");
     return () => {
@@ -3742,18 +3782,131 @@ export function MusicVideoView({ video, onClose, onAudioPlay }) {
     };
   }, [video, onClose]);
 
+  // pantau state fullscreen (termasuk keluar via Esc/browser)
+  useEffect(() => {
+    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
+
+  // bersihkan player saat modal ditutup
+  useEffect(() => () => {
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    if (videoRef.current) { videoRef.current.pause(); videoRef.current.removeAttribute("src"); }
+  }, []);
+
+  // resolve stream video (tiket kind=video + meta type)
+  const reload = useCallback(() => {
+    setStatus("loading");
+    setErrorMsg(null);
+    setSrc(null);
+    setStreamType("mp4");
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    if (videoRef.current) { videoRef.current.pause(); videoRef.current.removeAttribute("src"); videoRef.current.load(); }
+    Api.musicVideoStream(vId)
+      .then(({ url, type }) => { setSrc(url); setStreamType(type); setStatus("ready"); })
+      .catch(() => { setStatus("error"); setErrorMsg(t("videoUnavailable")); });
+  }, [vId, t]);
+
+  useEffect(() => {
+    if (!video) return undefined;
+    if (!vId) {
+      setStatus("error");
+      setErrorMsg(t("videoUnavailable"));
+      return undefined;
+    }
+    reload();
+    return undefined;
+  }, [video, vId, reload]);
+
+  // attach stream ke <video> (native mp4) atau hls.js (m3u8)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (status !== "ready" || !src || !video) return undefined;
+
+    let cancelled = false;
+    const tryPlay = () => {
+      const p = video.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => { if (!cancelled) markPlaying(true); }).catch(() => { if (!cancelled) markPlaying(false); });
+      } else if (!cancelled) {
+        markPlaying(!video.paused);
+      }
+    };
+
+    if (streamType === "hls") {
+      let hls = null;
+      import("hls.js")
+        .then((mod) => {
+          if (cancelled) return;
+          const HlsClass = mod.default || mod;
+          if (!HlsClass.isSupported()) {
+            setStatus("error");
+            setErrorMsg(t("videoUnavailable"));
+            return;
+          }
+          hls = new HlsClass({ enableWorker: true, lowLatencyMode: false, backBufferLength: 60 });
+          hlsRef.current = hls;
+          hls.loadSource(src);
+          hls.attachMedia(video);
+          hls.on(HlsClass.Events.MANIFEST_PARSED, () => { if (!cancelled) tryPlay(); });
+          hls.on(HlsClass.Events.ERROR, (_e, data) => {
+            if (!data?.fatal || cancelled) return;
+            console.error("[aivy-mv] hls.js fatal:", data.details);
+            setStatus("error");
+            setErrorMsg(t("videoUnavailable"));
+          });
+        })
+        .catch(() => {
+          if (!cancelled) { setStatus("error"); setErrorMsg(t("videoUnavailable")); }
+        });
+      return () => {
+        cancelled = true;
+        if (hls) { hls.destroy(); hlsRef.current = null; }
+      };
+    }
+
+    video.src = src;
+    tryPlay();
+    return () => { cancelled = true; };
+  }, [status, src, streamType, t, markPlaying]);
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v || v.readyState === 0) return;
+    if (v.paused) v.play().then(() => markPlaying(true)).catch(() => {});
+    else v.pause();
+  };
+  const onSeek = (e) => {
+    const v = videoRef.current;
+    if (!v || !Number.isFinite(v.duration)) return;
+    const next = Math.min(Math.max(Number(e.target.value) || 0, 0), v.duration);
+    v.currentTime = next;
+    setCurrentTime(next);
+  };
+  const toggleMute = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMuted(v.muted);
+  };
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    else stageRef.current?.requestFullscreen?.().catch(() => {});
+  };
+
   if (!video) return null;
-  const vId = video.videoId || video.id || null;
   const artistName = video.artist?.name || video.artists?.[0]?.name || "";
   const year = video.year || (video.releaseDate ? String(video.releaseDate).slice(0, 4) : null);
   const meta = [video.views, year, video.duration ? formatDuration(video.duration) : null]
     .filter(Boolean)
     .join(" \u00b7 ");
   const poster = video.cover || video.thumbnail || null;
-  const openExternal = () => {
-    if (!vId) return;
-    window.open(`https://www.youtube.com/watch?v=${encodeURIComponent(vId)}`, "_blank", "noopener");
-  };
 
   return (
     <div className="aivy-mv-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={video.title || t("musicVideos")}>
@@ -3762,15 +3915,76 @@ export function MusicVideoView({ video, onClose, onAudioPlay }) {
           <span className="aivy-mv-badge"><Film size={15} /> {t("musicVideos")}</span>
           <button className="aivy-mv-close" onClick={onClose} aria-label={t("close")}><X size={22} /></button>
         </div>
-        <div className="aivy-mv-stage">
+        <div className="aivy-mv-stage" ref={stageRef} onMouseMove={pokeControls} onTouchStart={pokeControls}>
           {vId ? (
-            <iframe
-              className="aivy-mv-frame"
-              src={`https://www.youtube.com/embed/${encodeURIComponent(vId)}?autoplay=1&playsinline=1&rel=0&modestbranding=1`}
-              title={video.title || t("musicVideos")}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
+            <>
+              <video
+                ref={videoRef}
+                className="aivy-mv-video"
+                poster={poster || undefined}
+                playsInline
+                preload="auto"
+                onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                onPlay={() => { markPlaying(true); pokeControls(); }}
+                onPause={() => { markPlaying(false); setControlsHidden(false); }}
+                onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime || 0)}
+                onLoadedMetadata={(e) => setDuration(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
+                onDurationChange={(e) => setDuration(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
+                onEnded={() => markPlaying(false)}
+              />
+              {status === "loading" && (
+                <div className="aivy-mv-loading">
+                  <div className="aivy-mv-spinner" />
+                  <span>{t("loadingVideo")}</span>
+                </div>
+              )}
+              {status === "error" && (
+                <div className="aivy-mv-error">
+                  {poster ? <img src={poster} alt="" /> : null}
+                  <span className="aivy-mv-error-msg">{errorMsg || t("videoUnavailable")}</span>
+                  <div className="aivy-mv-error-acts">
+                    <button type="button" className="aivy-mv-retry" onClick={reload}>
+                      <RefreshCw size={14} /> {t("retry")}
+                    </button>
+                    {onAudioPlay ? (
+                      <button type="button" className="aivy-mv-audio-inline" onClick={onAudioPlay}>
+                        <Music2 size={14} /> {t("playAudio")}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+              {status === "ready" && !playing && (
+                <button type="button" className="aivy-mv-big-play" onClick={togglePlay} aria-label={t("play")}>
+                  <Play size={34} fill="currentColor" style={{ marginLeft: 4 }} />
+                </button>
+              )}
+              {status === "ready" && (
+                <div className={`aivy-mv-controls${controlsHidden ? " is-hidden" : ""}`} onClick={(e) => e.stopPropagation()}>
+                  <button type="button" className="aivy-mv-cbtn" onClick={togglePlay} aria-label={playing ? t("pause") : t("play")}>
+                    {playing ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}
+                  </button>
+                  <span className="aivy-mv-time">{formatTime(currentTime)} <em>/</em> {formatTime(duration)}</span>
+                  <input
+                    className="aivy-mv-seek"
+                    type="range"
+                    min={0}
+                    max={duration > 0 ? Math.floor(duration * 10) / 10 : 0}
+                    step={0.1}
+                    value={Math.min(currentTime, duration || 0)}
+                    onChange={onSeek}
+                    disabled={!duration}
+                    aria-label={t("play")}
+                  />
+                  <button type="button" className="aivy-mv-cbtn" onClick={toggleMute} aria-label={muted ? t("unmute") : t("mute")}>
+                    {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                  </button>
+                  <button type="button" className="aivy-mv-cbtn" onClick={toggleFullscreen} aria-label={fullscreen ? t("exitFullscreen") : t("fullscreen")}>
+                    {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="aivy-mv-na">
               {poster ? <img src={poster} alt="" /> : null}
@@ -3783,11 +3997,6 @@ export function MusicVideoView({ video, onClose, onAudioPlay }) {
             <div className="aivy-mv-title">{video.title || t("unknownTitle")}</div>
             {artistName ? <div className="aivy-mv-artist">{artistName}</div> : null}
             {meta ? <div className="aivy-mv-meta">{meta}</div> : null}
-            {vId ? (
-              <button type="button" className="aivy-mv-open-yt" onClick={openExternal}>
-                <ExternalLink size={13} /> {t("openInYoutube")}
-              </button>
-            ) : null}
           </div>
           <div className="aivy-mv-acts">
             {onAudioPlay ? (
