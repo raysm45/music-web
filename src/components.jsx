@@ -922,16 +922,15 @@ export function PlayerBar({ onOpenNowPlaying }) {
 export function MiniPlayer({ onExpand }) {
   const { currentTrack, isPlaying, togglePlay, next, loadingAudio } = usePlayer();
   const { registerFill } = useScrubberBinding();
-  const { t, settings, toggleLyrics } = useUI();
-  const { navigate } = useRouter();
+  const { t, settings } = useUI();
   const [pulsing, setPulsing] = useState(false);
   const miniRef = useRef(null);
-  const handleExpand = () => {
-    const mode = settings.nowPlayingView || "fullscreen";
-    if (mode === "lyrics") toggleLyrics();
-    else if (mode === "album" && currentTrack?.album?.id) navigate("album", { params: { id: currentTrack.album.id } });
-    else onExpand?.();
-  };
+  // Tapping or swiping up the mobile mini player must always open the
+  // full Now Playing sheet. `settings.nowPlayingView` only governs what
+  // happens when the small cover art is clicked on the desktop PlayerBar
+  // (see PlayerBar.handleCoverClick) — it should not hijack the mini
+  // player's main expand action, otherwise it opens the album page instead.
+  const handleExpand = () => onExpand?.();
   const swipe = useVerticalSwipe({ active: !!currentTrack, direction: "up", onTrigger: handleExpand, dragRef: miniRef, threshold: 36, velocityThreshold: 0.35 });
   if (!currentTrack) return null;
   return (
