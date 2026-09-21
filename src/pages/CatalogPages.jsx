@@ -3,14 +3,10 @@ import { Play, Pause, Shuffle, Info, Star, MoreHorizontal, ChevronRight, X } fro
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems } from "../components.jsx";
+import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems, HoverRail } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
-/* ============================================================
-   Artist page — Apple Music style
-   Hero full-bleed + fade ke warna solid yang diambil dari artwork,
-   lalu body gelap solid berisi Latest Release / Top Songs / rail.
-   ============================================================ */
+const TOP_SONGS_PREVIEW = 15;
 
 function rgbToHsl(r, g, b) {
   r /= 255; g /= 255; b /= 255;
@@ -27,14 +23,6 @@ function rgbToHsl(r, g, b) {
   }
   return [h, s, l];
 }
-
-/**
- * Ambil warna dominan dari artwork lalu turunkan jadi:
- *  - bg      : warna solid gelap untuk latar halaman (seperti cokelat tua di Apple Music)
- *  - accent  : warna terang untuk tombol Play
- *  - ink     : warna ikon di atas accent
- * Gagal (CORS / gambar tidak ada) => null, komponen fallback ke token tema.
- */
 function useArtworkTint(src) {
   const [tint, setTint] = useState(null);
   useEffect(() => {
@@ -54,7 +42,6 @@ function useArtworkTint(src) {
         let r = 0, g = 0, b = 0, w = 0;
         for (let i = 0; i < data.length; i += 4) {
           if (data[i + 3] < 32) continue;
-          // bobot lebih besar untuk piksel yang berwarna (bukan abu-abu)
           const mx = Math.max(data[i], data[i + 1], data[i + 2]);
           const mn = Math.min(data[i], data[i + 1], data[i + 2]);
           const weight = 0.35 + (mx - mn) / 255;
@@ -71,13 +58,41 @@ function useArtworkTint(src) {
             accentInk: `hsl(${hue} ${Math.min(60, sat + 10)}% 12%)`,
           });
         }
-      } catch { /* canvas ter-taint oleh CORS — pakai fallback tema */ }
+      } catch {}
     };
     img.onerror = () => {};
     img.src = src;
     return () => { alive = false; };
   }, [src]);
   return tint;
+}
+
+function hexToRgb(hex) {
+  const m = String(hex || "").trim().replace("#", "");
+  if (!/^[0-9a-fA-F]{6}$/.test(m)) return null;
+  return [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)];
+}
+function tintFromHex(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const [h, sat] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+  const hue = Math.round(h);
+  const s = Math.round(Math.min(46, Math.max(14, sat * 100)));
+  return {
+    bg: `hsl(${hue} ${s}% 9%)`,
+    accent: `hsl(${hue} ${Math.min(70, s + 26)}% 76%)`,
+    accentInk: `hsl(${hue} ${Math.min(60, s + 10)}% 12%)`,
+  };
+}
+function pickHeroRendition(hero) {
+  if (!hero) return null;
+  const conn = typeof navigator !== "undefined" ? navigator.connection : null;
+  const slow = conn && (conn.saveData || /2g/.test(conn.effectiveType || ""));
+  if (slow) {
+    const list = [...(hero.renditions || [])].sort((a, b) => (a.bandwidth || 0) - (b.bandwidth || 0));
+    return list[0] || hero.fastVideo || hero.video || null;
+  }
+  return hero.fastVideo || hero.video || null;
 }
 
 function releaseYear(value) {
@@ -106,8 +121,6 @@ function albumKindLabel(album, t) {
   if (/\bEP\b/.test(title)) return "EP";
   return t("albumLabel");
 }
-
-/* ---------- Baris lagu ala Top Songs Apple Music ---------- */
 function AmSongRow({ track, index, list }) {
   const { currentTrack, isPlaying, togglePlay, playList } = usePlayer();
   const { openContextMenu, t } = useUI();
@@ -150,8 +163,6 @@ function AmSongRow({ track, index, list }) {
     </div>
   );
 }
-
-/* ---------- Kartu di rail horizontal ---------- */
 function AmTile({ cover, seed, title, sub, onClick, onPlay, variant = "square" }) {
   return (
     <div className={`aivy-am-tile is-${variant}`} onClick={onClick} role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined}
@@ -188,11 +199,12 @@ export function ArtistPage() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [heroVideoUrl, setHeroVideoUrl] = useState(null);
   const [heroArtwork, setHeroArtwork] = useState(null);
+  const [heroBgColor, setHeroBgColor] = useState(null);
   const [videoBroken, setVideoBroken] = useState(false);
   const mediaRef = useRef(null);
   const pageRef = useRef(null);
   const heroRef = useRef(null);
-  const { playList } = usePlayer();
+  const { playList, playSingle } = usePlayer();
   const { pushToast, t, settings } = useUI();
 
   useEffect(() => {
@@ -222,8 +234,11 @@ export function ArtistPage() {
         Api.appleMusicHero(res.name)
           .then((h) => {
             if (!alive) return;
-            if (h?.video?.url) setHeroVideoUrl(Api.appleMusicVideoUrl(h.video.url));
-            if (h?.artwork?.url) setHeroArtwork(h.artwork.url);
+            const chosen = pickHeroRendition(h);
+            if (chosen?.url) setHeroVideoUrl(Api.appleMusicVideoUrl(chosen.url));
+            const poster = h?.previewFrame?.url || h?.artwork?.url;
+            if (poster) setHeroArtwork(poster);
+            if (h?.artwork?.bgColor) setHeroBgColor(h.artwork.bgColor);
           })
           .catch(() => {});
       }
@@ -233,9 +248,12 @@ export function ArtistPage() {
 
   const posterImg = heroArtwork || artist?.banner || artist?.image || null;
   const tintSource = artist?.image || artist?.banner || artist?.albums?.[0]?.cover || null;
-  const tint = useArtworkTint(tintSource);
-
-  // Sebarkan warna hasil artwork ke <body> supaya sidebar, topbar & player ikut menyatu
+  const tintFromArt = useArtworkTint(tintSource);
+  const tint = useMemo(() => {
+    if (!heroBgColor) return tintFromArt;
+    const derived = tintFromHex(heroBgColor);
+    return derived || tintFromArt;
+  }, [heroBgColor, tintFromArt]);
   useEffect(() => {
     if (!tint) return undefined;
     document.body.style.setProperty("--artist-bg", tint.bg);
@@ -243,8 +261,6 @@ export function ArtistPage() {
     document.body.style.setProperty("--artist-accent-ink", tint.accentInk);
     return undefined;
   }, [tint]);
-
-  /* Scroll: gambar hero ikut naik 1:1 lalu tertutup body gelap (seperti Apple Music asli) */
   useEffect(() => {
     if (!artist) return undefined;
     const scroller = document.getElementById("aivy-content-scroll");
@@ -255,8 +271,13 @@ export function ArtistPage() {
       const heroH = heroRef.current?.offsetHeight || Math.round((window.innerHeight || 800) * 0.78);
       const top = scroller.scrollTop;
       const shift = Math.min(top, heroH);
-      if (mediaRef.current) mediaRef.current.style.setProperty("--am-shift", `${-shift}px`);
-      if (pageRef.current) pageRef.current.style.setProperty("--am-progress", Math.min(1, top / Math.max(1, heroH * 0.7)).toFixed(3));
+      const progress = Math.min(1, top / Math.max(1, heroH * 0.82));
+      if (mediaRef.current) {
+        mediaRef.current.style.setProperty("--am-shift", `${-shift}px`);
+        mediaRef.current.style.setProperty("--am-blur", `${(progress * 26).toFixed(1)}px`);
+        mediaRef.current.style.setProperty("--am-zoom", (1 + progress * 0.06).toFixed(4));
+      }
+      if (pageRef.current) pageRef.current.style.setProperty("--am-progress", progress.toFixed(3));
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
     apply();
@@ -288,38 +309,58 @@ export function ArtistPage() {
   const musicVideos = artist?.musicVideos || artist?.videos || [];
   const playlists = artist?.playlists || artist?.artistPlaylists || [];
 
+  const playMusicVideo = useCallback((v) => {
+    const videoId = v?.videoId || v?.id;
+    if (!videoId) return;
+    playSingle({
+      id: videoId,
+      videoId,
+      title: v.title,
+      artist: v.artist || (artist ? { id: artist.id, name: artist.name } : null),
+      artists: v.artist ? [v.artist] : undefined,
+      cover: v.cover || v.thumbnail,
+      duration: v.duration || null,
+    });
+  }, [playSingle, artist]);
+
   const playAlbum = useCallback(async (albumId) => {
     try {
       const full = await Api.album(albumId);
       if (full?.tracks?.length) playList(full.tracks, 0);
-    } catch { /* biarkan senyap — user bisa buka halaman album-nya */ }
+    } catch {}
   }, [playList]);
 
   if (loading) return <div className="aivy-am-fallback"><SkeletonHeroPage round rows={5} /></div>;
   if (!artist) return <div className="aivy-am-fallback"><ViewNotFound label={t("artistLabel")} /></div>;
 
-  const songs = showAllSongs ? topTracks : topTracks.slice(0, 9);
+  const songs = showAllSongs ? topTracks : topTracks.slice(0, TOP_SONGS_PREVIEW);
   const showHeroVideo = heroVideoUrl && !videoBroken;
   const hasAbout = !!(artist.bio || artist.tags?.length || artist.listeners);
 
   return (
     <div ref={pageRef} className="aivy-view-enter aivy-am-page">
-      {/* ---------- Hero media: full-bleed ke atas & tepi kanan ---------- */}
+      {}
       <div ref={mediaRef} className="aivy-am-media" aria-hidden="true">
         {showHeroVideo ? (
           <video
+            key={heroVideoUrl}
             src={heroVideoUrl}
             poster={posterImg || undefined}
-            autoPlay muted loop playsInline preload="metadata"
+            autoPlay muted loop playsInline
+            preload="auto"
+            disablePictureInPicture
             onError={() => setVideoBroken(true)}
+            onCanPlay={(e) => { e.currentTarget.dataset.ready = "1"; }}
           />
         ) : (
           <SmartCover src={posterImg} seed={"artist-bg" + artist.id + artist.name} size={1600} radius={0} style={{ width: "100%", height: "100%" }} />
         )}
+        {}
+        <div className="aivy-am-media-blur" />
         <div className="aivy-am-media-scrim" />
       </div>
 
-      {/* ---------- Identitas artis ---------- */}
+      {}
       <header ref={heroRef} className="aivy-am-hero">
         <div className="aivy-am-hero-inner">
           <h1 className="aivy-am-name">{artist.name}</h1>
@@ -357,7 +398,7 @@ export function ArtistPage() {
         </div>
       </header>
 
-      {/* ---------- Body solid ---------- */}
+      {}
       <div className="aivy-am-body">
         <div className="aivy-am-body-inner">
           <div className={`aivy-am-topgrid ${latest ? "" : "is-single"}`}>
@@ -390,7 +431,7 @@ export function ArtistPage() {
               <section className="aivy-am-block">
                 <AmSectionHead
                   title={t("topSongs")}
-                  onClick={topTracks.length > 9 ? () => setShowAllSongs((s) => !s) : undefined}
+                  onClick={topTracks.length > TOP_SONGS_PREVIEW ? () => setShowAllSongs((s) => !s) : undefined}
                 />
                 <div className="aivy-am-songgrid">
                   {songs.map((tr, i) => <AmSongRow key={tr.id} track={tr} index={i} list={topTracks} />)}
@@ -402,7 +443,7 @@ export function ArtistPage() {
           {musicVideos.length > 0 && (
             <section className="aivy-am-block">
               <AmSectionHead title={t("musicVideos")} />
-              <div className="aivy-am-rail aivy-scroll">
+              <HoverRail>
                 {musicVideos.map((v) => (
                   <AmTile
                     key={v.id || v.url || v.title}
@@ -410,18 +451,19 @@ export function ArtistPage() {
                     cover={v.thumbnail || v.cover}
                     seed={"mv" + (v.id || v.title)}
                     title={v.title}
-                    sub={releaseYear(v.releaseDate || v.year)}
-                    onClick={v.videoId ? () => navigate("shorts", { params: { id: v.videoId } }) : undefined}
+                    sub={[v.views, releaseYear(v.releaseDate || v.year)].filter(Boolean).join(" \u00b7 ")}
+                    onClick={() => playMusicVideo(v)}
+                    onPlay={() => playMusicVideo(v)}
                   />
                 ))}
-              </div>
+              </HoverRail>
             </section>
           )}
 
           {otherReleases.length > 0 && (
             <section className="aivy-am-block">
               <AmSectionHead title={t("singlesEps")} />
-              <div className="aivy-am-rail aivy-scroll">
+              <HoverRail>
                 {otherReleases.map((a) => (
                   <AmTile
                     key={a.id}
@@ -433,14 +475,14 @@ export function ArtistPage() {
                     onPlay={() => playAlbum(a.id)}
                   />
                 ))}
-              </div>
+              </HoverRail>
             </section>
           )}
 
           {playlists.length > 0 && (
             <section className="aivy-am-block">
               <AmSectionHead title={t("artistPlaylists")} />
-              <div className="aivy-am-rail aivy-scroll">
+              <HoverRail>
                 {playlists.map((p) => (
                   <AmTile
                     key={p.id}
@@ -451,14 +493,14 @@ export function ArtistPage() {
                     onClick={() => navigate("playlist", { params: { id: p.id } })}
                   />
                 ))}
-              </div>
+              </HoverRail>
             </section>
           )}
 
           {artist.relatedArtists?.length > 0 && (
             <section className="aivy-am-block">
               <AmSectionHead title={t("similarArtists")} />
-              <div className="aivy-am-rail aivy-scroll">
+              <HoverRail>
                 {artist.relatedArtists.map((a) => (
                   <AmTile
                     key={a.id}
@@ -469,7 +511,7 @@ export function ArtistPage() {
                     onClick={() => navigate("artist", { params: { id: a.id } })}
                   />
                 ))}
-              </div>
+              </HoverRail>
             </section>
           )}
         </div>

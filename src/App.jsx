@@ -14,6 +14,7 @@ import {
 } from "./components.jsx";
 import { LandingPage, LoginPage } from "./pages/AuthPages.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
+import { NewTrendingPage, BestAlbumsPage, EditorsPicksPage } from "./pages/FeedPages.jsx";
 import { SearchPage } from "./pages/SearchPage.jsx";
 import { ArtistPage, AlbumPage } from "./pages/CatalogPages.jsx";
 import { LibraryPage, LikedPage, PlaylistPage, ImportPage, LibraryLocalPage } from "./pages/LibraryPages.jsx";
@@ -32,8 +33,13 @@ function useIsMobile(breakpoint = 860) {
   return isMobile;
 }
 
+const FULL_BLEED_ROUTES = new Set(["home", "newTrending", "editorsPicks", "bestAlbums"]);
+
 const PAGE_BY_ROUTE = {
   home: HomePage,
+  newTrending: NewTrendingPage,
+  editorsPicks: EditorsPicksPage,
+  bestAlbums: BestAlbumsPage,
   search: SearchPage,
   library: LibraryPage,
   libraryImport: ImportPage,
@@ -108,7 +114,7 @@ function AppInner() {
       {!isMobile && <Sidebar />}
       <main className="aivy-main">
         {!isImmersiveShorts && <TopBar isMobile={isMobile} />}
-        <div id="aivy-content-scroll" className={`aivy-content aivy-scroll ${isMobile ? "is-mobile" : ""} ${name === "shorts" ? "no-pad" : ""} ${name === "home" ? "home-full" : ""}`}
+        <div id="aivy-content-scroll" className={`aivy-content aivy-scroll ${isMobile ? "is-mobile" : ""} ${name === "shorts" ? "no-pad" : ""} ${FULL_BLEED_ROUTES.has(name) ? "home-full" : ""}`}
           style={{ paddingBottom: name === "shorts" ? 0 : (isMobile ? (currentTrack ? 150 : 84) : (currentTrack ? 118 : 24)) }}>
           <ErrorBoundary key={name + JSON.stringify(params)}><Page /></ErrorBoundary>
         </div>

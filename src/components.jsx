@@ -702,6 +702,62 @@ export function CardArtist({ artist }) {
   );
 }
 
+/**
+ * Rail horizontal dengan tombol panah yang muncul saat kursor hover.
+ * Menggantikan scroll geser manual: konten digeser per "halaman" penuh.
+ */
+export function HoverRail({ children, className = "", step = 0.86 }) {
+  const ref = useRef(null);
+  const [edge, setEdge] = useState({ start: true, end: true });
+
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setEdge({ start: el.scrollLeft <= 2, end: max <= 2 || el.scrollLeft >= max - 2 });
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", measure); ro.disconnect(); };
+  }, [measure, children]);
+
+  const scrollBy = (dir) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * el.clientWidth * step, behavior: "smooth" });
+  };
+
+  return (
+    <div className={`aivy-hoverrail ${className}`}>
+      <button
+        type="button"
+        className="aivy-hoverrail-btn prev"
+        onClick={() => scrollBy(-1)}
+        disabled={edge.start}
+        aria-label="Sebelumnya"
+      >
+        <ChevronLeft size={20} />
+      </button>
+      <div className="aivy-hoverrail-track" ref={ref}>{children}</div>
+      <button
+        type="button"
+        className="aivy-hoverrail-btn next"
+        onClick={() => scrollBy(1)}
+        disabled={edge.end}
+        aria-label="Berikutnya"
+      >
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  );
+}
+
 export function ToastHost({ isMobile }) {
   const { toasts } = useUI();
   if (!toasts.length) return null;
@@ -928,11 +984,6 @@ export function MiniPlayer({ onExpand }) {
   const { t, settings } = useUI();
   const [pulsing, setPulsing] = useState(false);
   const miniRef = useRef(null);
-  // Tapping or swiping up the mobile mini player must always open the
-  // full Now Playing sheet. `settings.nowPlayingView` only governs what
-  // happens when the small cover art is clicked on the desktop PlayerBar
-  // (see PlayerBar.handleCoverClick) — it should not hijack the mini
-  // player's main expand action, otherwise it opens the album page instead.
   const handleExpand = () => onExpand?.();
   const swipe = useVerticalSwipe({ active: !!currentTrack, direction: "up", onTrigger: handleExpand, dragRef: miniRef, threshold: 36, velocityThreshold: 0.35 });
   if (!currentTrack) return null;
@@ -1000,10 +1051,6 @@ function useHeroFlip(mode, targets) {
   const capture = () => {
     const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) { firstRects.current = null; return; }
-    // Baca dulu semua rect (tanpa menulis di antaranya => hanya 1x layout),
-    // baru promote layer-nya. Compositor jadi sudah siap sebelum React
-    // mengubah layout, sehingga frame pertama animasi tidak perlu upload
-    // texture baru di tengah transisi.
     const rects = targets.map(({ ref }) => (ref.current ? ref.current.getBoundingClientRect() : null));
     targets.forEach(({ ref }) => {
       const el = ref.current;
@@ -1018,8 +1065,6 @@ function useHeroFlip(mode, targets) {
     const firstRectsList = firstRects.current;
     firstRects.current = null;
     if (!firstRectsList) return undefined;
-
-    // FASE 1 — baca seluruh posisi akhir lebih dulu (1x layout untuk semua).
     const plans = [];
     targets.forEach(({ ref, uniform }, i) => {
       const el = ref.current;
@@ -1038,18 +1083,12 @@ function useHeroFlip(mode, targets) {
     });
 
     if (!plans.length) { resetStyles(); return undefined; }
-
-    // FASE 2 — tulis semua transform "invert" sekaligus.
     plans.forEach(({ el, dx, dy, sx, sy }) => {
       el.style.transition = "none";
       el.style.transformOrigin = "top left";
       el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
     });
-
-    // FASE 3 — satu kali flush style/layout untuk semua elemen sekaligus.
     void plans[0].el.offsetWidth;
-
-    // FASE 4 — lepas ke posisi akhir; mulai dari sini murni kerja compositor.
     plans.forEach(({ el }) => {
       el.style.transition = `transform ${HERO_FLIP_MS}ms cubic-bezier(.22,.85,.32,1)`;
       el.style.transform = "translate(0px, 0px) scale(1, 1)";
@@ -1121,9 +1160,19 @@ function useTilt({ enabled, distance = 10, speed = 240 }) {
   useEffect(() => { if (!enabled) setStyle({}); }, [enabled]);
   return { ref, style, onMove, onLeave };
 }
+function themeColorSet() {
+  if (typeof window === "undefined") return ["#B5B5B5", "#E6E6E6", "#FFFFFF"];
+  const cs = getComputedStyle(document.body);
+  const pick = (name, fallback) => (cs.getPropertyValue(name) || "").trim() || fallback;
+  return [
+    pick("--artist-accent", pick("--ink-dim", "#A6A6A6")),
+    pick("--accent", "#E6E6E6"),
+    pick("--accent-strong", "#FFFFFF"),
+  ];
+}
 
 const VISUALIZER_COLOR_SETS = {
-  auto: ["#7fd18c", "#9fe6ac", "#e8f5e3"],
+  auto: null,
   ocean: ["#4fa3e3", "#7fd3ff", "#dfe9f5"],
   martian: ["#e36f4f", "#ffb27f", "#f5ded0"],
   sunset: ["#e35f8a", "#ffb27f", "#fff0d6"],
@@ -1141,12 +1190,10 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
-    // Saat sheet tertutup canvas tidak terlihat sama sekali, jadi loop rAF
-    // dimatikan total daripada terus menggambar di belakang layar.
     if (!running) return undefined;
     const ctx2d = canvas.getContext("2d");
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const colors = VISUALIZER_COLOR_SETS[preset] || VISUALIZER_COLOR_SETS.auto;
+    const colors = VISUALIZER_COLOR_SETS[preset] || themeColorSet();
     const sens = Math.max(0.1, sensitivity / 60);
     const bright = Math.max(0.2, brightness / 100);
 
@@ -1158,9 +1205,6 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
-
-    // Dipakai ulang tiap frame: sebelumnya 2 Uint8Array dialokasikan 60x/detik
-    // yang bikin GC sering jalan dan menimbulkan stutter di HP entry-level.
     let freqBuf = null;
     let timeBuf = null;
 
@@ -1361,8 +1405,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     else if (status === "not_found") pushToast(t("npArtworkReloadFailed"));
     else pushToast(t("npArtworkReloadError"));
   };
-  // Dibungkus ref supaya identitasnya stabil — kalau tidak, memo cover di
-  // bawah ikut batal tiap kali `timeupdate` memicu render ulang sheet.
   const reloadResultRef = useRef(handleArtworkReloadResult);
   reloadResultRef.current = handleArtworkReloadResult;
   const onReloadResultStable = useCallback((status) => reloadResultRef.current(status), []);
@@ -1400,11 +1442,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const trackKey = currentTrack?.id;
   useEffect(() => { setSingMode(false); setLyricsUnsynced(false); }, [trackKey]);
   useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
-
-  // Pre-mount <am-lyrics> sesaat setelah sheet selesai dibuka (saat idle),
-  // supaya saat tombol lirik ditekan animasinya tidak harus berbagi main
-  // thread dengan mount Lit + fetch lirik. Wrapper-nya masih opacity:0 /
-  // flex-basis:0 jadi tidak ada perubahan tampilan.
   useEffect(() => {
     if (!open || lyricsMounted || lyricsDisabled) return undefined;
     let idleId = null;
@@ -1457,10 +1494,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   }, [lyricsMounted, trackKey]);
 
   const remaining = Math.max(0, (duration || 0) - (currentTime || 0));
-
-  // Sheet ikut render ulang tiap `timeupdate` (~4x/detik) hanya demi label
-  // waktu. Bagian berat di bawah di-memo supaya subtree-nya dilewati React,
-  // terutama saat animasi buka/tutup sedang berjalan.
   const coverArt = useMemo(() => (
     <AnimatedCover
       src={currentTrack?.cover} seed={(currentTrack?.id || "") + (currentTrack?.title || "")} size={320} radius={10}
@@ -1472,10 +1505,6 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
       onReloadResult={onReloadResultStable}
       active={open}
     />
-  // NowPlayingSheet ini selalu ter-mount begitu ada lagu diputar (bukan
-  // cuma saat sheet dibuka), jadi tanpa `active={open}` videonya bakal
-  // terus di-decode di background walau sheet tertutup/off-screen —
-  // itu yang bikin animasi buka jadi rebutan GPU/CPU dengan decode video.
   ), [currentTrack?.cover, currentTrack?.id, currentTrack?.title, currentTrack?.artist?.name, settings.animatedArtwork, reduceMotion, artworkReloadToken, onReloadResultStable, open]);
 
   const showSheetVisualizer = !!settings.visualizerEnabled && settings.visualizerMode === "solid";

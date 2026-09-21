@@ -40,23 +40,27 @@ const streamTicketCache = new Map();
 const TICKET_MARGIN_S = 30;
 
 export const Api = {
-  discover: (seed, cursor, limit, type) =>
-    apiGet(`/api/discover?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 20}${type ? `&type=${encodeURIComponent(type)}` : ""}`),
+  discover: (seed, cursor, limit, type, feed) =>
+    apiGet(`/api/discover?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 20}${type ? `&type=${encodeURIComponent(type)}` : ""}${feed ? `&feed=${encodeURIComponent(feed)}` : ""}`),
+  forYou: (seed, cursor, limit, type) =>
+    apiGet(`/api/discover/for-you?${seed ? `seed=${encodeURIComponent(seed)}&` : ""}cursor=${cursor || 0}&limit=${limit || 24}${type ? `&type=${encodeURIComponent(type)}` : ""}`),
   search: async (q, cursor) => {
     const res = await apiGet(`/api/search?q=${encodeURIComponent(q)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
     const songs = Array.isArray(res) ? res : res?.songs || [];
+    const extras = Array.isArray(res) ? {} : res;
     const mapped = songs.map((s) => ({
       ...s,
       artist: s.artist?.name ?? (typeof s.artist === "string" ? s.artist : null),
       thumbnail: s.thumbnail ?? s.cover ?? null,
     }));
     mapped.nextCursor = Array.isArray(res) ? null : res?.nextCursor ?? null;
+    mapped.artists = extras?.artists || [];
+    mapped.albums = extras?.albums || [];
+    mapped.videos = extras?.videos || [];
     return mapped;
   },
   artist: (q) => apiGet(`/api/artist?q=${encodeURIComponent(q)}`),
   artistQuick: (q) => apiGet(`/api/artist/quick?q=${encodeURIComponent(q)}`),
-
-  // Apple Music: video hero artist (1 rendisi paling HD) + proxy stream
   appleMusicHero: (name, country = "us") =>
     apiGetPublic(`/api/apple-music/artist-hero?q=${encodeURIComponent(name)}&country=${encodeURIComponent(country)}`),
   appleMusicSearch: (q, limit = 5) =>

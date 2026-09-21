@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Search, X, Clock, TrendingUp, ArrowLeft, ArrowUpLeft, Mic, Music2, Smile, Globe } from "lucide-react";
+import { Search, X, Clock, TrendingUp, ArrowLeft, ArrowUpLeft, Mic, Music2, Smile, Globe, ChevronRight } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { TrackRow, SkeletonList } from "../components.jsx";
+import { TrackRow, SkeletonList, HoverRail } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 import { usePlayer } from "../context.jsx";
 import {
@@ -29,6 +29,7 @@ export function SearchPage() {
   const [lyricsMap, setLyricsMap] = useState({});
   const [checkingLyrics, setCheckingLyrics] = useState(false);
   const [artistHit, setArtistHit] = useState(null);
+  const [artistHits, setArtistHits] = useState([]);
   const [genresOpen, setGenresOpen] = useState(false);
   const [listening, setListening] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
@@ -98,7 +99,7 @@ export function SearchPage() {
     const onPop = () => {
       const q = new URLSearchParams(window.location.search).get("q") || "";
       setQuery(q);
-      if (q.trim()) doSearch(q); else { setResults([]); setHasSearched(false); setArtistHit(null); }
+      if (q.trim()) doSearch(q); else { setResults([]); setHasSearched(false); setArtistHit(null); setArtistHits([]); }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -113,7 +114,7 @@ export function SearchPage() {
 
   const doSearch = async (q) => {
     const trimmed = q.trim();
-    if (!trimmed) { setResults([]); setHasSearched(false); setSearching(false); setArtistHit(null); setNextCursor(null); return; }
+    if (!trimmed) { setResults([]); setHasSearched(false); setSearching(false); setArtistHit(null); setArtistHits([]); setNextCursor(null); return; }
     const seq = ++requestSeqRef.current;
     setSearching(true);
     setHasSearched(true);
@@ -135,6 +136,7 @@ export function SearchPage() {
         return;
       setResults(res || []);
       setNextCursor(res?.nextCursor || null);
+      setArtistHits(Array.isArray(res?.artists) ? res.artists : []);
       if (res && res[0] && res[0].videoId) {
         saveRecentSearchThumb(trimmed, res[0]);
         setRecentThumbs(getRecentSearchThumbs());
@@ -177,7 +179,7 @@ export function SearchPage() {
     setQuery(val);
     if (!val.trim()) {
       debouncedSuggest.cancel?.(); debouncedLiveSearch.cancel?.();
-      setSuggestions([]); setResults([]); setHasSearched(false); setNextCursor(null);
+      setSuggestions([]); setResults([]); setHasSearched(false); setNextCursor(null); setArtistHits([]);
       setLiveTitles([]); setLiveLoading(false);
       return;
     }
@@ -249,6 +251,25 @@ export function SearchPage() {
   };
 
   const showBrowse = !query.trim() && !hasSearched;
+  const allArtists = useMemo(() => {
+    const out = [];
+    const seen = new Set();
+    for (const a of [artistHit, ...artistHits].filter(Boolean)) {
+      const key = String(a.id || a.name || "").toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(a);
+    }
+    return out;
+  }, [artistHit, artistHits]);
+  const topArtist = allArtists[0] || null;
+  const otherArtists = allArtists.slice(1, 12);
+
+  const openArtist = (a) => {
+    if (!a) return;
+    navigate("artist", { params: { id: a.id || a.name } });
+  };
+
   const list = results.map((r) => (r.videoId ? { id: r.videoId, videoId: r.videoId, title: r.title, cover: r.cover || r.thumbnail, duration: r.duration || null, artist: typeof r.artist === "string" ? { name: r.artist } : (r.artist || null), artists: r.artists || null, album: r.album || null } : r));
 
   useEffect(() => {
@@ -298,7 +319,7 @@ export function SearchPage() {
               onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) runSearch(query.trim()); }}
             />
             {query ? (
-              <button className="aivy-icon-btn sm" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); setLiveTitles([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={15} /></button>
+              <button className="aivy-icon-btn sm" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); setSuggestions([]); setLiveTitles([]); setArtistHits([]); syncUrlQuery(""); }} aria-label={t("clear")}><X size={15} /></button>
             ) : (
               <button className={`aivy-icon-btn sm ${listening ? "active" : ""}`} onClick={handleVoiceSearch} aria-label={listening ? t("stopVoiceSearch") : t("searchWithVoice")}><Mic size={16} /></button>
             )}
@@ -399,6 +420,54 @@ export function SearchPage() {
         <div style={{ padding: "4px 2px 12px" }}>
           {searching ? <span className="eyebrow">{t("searching")}</span> : <span className="eyebrow">{results.length} {t("resultsFor")} "{searchedQuery}"</span>}
         </div>
+      )}
+
+      {hasSearched && !searching && topArtist && (
+        <section className="aivy-section" style={{ marginTop: 0 }}>
+          <div className="aivy-section-head"><h2 className="aivy-section-title">{t("artistLabel")}</h2></div>
+          <div
+            className="aivy-search-artist-top"
+            onClick={() => openArtist(topArtist)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter") openArtist(topArtist); }}
+          >
+            <span className="art">
+              <SmartCover src={topArtist.image} seed={"artist" + (topArtist.id || topArtist.name)} size={208} radius={999} style={{ width: "100%", height: "100%" }} />
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span className="n" style={{ display: "block" }}>{topArtist.name}</span>
+              <span className="r" style={{ display: "block" }}>{t("openArtistProfile")}</span>
+            </span>
+            <ChevronRight className="go" size={22} />
+          </div>
+        </section>
+      )}
+
+      {hasSearched && !searching && otherArtists.length > 0 && (
+        <section className="aivy-section">
+          <div className="aivy-section-head"><h2 className="aivy-section-title">{t("similarArtists")}</h2></div>
+          <HoverRail>
+            {otherArtists.map((a) => (
+              <div
+                key={a.id || a.name}
+                className="aivy-artist-hit"
+                onClick={() => openArtist(a)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter") openArtist(a); }}
+              >
+                <span className="art">
+                  <SmartCover src={a.image} seed={"artist" + (a.id || a.name)} size={116} radius={999} style={{ width: "100%", height: "100%" }} />
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span className="n" style={{ display: "block" }}>{a.name}</span>
+                  <span className="r" style={{ display: "block" }}>{t("artistLabel")}</span>
+                </span>
+              </div>
+            ))}
+          </HoverRail>
+        </section>
       )}
 
       {hasSearched && (

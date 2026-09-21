@@ -788,7 +788,7 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-aod-meta .t{ font-size: 13px; color: rgba(255,255,255,.72); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
 .aivy-aod-meta .a{ font-size: 11.5px; color: rgba(255,255,255,.42); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
 .aivy-aod-dot{ width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.3); flex-shrink: 0; }
-.aivy-aod-dot.is-playing{ background: #8fe08a; animation: aivy-aod-pulse 1.8s var(--ease) infinite; }
+.aivy-aod-dot.is-playing{ background: var(--artist-accent, var(--accent-strong)); animation: aivy-aod-pulse 1.8s var(--ease) infinite; }
 .aivy-aod-hint{ position: absolute; bottom: calc(30px + var(--safe-b)); font-size: 11.5px; color: rgba(255,255,255,.3); letter-spacing: .02em; }
 @keyframes aivy-aod-pulse{ 0%, 100%{ opacity: 1; } 50%{ opacity: .35; } }
 
@@ -926,6 +926,23 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-am-media :is(video, img, canvas, svg){
   width: 100%; height: 100%; object-fit: cover; object-position: center 20%;
   border-radius: 0 !important;
+  /* Gaussian blur yang naik mengikuti scroll + sedikit zoom supaya tepi
+     gambar tidak ikut memudar saat di-blur. */
+  filter: blur(var(--am-blur, 0px));
+  transform: scale(var(--am-zoom, 1.02));
+  transform-origin: center 30%;
+  will-change: filter, transform;
+}
+
+/* Fade bawah hero dibuat dari Gaussian blur, bukan cuma gradient gelap:
+   lapisan ini mem-blur apa pun di belakangnya, lalu di-mask supaya kekuatannya
+   naik bertahap ke bawah dan menyatu mulus dengan warna solid halaman. */
+.aivy-am-media-blur{
+  position: absolute; inset: 0; pointer-events: none;
+  backdrop-filter: blur(calc(18px + var(--am-progress, 0) * 22px)) saturate(118%);
+  -webkit-backdrop-filter: blur(calc(18px + var(--am-progress, 0) * 22px)) saturate(118%);
+  mask-image: linear-gradient(180deg, transparent 34%, rgba(0,0,0,.35) 54%, rgba(0,0,0,.82) 72%, #000 88%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 34%, rgba(0,0,0,.35) 54%, rgba(0,0,0,.82) 72%, #000 88%);
 }
 /* Gradasi halus: gelap tipis di atas (agar tombol nav terbaca) lalu fade sempurna ke warna solid */
 .aivy-am-media-scrim{
@@ -2246,3 +2263,110 @@ body.aivy-artist-immersive .aivy-player{
 .aivy-ai-input-row{ display: flex; align-items: center; gap: 8px; padding: 10px; border-top: 1px solid var(--line-soft); flex-shrink: 0; }
 .aivy-ai-input{ flex: 1; background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; font-size: 13.5px; color: var(--ink); }
 .aivy-ai-input:focus{ outline: none; border-color: var(--accent); }
+.aivy-hoverrail{ position: relative; min-width: 0; }
+.aivy-hoverrail-track{
+  display: flex; gap: 18px; overflow-x: auto; padding: 2px 2px 12px;
+  scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;
+}
+.aivy-hoverrail-track::-webkit-scrollbar{ display: none; }
+.aivy-hoverrail-track > *{ flex: 0 0 auto; }
+.aivy-hoverrail-btn{
+  position: absolute; top: calc(50% - 22px); transform: translateY(-50%);
+  width: 40px; height: 40px; border-radius: 50%; z-index: 4;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--bg-elev) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
+  backdrop-filter: blur(18px) saturate(170%); -webkit-backdrop-filter: blur(18px) saturate(170%);
+  box-shadow: 0 8px 22px rgba(0,0,0,.4);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.aivy-hoverrail-btn.prev{ left: -14px; }
+.aivy-hoverrail-btn.next{ right: -14px; }
+.aivy-hoverrail:hover .aivy-hoverrail-btn:not(:disabled),
+.aivy-hoverrail:focus-within .aivy-hoverrail-btn:not(:disabled){ opacity: 1; pointer-events: auto; }
+.aivy-hoverrail-btn:hover{ background: color-mix(in srgb, var(--bg-elev-3) 80%, transparent); transform: translateY(-50%) scale(1.08); }
+.aivy-hoverrail-btn:disabled{ opacity: 0 !important; pointer-events: none; }
+@media (hover: none){
+  .aivy-hoverrail-btn{ display: none; }
+  .aivy-hoverrail-track{ scroll-snap-type: x proximity; }
+  .aivy-hoverrail-track > *{ scroll-snap-align: start; }
+}
+.aivy-am-page .aivy-am-tile .art,
+.aivy-am-page .aivy-am-latest .art{
+  background: color-mix(in srgb, #fff 6%, transparent);
+}
+.aivy-am-page .aivy-am-latest,
+.aivy-am-page .aivy-am-songgrid,
+.aivy-am-block .aivy-am-card-surface{
+  border-radius: 16px;
+}
+.aivy-am-page .aivy-am-latest{
+  padding: 14px; margin-left: -14px;
+  background: color-mix(in srgb, #fff 5%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 9%, transparent);
+  backdrop-filter: blur(22px) saturate(150%); -webkit-backdrop-filter: blur(22px) saturate(150%);
+  transition: background var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease);
+}
+.aivy-am-page .aivy-am-latest:hover{
+  background: color-mix(in srgb, #fff 9%, transparent);
+  border-color: color-mix(in srgb, #fff 16%, transparent);
+}
+.aivy-am-page .aivy-hoverrail-btn{
+  background: color-mix(in srgb, var(--am-bg) 58%, transparent);
+  border-color: color-mix(in srgb, #fff 18%, transparent);
+  color: #fff;
+}
+.aivy-am-about{
+  background: color-mix(in srgb, var(--am-bg, var(--bg-elev)) 55%, transparent);
+  backdrop-filter: blur(40px) saturate(170%); -webkit-backdrop-filter: blur(40px) saturate(170%);
+}
+body.aivy-artist-immersive .aivy-sidebar,
+body.aivy-artist-immersive .aivy-rightpanel,
+body.aivy-artist-immersive .aivy-rightpanel-rail{
+  backdrop-filter: blur(34px) saturate(180%); -webkit-backdrop-filter: blur(34px) saturate(180%);
+}
+body.aivy-artist-immersive :is(.aivy-card, .aivy-queue-row, .aivy-rightpanel .aivy-panel-card){
+  background: color-mix(in srgb, #fff 6%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 8%, transparent);
+  backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+body.aivy-artist-immersive .aivy-player{
+  backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+}
+.aivy-search-artists{ display: flex; gap: 16px; overflow: visible; }
+.aivy-artist-hit{
+  display: flex; align-items: center; gap: 14px; min-width: 0; cursor: pointer;
+  padding: 12px 18px 12px 12px; border-radius: var(--radius-pill);
+  background: var(--bg-elev); border: 1px solid var(--line);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.aivy-artist-hit:hover{ background: var(--bg-elev-2); border-color: var(--ink-faint); transform: translateY(-2px); }
+.aivy-artist-hit .art{ width: 58px; height: 58px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--bg-elev-2); }
+.aivy-artist-hit .art :is(img, svg){ width: 100%; height: 100%; object-fit: cover; border-radius: 50% !important; }
+.aivy-artist-hit .n{ font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aivy-artist-hit .r{ font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.aivy-search-artist-top{
+  display: flex; align-items: center; gap: 20px; padding: 18px;
+  border-radius: var(--radius-lg); background: var(--bg-elev); border: 1px solid var(--line);
+  cursor: pointer; min-width: 0;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.aivy-search-artist-top:hover{ background: var(--bg-elev-2); border-color: var(--ink-faint); }
+.aivy-search-artist-top .art{ width: 104px; height: 104px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
+.aivy-search-artist-top .art :is(img, svg){ width: 100%; height: 100%; object-fit: cover; border-radius: 50% !important; }
+.aivy-search-artist-top .n{ font-family: var(--font-display); font-size: 24px; font-weight: 700; }
+.aivy-search-artist-top .r{ font-size: 12.5px; color: var(--ink-faint); margin-top: 6px; }
+.aivy-search-artist-top .go{ margin-left: auto; color: var(--ink-faint); flex-shrink: 0; }
+@media (max-width: 640px){
+  .aivy-search-artist-top{ gap: 14px; padding: 14px; }
+  .aivy-search-artist-top .art{ width: 74px; height: 74px; }
+  .aivy-search-artist-top .n{ font-size: 18px; }
+}
+.aivy-feed-head{ margin: 4px 0 18px; }
+.aivy-feed-head h1{ font-family: var(--font-display); font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; letter-spacing: -.02em; margin: 0; }
+.aivy-feed-head p{ font-size: 13.5px; color: var(--ink-faint); margin: 8px 0 0; max-width: 62ch; }
+.aivy-feed-basis{ font-size: 12.5px; color: var(--ink-faint); margin-top: 6px; }
+.aivy-hoverrail-track > .aivy-card{ width: 168px; }
+@media (max-width: 860px){ .aivy-hoverrail-track > .aivy-card{ width: 142px; } }

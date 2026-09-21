@@ -3,7 +3,8 @@ import { Play, RefreshCw } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { CardTrack, CardAlbum, CardArtist, filterExplicit, useTrackMenuItems } from "../components.jsx";
+import { CardTrack, CardAlbum, CardArtist, filterExplicit, useTrackMenuItems, HoverRail } from "../components.jsx";
+import { FeedTabs, useForYouRow } from "./FeedPages.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
 import { uid, formatDuration } from "../lib/utils.js";
@@ -60,17 +61,20 @@ function SkeletonSongGrid({ count = 6 }) {
 }
 
 function Row({ title, items, render, scroll = false, action = null, skeleton = 8 }) {
-  const wrapClass = scroll ? "aivy-hrow aivy-scroll" : "aivy-grid";
+  const Wrap = ({ children }) => (scroll
+    ? <HoverRail>{children}</HoverRail>
+    : <div className="aivy-grid">{children}</div>);
+
   if (items === null) return (
     <section className="aivy-section"><div className="aivy-section-head"><h2 className="aivy-section-title">{title}</h2>{action}</div>
-      <div className={wrapClass}><SkeletonCardGrid count={scroll ? 6 : skeleton} /></div>
+      <Wrap><SkeletonCardGrid count={scroll ? 6 : skeleton} /></Wrap>
     </section>
   );
   if (!items.length) return null;
   return (
     <section className="aivy-section">
       <div className="aivy-section-head"><h2 className="aivy-section-title">{title}</h2>{action}</div>
-      <div className={wrapClass}>{items.map(render)}</div>
+      <Wrap>{items.map(render)}</Wrap>
     </section>
   );
 }
@@ -118,7 +122,6 @@ export function HomePage() {
   const subKey = useMemo(greetingSubKey, []);
   const { liked, history: sessionHistory, playRadio, currentTrack } = usePlayer();
   const { navigate } = useRouter();
-  const [homeTab, setHomeTab] = useState("home");
   const [savedHistory, setSavedHistory] = useState(null);
   useEffect(() => {
     let alive = true;
@@ -136,26 +139,17 @@ export function HomePage() {
   const trending = useDiscoverRow(trendingSeed, 12, "track");
   const fresh = useDiscoverRow(albumSeed, 12, "album");
   const moodCalm = useDiscoverRow("mood-santai", 12, "artist");
+  const forYou = useForYouRow(24);
+  const forYouTracks = useMemo(
+    () => filterExplicit((forYou.items || []).filter((i) => i.type === "track"), settings).slice(0, 12),
+    [forYou.items, settings]
+  );
+  const forYouAlbums = useMemo(() => (forYou.items || []).filter((i) => i.type === "album").slice(0, 14), [forYou.items]);
+  const forYouArtists = useMemo(() => (forYou.items || []).filter((i) => i.type === "artist").slice(0, 14), [forYou.items]);
+
   const trendingTracks = useMemo(() => filterExplicit(trending || [], settings).slice(0, 12), [trending, settings]);
   const freshAlbums = useMemo(() => (fresh || []).slice(0, 12), [fresh]);
   const artists = useMemo(() => (moodCalm || []).slice(0, 12), [moodCalm]);
-
-  const hotTracks = useDiscoverRow("hot-new-tracks", 12, "track", homeTab === "hot");
-  const hotAlbums = useDiscoverRow("hot-new-albums", 24, "album", homeTab === "hot");
-  const showEditorsPicks = !!settings.showEditorsPicks;
-  const picksSeedBase = settings.editorsPicksSource === "alt" ? "editors-pick-alt-" : "editors-pick-";
-  const pickAlbumsRaw = useDiscoverRow(picksSeedBase + new Date().toDateString(), 24, "album", homeTab === "picks" && showEditorsPicks);
-  const pickAlbums = useMemo(() => {
-    if (!pickAlbumsRaw) return pickAlbumsRaw;
-    if (!settings.shuffleEditorsPicks) return pickAlbumsRaw;
-    const arr = [...pickAlbumsRaw];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }, [pickAlbumsRaw, settings.shuffleEditorsPicks]);
-  const aotyAlbums = useDiscoverRow("aoty-" + new Date().getFullYear(), 24, "album", homeTab === "aoty");
 
   const bgCover = currentTrack?.cover || (!nothingPlayed && playedHistory[0]?.cover) || null;
 
@@ -187,8 +181,6 @@ export function HomePage() {
 
   useEffect(() => { loadMore(); }, []);
 
-  useEffect(() => { if (homeTab === "picks" && !showEditorsPicks) setHomeTab("home"); }, [homeTab, showEditorsPicks]);
-
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -200,9 +192,15 @@ export function HomePage() {
   const visibleItems = useMemo(() => items.filter((i) => i.type !== "track" || settings.explicitContent !== false || !i.explicit), [items, settings.explicitContent]);
   const exploreTracks = useMemo(() => visibleItems.filter((i) => i.type === "track"), [visibleItems]);
 
+  const recoTracks = forYouTracks.length ? forYouTracks : trendingTracks;
+  const recoLoading = forYou.items === null && trending === null;
+  const basedOnLabel = forYou.personalized && forYou.basedOn.length
+    ? `${t("basedOnListening")}: ${forYou.basedOn.slice(0, 3).join(", ")}`
+    : null;
+
   const startRadio = () => {
-    if (!trendingTracks.length) return;
-    playRadio(trendingTracks[0]);
+    if (!recoTracks.length) return;
+    playRadio(recoTracks[0]);
     pushToast(t("toastPlayingFullSong"));
   };
 
@@ -210,116 +208,91 @@ export function HomePage() {
     <div className="aivy-view-enter aivy-home">
       {bgCover && <div className="aivy-home-bg" style={{ backgroundImage: `url(${bgCover})` }} aria-hidden="true" />}
       <div className="aivy-home-inner">
-        <div className="aivy-home-tabs">
-          {[["home", t("tabHome")], ["hot", t("tabHotNew")], ...(showEditorsPicks ? [["picks", t("tabEditorsPicks")]] : []), ["aoty", t("tabAoty")]].map(([id, label]) => (
-            <button key={id} className={homeTab === id ? "active" : ""} onClick={() => setHomeTab(id)}>{label}</button>
-          ))}
-        </div>
+        <FeedTabs active="home" />
 
-        {homeTab === "home" && (
-          <>
-            {nothingPlayed && (
-              <div className="aivy-home-welcome">
-                <h1 className="font-display">{t("homeWelcome")}</h1>
-                <p>{t("homeWelcomeEmpty")}</p>
-              </div>
-            )}
-
-            {settings.showRecommendedSongs !== false && (
-              <section className="aivy-section" style={{ marginTop: 0 }}>
-                <div className="aivy-section-head">
-                  <div className="aivy-home-head-left">
-                    <h2 className="aivy-section-title">{t("recoSongs")}</h2>
-                    {trendingTracks.length > 0 && (
-                      <button className="aivy-chip" onClick={startRadio}>
-                        <Play size={11} /> {t("startInfiniteRadio")}
-                      </button>
-                    )}
-                  </div>
-                  <button className="aivy-icon-btn bare" onClick={() => setTrendingSeed("trending-" + Date.now())} aria-label="Refresh" title="Refresh">
-                    <RefreshCw size={15} />
-                  </button>
-                </div>
-                <div className="aivy-songlist-grid">
-                  {trending === null
-                    ? <SkeletonSongGrid count={6} />
-                    : trendingTracks.map((tr) => <SongListRow key={tr.id} track={tr} list={trendingTracks} />)}
-                </div>
-              </section>
-            )}
-
-            {settings.showRecommendedAlbums !== false && (
-              <Row
-                title={t("recoAlbums")}
-                items={fresh === null ? null : freshAlbums}
-                action={
-                  <button className="aivy-icon-btn bare" onClick={() => setAlbumSeed("fresh-" + Date.now())} aria-label="Refresh" title="Refresh">
-                    <RefreshCw size={15} />
-                  </button>
-                }
-                render={(a) => <CardAlbum key={a.id} album={a} />}
-              />
-            )}
-
-            {settings.showRecommendedArtists !== false && (
-              <Row title={t("recoArtists")} items={moodCalm === null ? null : artists} render={(a) => <CardArtist key={a.id} artist={a} />} />
-            )}
-
-            {settings.showJumpBackIn !== false && (playedHistory === null || playedHistory.length > 0) ? (
-              <Row scroll title={t("rowContinueListening")} items={playedHistory === null ? null : playedHistory.slice(0, 12)} render={(tr) => <CardTrack key={tr.id} track={tr} list={playedHistory} />} />
-            ) : null}
-
-            <section className="aivy-section">
-              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("listeningParties")}</h2></div>
-              <div className="aivy-parties-cta">
-                <p>{t("partiesSub")}</p>
-                <div className="acts">
-                  <button className="aivy-btn-primary" onClick={() => navigate("roomLobby")}>{t("createRoom")}</button>
-                  <button className="aivy-btn-ghost" onClick={() => navigate("roomLobby")}>{t("joinRoom")}</button>
-                </div>
-              </div>
-            </section>
-
-            <section className="aivy-section">
-              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("rowExplore")}</h2></div>
-              <div className="aivy-grid">
-                {visibleItems.map((item, i) => {
-                  if (item.type === "track") return <CardTrack key={`t-${item.id}-${i}`} track={item} list={exploreTracks} />;
-                  if (item.type === "album") return <CardAlbum key={`a-${item.id}-${i}`} album={item} />;
-                  return <CardArtist key={`ar-${item.id}-${i}`} artist={item} />;
-                })}
-              </div>
-          <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", padding: "26px 0" }}>
-            {loading && <SkeletonCardGrid count={4} />}
-            {done && items.length > 0 && <span className="eyebrow">{t("exploreEnd")}</span>}
+        {nothingPlayed && (
+          <div className="aivy-home-welcome">
+            <h1 className="font-display">{t("homeWelcome")}</h1>
+            <p>{t("homeWelcomeEmpty")}</p>
           </div>
-            </section>
-          </>
         )}
 
-        {homeTab === "hot" && (
-          <>
-            <section className="aivy-section" style={{ marginTop: 0 }}>
-              <div className="aivy-section-head"><h2 className="aivy-section-title">{t("tabHotNew")}</h2></div>
-              <div className="aivy-songlist-grid">
-                {hotTracks === null
-                  ? <SkeletonSongGrid count={6} />
-                  : (hotTracks || []).map((tr) => <SongListRow key={tr.id} track={tr} list={hotTracks} />)}
+        {settings.showRecommendedSongs !== false && (
+          <section className="aivy-section" style={{ marginTop: 0 }}>
+            <div className="aivy-section-head">
+              <div className="aivy-home-head-left">
+                <h2 className="aivy-section-title">{t("recoSongs")}</h2>
+                {recoTracks.length > 0 && (
+                  <button className="aivy-chip" onClick={startRadio}>
+                    <Play size={11} /> {t("startInfiniteRadio")}
+                  </button>
+                )}
               </div>
-            </section>
-            <Row title={t("recoAlbums")} items={hotAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
-          </>
+              <button
+                className="aivy-icon-btn bare"
+                onClick={() => { forYou.refresh(); setTrendingSeed("trending-" + Date.now()); }}
+                aria-label="Refresh"
+                title="Refresh"
+              >
+                <RefreshCw size={15} />
+              </button>
+            </div>
+            {basedOnLabel && <div className="aivy-feed-basis" style={{ margin: "-4px 0 10px" }}>{basedOnLabel}</div>}
+            <div className="aivy-songlist-grid">
+              {recoLoading
+                ? <SkeletonSongGrid count={6} />
+                : recoTracks.map((tr) => <SongListRow key={tr.id} track={tr} list={recoTracks} />)}
+            </div>
+          </section>
         )}
 
-        {homeTab === "picks" && showEditorsPicks && (
-          <Row title={t("tabEditorsPicks")} items={pickAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
+        {settings.showRecommendedAlbums !== false && (
+          <Row
+            title={t("recoAlbums")}
+            items={forYouAlbums.length ? forYouAlbums : (fresh === null ? null : freshAlbums)}
+            action={
+              <button className="aivy-icon-btn bare" onClick={() => setAlbumSeed("fresh-" + Date.now())} aria-label="Refresh" title="Refresh">
+                <RefreshCw size={15} />
+              </button>
+            }
+            render={(a) => <CardAlbum key={a.id} album={a} />}
+          />
         )}
 
-        {homeTab === "aoty" && (
-          <Row title={t("tabAoty")} items={aotyAlbums} render={(a) => <CardAlbum key={a.id} album={a} />} />
+        {settings.showRecommendedArtists !== false && (
+          <Row title={t("recoArtists")} items={forYouArtists.length ? forYouArtists : (moodCalm === null ? null : artists)} render={(a) => <CardArtist key={a.id} artist={a} />} />
         )}
+
+        {settings.showJumpBackIn !== false && (playedHistory === null || playedHistory.length > 0) ? (
+          <Row scroll title={t("rowContinueListening")} items={playedHistory === null ? null : playedHistory.slice(0, 12)} render={(tr) => <CardTrack key={tr.id} track={tr} list={playedHistory} />} />
+        ) : null}
+
+        <section className="aivy-section">
+          <div className="aivy-section-head"><h2 className="aivy-section-title">{t("listeningParties")}</h2></div>
+          <div className="aivy-parties-cta">
+            <p>{t("partiesSub")}</p>
+            <div className="acts">
+              <button className="aivy-btn-primary" onClick={() => navigate("roomLobby")}>{t("createRoom")}</button>
+              <button className="aivy-btn-ghost" onClick={() => navigate("roomLobby")}>{t("joinRoom")}</button>
+            </div>
+          </div>
+        </section>
+
+        <section className="aivy-section">
+          <div className="aivy-section-head"><h2 className="aivy-section-title">{t("rowExplore")}</h2></div>
+          <div className="aivy-grid">
+            {visibleItems.map((item, i) => {
+              if (item.type === "track") return <CardTrack key={`t-${item.id}-${i}`} track={item} list={exploreTracks} />;
+              if (item.type === "album") return <CardAlbum key={`a-${item.id}-${i}`} album={item} />;
+              return <CardArtist key={`ar-${item.id}-${i}`} artist={item} />;
+            })}
+          </div>
+          <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", padding: "26px 0" }}>
+        {loading && <SkeletonCardGrid count={4} />}
+        {done && items.length > 0 && <span className="eyebrow">{t("exploreEnd")}</span>}
+          </div>
+        </section>
       </div>
     </div>
   );
 }
-
