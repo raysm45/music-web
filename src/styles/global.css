@@ -608,12 +608,6 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-player-cover.cd-spin img{ border-radius: 50%; }
 .aivy-player.is-playing .aivy-player-cover.cd-spin{ animation-play-state: running; }
 .npx-cover-visualizer{ position: absolute; inset: 0; z-index: 1; opacity: .85; mix-blend-mode: screen; pointer-events: none; }
-@keyframes aivy-living-cover{ 0%, 100%{ transform: scale(1); } 50%{ transform: scale(1.035); } }
-.living-cover{ animation: aivy-living-cover 4.5s ease-in-out infinite; animation-play-state: paused; }
-.aivy-sheet.is-playing .npx-cover.living-cover,
-.aivy-player.is-playing .aivy-player-cover.living-cover,
-.aivy-mini-player.is-playing .aivy-mini-cover.living-cover{ animation-play-state: running; }
-@media (prefers-reduced-motion: reduce){ .living-cover{ animation: none; } }
 
 .aivy-animated-cover img,
 .aivy-animated-cover svg,
