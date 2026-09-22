@@ -987,27 +987,23 @@ body.aivy-resizing *{ user-select: none !important; }
   display: flex; align-items: flex-end; justify-content: center;
   text-align: center; padding: 0 28px 74px;
 }
-.aivy-am-hero-inner{ max-width: 960px; width: 100%; }
-.aivy-am-title-row{
-  display: flex; align-items: center; justify-content: center;
-  gap: 24px; flex-wrap: wrap;
-}
+.aivy-am-hero-inner{ max-width: 960px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
 .aivy-am-name{
   font-family: var(--font-display);
   font-size: clamp(28px, 4.8vw, 62px);
   font-weight: 800; line-height: 1.05; letter-spacing: -.035em;
   color: #fff; margin: 0; overflow-wrap: anywhere;
+  text-align: center; width: 100%;
   text-shadow: 0 4px 34px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.35);
 }
 .aivy-artist-title-logo{
-  display: block; margin: 0;
-  max-width: min(70%, 560px); max-height: 106px; width: auto; height: auto;
+  display: block; margin: 0 auto;
+  max-width: min(82%, 560px); max-height: 106px; width: auto; height: auto;
   object-fit: contain;
   filter: drop-shadow(0 10px 40px rgba(0,0,0,.55)) drop-shadow(0 2px 8px rgba(0,0,0,.4));
 }
 .aivy-artist-logo{ display: block; }
-.aivy-am-title-row .aivy-am-cta{ margin: 0; }
-.aivy-am-actions{ display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 20px; }
+.aivy-am-actions{ display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 24px; }
 .aivy-am-cta{
   width: 62px; height: 62px; border-radius: 50%; flex-shrink: 0;
   background: var(--am-accent); color: var(--am-accent-ink);
@@ -2571,12 +2567,15 @@ body.aivy-artist-immersive .aivy-player{
   .aivy-mv-acts{ width: 100%; }
   .aivy-mv-audio-btn{ width: 100%; }
 }
+
+/* ================================================================
+   Artist page mobile: mirror desktop tapi rapi
+   ================================================================ */
 @media (max-width: 640px){
   .aivy-am-hero{ padding: 0 16px 56px; }
-  .aivy-am-title-row{ gap: 14px; }
-  .aivy-am-name{ font-size: clamp(22px, 7.5vw, 36px); }
-  .aivy-artist-title-logo{ max-width: min(62%, 260px); max-height: 64px; }
-  .aivy-am-actions{ gap: 14px; margin-top: 18px; }
+  .aivy-am-name{ font-size: clamp(24px, 7.5vw, 40px); }
+  .aivy-artist-title-logo{ max-width: min(84%, 320px); max-height: 76px; }
+  .aivy-am-actions{ gap: 14px; margin-top: 20px; }
   .aivy-am-cta{ width: 52px; height: 52px; }
   .aivy-am-body{ padding: 6px 16px 30px; }
   .aivy-am-block{ margin-bottom: 28px; }
@@ -2592,6 +2591,7 @@ body.aivy-artist-immersive .aivy-player{
   .aivy-hoverrail-track, .aivy-am-rail{ -ms-overflow-style: none; scrollbar-width: none; }
   .aivy-hoverrail-track::-webkit-scrollbar, .aivy-am-rail::-webkit-scrollbar{ display: none; }
 }
+/* Layar sentuh: tampilkan tombol play pada tile artist supaya jelas bisa diputar */
 @media (hover: none){
   .aivy-am-page .aivy-am-tile .tile-play,
   .aivy-am-page .aivy-am-latest .tile-play{ opacity: 1; transform: none; }
