@@ -1058,10 +1058,16 @@ body.aivy-resizing *{ user-select: none !important; }
   box-shadow: 0 12px 34px rgba(0,0,0,.42);
 }
 .aivy-am-latest .art :is(img, svg, canvas){ width: 100%; height: 100%; object-fit: cover; border-radius: 0 !important; }
-.aivy-am-latest .meta{ min-width: 0; }
-.aivy-am-latest .date{ font-size: 12.5px; color: var(--am-dim); }
-.aivy-am-latest .title{ font-size: 15px; font-weight: 600; margin-top: 8px; overflow-wrap: anywhere; }
-.aivy-am-latest .sub{ font-size: 13px; color: var(--am-dim); margin-top: 4px; }
+/* Lebar meta dikunci (fixed) supaya ukuran card tidak berubah-ubah mengikuti
+   panjang judul album/lagu — teks yang kepanjangan dipotong dengan ellipsis. */
+.aivy-am-latest .meta{ width: 180px; flex-shrink: 0; }
+.aivy-am-latest .date{ font-size: 12.5px; color: var(--am-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aivy-am-latest .title{
+  font-size: 15px; font-weight: 600; margin-top: 8px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis; overflow-wrap: anywhere;
+}
+.aivy-am-latest .sub{ font-size: 13px; color: var(--am-dim); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .tile-play{
   position: absolute; right: 8px; bottom: 8px;
@@ -1159,6 +1165,7 @@ body.aivy-resizing *{ user-select: none !important; }
   .aivy-am-body{ padding: 6px 18px 32px; }
   .aivy-am-cta{ width: 54px; height: 54px; }
   .aivy-am-latest .art{ width: 132px; height: 132px; }
+  .aivy-am-latest .meta{ width: 160px; }
   .aivy-am-tile{ width: 142px; }
   .aivy-am-tile .art{ height: 142px; }
   .aivy-am-tile.is-video{ width: 252px; }
@@ -2339,7 +2346,7 @@ body.aivy-artist-immersive .aivy-player{
   border-radius: 16px;
 }
 .aivy-am-page .aivy-am-latest{
-  padding: 14px; margin-left: -14px;
+  padding: 14px;
   background: color-mix(in srgb, #fff 5%, transparent);
   border: 1px solid color-mix(in srgb, #fff 9%, transparent);
   backdrop-filter: blur(22px) saturate(150%); -webkit-backdrop-filter: blur(22px) saturate(150%);
@@ -2581,8 +2588,9 @@ body.aivy-artist-immersive .aivy-player{
   .aivy-am-block{ margin-bottom: 28px; }
   .aivy-am-head{ margin-bottom: 12px; }
   .aivy-am-head h2{ font-size: 1.15rem; }
-  .aivy-am-latest{ gap: 14px; padding: 12px; margin-left: 0; }
+  .aivy-am-latest{ gap: 14px; padding: 12px; }
   .aivy-am-latest .art{ width: 112px; height: 112px; }
+  .aivy-am-latest .meta{ width: 140px; }
   .aivy-am-song{ gap: 10px; padding: 7px 6px; }
   .aivy-am-tile{ width: 136px; }
   .aivy-am-tile .art{ height: 136px; }
