@@ -1,4 +1,4 @@
-import { getPreferredAudioQuality } from "./audioFormat.js";
+import { getPreferredAudioQuality, getPreferredAudioFormat } from "./audioFormat.js";
 
 export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.cosmicx.fun";
 
@@ -89,17 +89,23 @@ export const Api = {
     return apiGet(`/api/lyrics?${qs.toString()}`);
   },
 
-  async getStreamUrl(videoId, { prefetch = false, forceFresh = false } = {}) {
+  async getStreamUrl(videoId, { prefetch = false, forceFresh = false, title = "", artist = "" } = {}) {
     if (!videoId) return null;
     const quality = getPreferredAudioQuality();
-    const cacheKey = `${videoId}:${quality}`;
+    const format = getPreferredAudioFormat();
+    const cacheKey = `${videoId}:${format}`;
     const nowS = Math.floor(Date.now() / 1000);
     const suffix = prefetch ? "?purpose=prefetch" : "";
     const cached = !forceFresh && streamTicketCache.get(cacheKey);
     if (cached && cached.expiresAt - TICKET_MARGIN_S > nowS) {
       return `${API_BASE}/api/s/${encodeURIComponent(cached.sid)}${suffix}`;
     }
-    const ticket = await apiSend("/api/stream-ticket", "POST", { videoId, quality });
+    // Format FLAC butuh title+artist karena sumbernya stream.py (YouTube
+    // nggak punya FLAC). Tanpa itu, backend fallback ke transcode ffmpeg.
+    const body = { videoId, quality, format };
+    if (title) body.title = title;
+    if (artist) body.artist = artist;
+    const ticket = await apiSend("/api/stream-ticket", "POST", body);
     if (!ticket?.sid) throw new Error("tiket stream kosong");
     streamTicketCache.set(cacheKey, ticket);
     return `${API_BASE}/api/s/${encodeURIComponent(ticket.sid)}${suffix}`;
@@ -132,7 +138,7 @@ export const Api = {
   },
 
   trackAudioInfo: (videoId) =>
-    apiGet(`/api/track/audio-info?videoId=${encodeURIComponent(videoId || "")}&quality=${getPreferredAudioQuality()}`),
+    apiGet(`/api/track/audio-info?videoId=${encodeURIComponent(videoId || "")}&quality=${getPreferredAudioQuality()}&format=${getPreferredAudioFormat()}`),
 
   me: () => apiGet("/auth/me"),
   logout: () => apiSend("/auth/logout", "POST", undefined, { keepalive: true }),

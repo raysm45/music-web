@@ -3,6 +3,7 @@ import React, {
 } from "react";
 import { io } from "socket.io-client";
 import { Api, API_BASE } from "./lib/api.js";
+import { setPreferredAudioFormat, getPreferredAudioFormat } from "./lib/audioFormat.js";
 import { clamp, uid, debounce, pickBestAudioMatch, trackArtists } from "./lib/utils.js";
 import { makeT } from "./lib/i18n.js";
 import { useDiscordActivity } from "./lib/discordActivity.js";
@@ -98,6 +99,8 @@ function clearPlaybackState() {
 
 const DEFAULT_SETTINGS = {
   audioQuality: "preview",
+  // 'aac' | 'opus' | 'flac'
+  audioFormat: "opus",
   autoplay: true,
   crossfadeSeconds: 0,
   volumeDefault: 0.7,
@@ -247,6 +250,11 @@ export function UIProvider({ children }) {
   useEffect(() => {
     document.documentElement.dataset.contrast = settings.highContrast ? "high" : "normal";
   }, [settings.highContrast]);
+
+  // Dipakai lib/api.js pas bikin tiket stream (aac / opus / flac).
+  useEffect(() => {
+    setPreferredAudioFormat(settings.audioFormat);
+  }, [settings.audioFormat]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -745,7 +753,17 @@ export function PlayerProvider({ children }) {
     const wantFull = settings.audioQuality === "full";
     const fullSrcFor = async (videoId) => {
       try {
-        return { src: await Api.getStreamUrl(videoId, { prefetch, forceFresh }), preview: false, videoId };
+        const artistName = (track.artist?.name || (typeof track.artist === "string" ? track.artist : "") || "").trim();
+        return {
+          src: await Api.getStreamUrl(videoId, {
+            prefetch,
+            forceFresh,
+            title: track.title || "",
+            artist: artistName,
+          }),
+          preview: false,
+          videoId,
+        };
       } catch { return null; }
     };
 
@@ -776,7 +794,7 @@ export function PlayerProvider({ children }) {
       if (full) return full;
     }
     return null;
-  }, [settings.audioQuality]);
+  }, [settings.audioQuality, settings.audioFormat]);
 
   const resumeAudioCtx = useCallback(() => {
     const graph = ensureAudioGraph();
@@ -820,7 +838,11 @@ export function PlayerProvider({ children }) {
       } else if (resolved.preview) {
         setAudioFormat({ label: "MP3", mimeType: "audio/mpeg", codec: "mp3", container: "MP3" });
       } else if (resolved.videoId) {
-        Api.trackAudioInfo(resolved.videoId)
+        // Format FLAC disiapkan server (stream.py / transcode) — byte yang
+        // masuk ke <audio> pasti FLAC, nggak perlu nanya audio-info dulu.
+        if (getPreferredAudioFormat() === "flac") {
+          setAudioFormat({ label: "FLAC", mimeType: "audio/flac", codec: "flac", container: "FLAC" });
+        } else Api.trackAudioInfo(resolved.videoId)
           .then((info) => {
             if (cancelled) return;
             const fmt = info?.format;

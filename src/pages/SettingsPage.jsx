@@ -518,6 +518,13 @@ export function SettingsPage() {
         <SelectRow label={tt("Kualitas audio", "Audio quality")} hint={tt("Pratinjau: 30 detik resmi dari Deezer. Penuh: eksperimental lewat YouTube.", "Preview: official 30s from Deezer. Full: experimental via YouTube.")}
           value={settings.audioQuality || "preview"} onChange={set("audioQuality")}
           options={[{ value: "preview", label: tt("Pratinjau (disarankan)", "Preview (recommended)") }, { value: "full", label: tt("Penuh (eksperimental)", "Full (experimental)") }]} />
+        <SelectRow label={tt("Format audio", "Audio format")} hint={tt("Berlaku untuk pemutaran Penuh. FLAC: sumber lossless via stream.py (butuh judul+artis), fallback transcode YouTube — putaran pertama lebih lama karena disiapkan dulu.", "Applies to Full playback. FLAC: lossless source via stream.py (needs title+artist), falls back to YouTube transcode — first play is slower while it prepares the file.")}
+          value={settings.audioFormat || "opus"} onChange={set("audioFormat")}
+          options={[
+            { value: "aac", label: tt("AAC (m4a \u00b7 128kbps)", "AAC (m4a \u00b7 128kbps)") },
+            { value: "opus", label: tt("OPUS (webm \u00b7 160kbps)", "OPUS (webm \u00b7 160kbps)") },
+            { value: "flac", label: tt("FLAC (lossless)", "FLAC (lossless)") },
+          ]} />
       </SettingSection>
 
       <SettingSection title={tt("Pemutaran", "Playback")}>
