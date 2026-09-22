@@ -377,16 +377,26 @@ export function ArtistPage() {
       {}
       <header ref={heroRef} className="aivy-am-hero">
         <div className="aivy-am-hero-inner">
-          {showLogo ? (
-            <img
-              className="aivy-artist-title-logo"
-              src={heroLogoUrl}
-              alt={artist.name}
-              onError={() => setLogoBroken(true)}
-            />
-          ) : (
-            <h1 className="aivy-am-name">{artist.name}</h1>
-          )}
+          <div className="aivy-am-title-row">
+            {showLogo ? (
+              <img
+                className="aivy-artist-title-logo"
+                src={heroLogoUrl}
+                alt={artist.name}
+                onError={() => setLogoBroken(true)}
+              />
+            ) : (
+              <h1 className="aivy-am-name">{artist.name}</h1>
+            )}
+            <button
+              className="aivy-am-cta"
+              onClick={() => topTracks.length && playList(topTracks, 0)}
+              aria-label={t("playAll")}
+              title={t("playAll")}
+            >
+              <Play size={25} fill="currentColor" />
+            </button>
+          </div>
           <div className="aivy-am-actions">
             <button
               className="aivy-am-ghost"
@@ -396,14 +406,6 @@ export function ArtistPage() {
               title={t("aboutArtist")}
             >
               <Info size={18} />
-            </button>
-            <button
-              className="aivy-am-cta"
-              onClick={() => topTracks.length && playList(topTracks, 0)}
-              aria-label={t("playAll")}
-              title={t("playAll")}
-            >
-              <Play size={25} fill="currentColor" />
             </button>
             <button
               className={`aivy-am-ghost ${favorite ? "active" : ""}`}
