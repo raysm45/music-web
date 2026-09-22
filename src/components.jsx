@@ -506,7 +506,10 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
         <span className="hover-play">{isCurrent && isPlaying ? <Pause size={15} /> : <Play size={15} />}</span>
       </button>
       <div className="meta" onClick={handlePlay} style={{ cursor: "pointer" }}>
-        <span className="t">{track.explicit && <span className="aivy-explicit-badge" title="Explicit">E</span>}{track.title}</span>
+        <MarqueeText
+          as="span" className="t" text={track.title}
+          prefix={track.explicit ? <span className="aivy-explicit-badge" title="Explicit">E</span> : null}
+        />
         <span className="a">
           {(track.artists?.length ? track.artists : (track.artist ? [track.artist] : [])).map((a, i, arr) => (
             <React.Fragment key={a.id || a.name || i}>
@@ -569,7 +572,7 @@ export function CardTrack({ track, list }) {
         <SmartCover src={track.cover} seed={track.id + track.title} size={140} radius={8} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
         <button className="aivy-card-play" onClick={handlePlay} aria-label="Putar">{isCurrent && isPlaying ? <Pause size={16} /> : <Play size={16} />}</button>
       </div>
-      <div className="title">{track.title}</div>
+      <MarqueeText as="div" className="title" text={track.title} />
       <div className="sub">{track.artist?.name}</div>
     </div>
   );
@@ -652,6 +655,59 @@ export function FlipList({ items, getKey, renderItem, className, as: Tag = "div"
   );
 }
 
+/**
+ * Judul lagu yang kepanjangan akan berjalan (marquee) secara otomatis,
+ * tapi HANYA di layar mobile (<=860px) dan HANYA jika teksnya memang
+ * overflow dari kontainernya. Di desktop selalu statis (ellipsis "...").
+ *
+ * `as`/`className` menggantikan elemen judul yang biasanya dipakai (mis. "t", "title", "ttl")
+ * supaya style lama (font-weight, font-size, dll) tetap kepakai.
+ * `prefix`/`suffix` untuk elemen non-teks yang harus tetap diam di tempat (badge "E", "Preview", dll).
+ */
+export function MarqueeText({ text, className = "", as: Tag = "span", prefix = null, suffix = null, gap = 40, pxPerSecond = 42 }) {
+  const isMobile = useIsMobile(860);
+  const wrapRef = useRef(null);
+  const segRef = useRef(null);
+  const [overflow, setOverflow] = useState(false);
+  const [duration, setDuration] = useState(10);
+
+  useEffect(() => {
+    const measure = () => {
+      const wrap = wrapRef.current, seg = segRef.current;
+      if (!wrap || !seg) return;
+      const over = seg.scrollWidth - wrap.clientWidth > 2;
+      setOverflow(over);
+      if (over) setDuration(Math.max(6, (seg.scrollWidth + gap) / pxPerSecond));
+    };
+    measure();
+    let ro;
+    if (typeof ResizeObserver !== "undefined" && wrapRef.current) {
+      ro = new ResizeObserver(measure);
+      ro.observe(wrapRef.current);
+    }
+    window.addEventListener("resize", measure);
+    return () => { ro && ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [text, gap, pxPerSecond]);
+
+  const animate = isMobile && overflow;
+
+  return (
+    <Tag className={`aivy-marquee-row ${className}`}>
+      {prefix}
+      <span ref={wrapRef} className="aivy-marquee">
+        <span
+          className={`aivy-marquee-track ${animate ? "is-animating" : ""}`}
+          style={animate ? { animationDuration: `${duration}s` } : undefined}
+        >
+          <span ref={segRef} className="aivy-marquee-seg">{text}</span>
+          {animate && <span className="aivy-marquee-seg" aria-hidden="true">{text}</span>}
+        </span>
+      </span>
+      {suffix}
+    </Tag>
+  );
+}
+
 export function CardAlbum({ album }) {
   const { navigate } = useRouter();
   const { playList } = usePlayer();
@@ -695,7 +751,7 @@ export function CardArtist({ artist }) {
   return (
     <div className="aivy-card" onClick={() => navigate("artist", { params: { id: artist.id } })} style={{ cursor: "pointer" }}>
       <div className="art-wrap round">
-        <SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={128} radius={999} style={{ width: "100%", height: "auto", borderRadius: "50%" }} />
+        <SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={128} radius={999} style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", borderRadius: "50%" }} />
       </div>
       <div className="title" style={{ textAlign: "center" }}>{artist.name}</div>
       <div className="sub" style={{ textAlign: "center" }}>{t("artistLabel")}</div>
@@ -943,7 +999,7 @@ export function PlayerBar({ onOpenNowPlaying }) {
               <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={52} radius={settings.noRoundCover ? 0 : 8} />
             </span>
             <div className="meta">
-              <span className="t">{currentTrack.title}</span>
+              <MarqueeText as="span" className="t" text={currentTrack.title} />
               <span className="a" onClick={() => currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } })} style={{ cursor: "pointer" }}>
                 {currentTrack.artist?.name}{isPreviewClip && <span className="preview-tag">{` \u00b7 ${t("previewTag")}`}</span>}
               </span>
@@ -996,7 +1052,7 @@ export function MiniPlayer({ onExpand }) {
       <span className={`aivy-mini-cover ${settings.noRoundCover ? "no-round" : ""}`}>
         <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
       </span>
-      <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
+      <div className="meta"><MarqueeText as="span" className="t" text={currentTrack.title} /><span className="a">{currentTrack.artist?.name}</span></div>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
       </button>
@@ -1557,7 +1613,10 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               </div>
               <div className="npx-metarow">
                 <div className="npx-titles" ref={metaRef}>
-                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}{formatLabel && <span className="badge badge-opus">{formatLabel}</span>}</div>
+                  <MarqueeText
+                    as="div" className="t" text={currentTrack.title}
+                    suffix={<>{isPreviewClip && <span className="badge">{t("preview30")}</span>}{formatLabel && <span className="badge badge-opus">{formatLabel}</span>}</>}
+                  />
                   <div
                     className="a"
                     onClick={() => { if (lyricsMode) return; currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}
@@ -1766,10 +1825,10 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
           <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={8} style={{ width: 44, height: 44 }} />
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="aivy-optsheet-eyebrow">{t("nowPlaying")}</div>
-            <div className="t">
-              {track.title}
-              {formatLabel && <span className="badge badge-opus" style={{ marginLeft: 6 }}>{formatLabel}</span>}
-            </div>
+            <MarqueeText
+              as="div" className="t" text={track.title}
+              suffix={formatLabel ? <span className="badge badge-opus" style={{ marginLeft: 6 }}>{formatLabel}</span> : null}
+            />
             <div className="a">{track.artist?.name || "\u2014"}</div>
           </div>
         </div>
@@ -1956,7 +2015,7 @@ export function TrackDetailSheet({ open, track, isPreviewClip, onClose }) {
             <SmartCover src={track.cover} seed={track.id + track.title} size={52} radius={10} style={{ width: 52, height: 52 }} />
             <div style={{ minWidth: 0 }}>
               <div className="eyebrow">{t("npDetail")}</div>
-              <div className="ttl" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.title}</div>
+              <MarqueeText as="div" className="ttl" text={track.title} />
               <div className="sub" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.artist?.name || "\u2014"}</div>
             </div>
           </div>
@@ -2001,7 +2060,7 @@ export function AlwaysOnDisplay({ open, track, onClose, animated = false, reduce
           animated={animated && open} reduceMotion={reduceMotion} reloadToken={reloadToken}
         />
         <div className="aivy-aod-meta">
-          <div className="t">{track.title}</div>
+          <MarqueeText as="div" className="t" text={track.title} />
           <div className="a">{track.artist?.name || "\u2014"}</div>
         </div>
         <span className={`aivy-aod-dot ${isPlaying ? "is-playing" : ""}`} aria-hidden="true" />
@@ -2385,7 +2444,7 @@ function QueueTrackMeta({ track }) {
     <div className="aivy-queue-meta">
       <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={6} style={{ width: 44, height: 44 }} />
       <div className="txt">
-        <span className="t">{track.title}</span>
+        <MarqueeText as="span" className="t" text={track.title} />
         <span className="a">{track.artist?.name || "\u2014"}</span>
       </div>
     </div>
@@ -2604,7 +2663,7 @@ function NowPlayingPane() {
         song={currentTrack.title} artist={currentTrack.artist?.name}
         animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
       />
-      <div className="t">{currentTrack.title}</div>
+      <MarqueeText as="div" className="t" text={currentTrack.title} />
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
       <AboutArtistSection track={currentTrack} />
@@ -3388,7 +3447,10 @@ export function LyricsOverlay() {
               </div>
               <div className="row">
                 <div className="meta">
-                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
+                  <MarqueeText
+                    as="div" className="t" text={currentTrack.title}
+                    suffix={isPreviewClip ? <span className="badge">{t("preview30")}</span> : null}
+                  />
                   <div className="a">{currentTrack.artist?.name}</div>
                 </div>
                 <div className="aivy-lyrics-actions">

@@ -3,7 +3,7 @@ import { Play, RefreshCw } from "lucide-react";
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { CardTrack, CardAlbum, CardArtist, filterExplicit, useTrackMenuItems, HoverRail } from "../components.jsx";
+import { CardTrack, CardAlbum, CardArtist, filterExplicit, useTrackMenuItems, HoverRail, MarqueeText } from "../components.jsx";
 import { FeedTabs, useForYouRow } from "./FeedPages.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
@@ -109,7 +109,7 @@ function SongListRow({ track, list }) {
         <SmartCover src={track.cover} seed={track.id + track.title} size={80} radius={6} style={{ width: "100%", height: "100%" }} />
       </span>
       <span className="meta">
-        <span className="t">{track.title}</span>
+        <MarqueeText as="span" className="t" text={track.title} />
         <span className="a">{track.artist?.name || "\u2014"}</span>
       </span>
       <span className="dur font-mono">{formatDuration(track.duration)}</span>

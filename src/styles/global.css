@@ -251,6 +251,23 @@ body.aivy-resizing *{ user-select: none !important; }
 .aivy-card .art-wrap.round{ border-radius: 50%; }
 .aivy-card .art-wrap.round img, .aivy-card .art-wrap.round svg{ border-radius: 50%; }
 .aivy-card .title{ font-weight: 600; margin-bottom: .25rem; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Marquee (running text) for song titles that overflow their container. Only animates on mobile viewports; desktop always keeps a static ellipsis truncation. */
+.aivy-marquee-row{ display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; }
+.aivy-marquee{ display: block; flex: 1 1 auto; min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.aivy-marquee .aivy-marquee-track{ display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top; }
+.aivy-marquee .aivy-marquee-seg{ display: inline-block; }
+@media (max-width: 860px){
+  .aivy-marquee .aivy-marquee-track.is-animating{
+    display: inline-flex; max-width: none; overflow: visible; text-overflow: clip;
+    animation-name: aivy-marquee-scroll; animation-timing-function: linear; animation-iteration-count: infinite;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  }
+  .aivy-marquee .aivy-marquee-track.is-animating .aivy-marquee-seg{ padding-right: 40px; flex-shrink: 0; }
+}
+@keyframes aivy-marquee-scroll{ from{ transform: translateX(0); } to{ transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce){ .aivy-marquee .aivy-marquee-track.is-animating{ animation: none !important; } }
 .aivy-card .sub{ font-size: 12px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 0; }
 .aivy-card-play{ position: absolute; right: 6px; bottom: 6px; width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(10px); transition: all .2s cubic-bezier(.4, 0, .2, 1); box-shadow: 0 4px 6px -1px rgba(0,0,0,.18); border: none; cursor: pointer; }
 .aivy-card:hover .aivy-card-play, .aivy-card:focus-within .aivy-card-play{ opacity: 1; transform: translateY(0); }

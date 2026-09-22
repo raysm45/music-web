@@ -3,7 +3,7 @@ import { Play, Pause, Shuffle, Info, Star, MoreHorizontal, ChevronRight, X } fro
 import { Api } from "../lib/api.js";
 import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
-import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems, HoverRail, MusicVideoView } from "../components.jsx";
+import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems, HoverRail, MusicVideoView, MarqueeText } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
 
 const TOP_SONGS_PREVIEW = 15;
@@ -153,10 +153,10 @@ function AmSongRow({ track, index, list }) {
         <span className="hover-play">{isCurrent && isPlaying ? <Pause size={15} /> : <Play size={15} fill="currentColor" />}</span>
       </span>
       <span className="meta">
-        <span className="t">
-          {track.explicit && <span className="aivy-explicit-badge" title="Explicit">E</span>}
-          {track.title}
-        </span>
+        <MarqueeText
+          as="span" className="t" text={track.title}
+          prefix={track.explicit ? <span className="aivy-explicit-badge" title="Explicit">E</span> : null}
+        />
         {sub && <span className="s">{sub}</span>}
       </span>
       <button className="dots" onClick={openMenu} aria-label={t("menuMore")}><MoreHorizontal size={17} /></button>
