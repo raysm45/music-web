@@ -7,7 +7,8 @@ import {
   Check, ArrowLeft, Sun, Moon, Music2, Share2, UserPlus, Radio, Settings as SettingsIcon,
   Lock, Globe, Crown, Mic2, AlertTriangle, GripVertical, Trash2, Film, Send,
   PanelLeft, PanelRight, Type, Star, Airplay, Mic, MessageSquareQuote, Smile,
-  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Github, Sparkles, RefreshCw,
+  Cast, Info, Copy, ListPlus, SlidersHorizontal, Gauge, Maximize, Minimize, Github, Sparkles, RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import {
   usePlayer, useUI,
@@ -83,7 +84,10 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
       if (signed < 0) { reset(); return; }
       st.dragging = true;
       st.dragStartTime = Date.now();
-      if (dragRef?.current) dragRef.current.style.transition = "none";
+      if (dragRef?.current) {
+        dragRef.current.style.transition = "none";
+        dragRef.current.style.willChange = "transform";
+      }
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     }
     if (st.dragging) { try { e.preventDefault(); } catch {} }
@@ -95,7 +99,7 @@ function useVerticalSwipe({ active, direction = "down", onTrigger, dragRef, scro
   }, [direction, dragRef]);
 
   const finish = useCallback((commit) => {
-    if (dragRef?.current) { dragRef.current.style.transition = ""; dragRef.current.style.transform = ""; }
+    if (dragRef?.current) { dragRef.current.style.transition = ""; dragRef.current.style.transform = ""; dragRef.current.style.willChange = ""; }
     if (commit) onTrigger();
     reset();
   }, [dragRef, onTrigger]);
@@ -502,7 +506,10 @@ export function TrackRow({ track, index, list, showIndex = true, showAlbum = fal
         <span className="hover-play">{isCurrent && isPlaying ? <Pause size={15} /> : <Play size={15} />}</span>
       </button>
       <div className="meta" onClick={handlePlay} style={{ cursor: "pointer" }}>
-        <span className="t">{track.explicit && <span className="aivy-explicit-badge" title="Explicit">E</span>}{track.title}</span>
+        <MarqueeText
+          as="span" className="t" text={track.title}
+          prefix={track.explicit ? <span className="aivy-explicit-badge" title="Explicit">E</span> : null}
+        />
         <span className="a">
           {(track.artists?.length ? track.artists : (track.artist ? [track.artist] : [])).map((a, i, arr) => (
             <React.Fragment key={a.id || a.name || i}>
@@ -565,7 +572,7 @@ export function CardTrack({ track, list }) {
         <SmartCover src={track.cover} seed={track.id + track.title} size={140} radius={8} style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
         <button className="aivy-card-play" onClick={handlePlay} aria-label="Putar">{isCurrent && isPlaying ? <Pause size={16} /> : <Play size={16} />}</button>
       </div>
-      <div className="title">{track.title}</div>
+      <MarqueeText as="div" className="title" text={track.title} />
       <div className="sub">{track.artist?.name}</div>
     </div>
   );
@@ -648,6 +655,70 @@ export function FlipList({ items, getKey, renderItem, className, as: Tag = "div"
   );
 }
 
+/**
+ * Judul lagu yang kepanjangan akan berjalan (marquee) secara otomatis,
+ * tapi HANYA di layar mobile (<=860px) dan HANYA jika teksnya memang
+ * overflow dari kontainernya. Di desktop selalu statis (ellipsis "...").
+ *
+ * `as`/`className` menggantikan elemen judul yang biasanya dipakai (mis. "t", "title", "ttl")
+ * supaya style lama (font-weight, font-size, dll) tetap kepakai.
+ * `prefix`/`suffix` untuk elemen non-teks yang harus tetap diam di tempat (badge "E", "Preview", dll).
+ */
+export function MarqueeText({ text, className = "", as: Tag = "span", prefix = null, suffix = null, gap = 40, pxPerSecond = 42 }) {
+  const isMobile = useIsMobile(860);
+  const wrapRef = useRef(null);
+  const segRef = useRef(null);
+  const [overflow, setOverflow] = useState(false);
+  const [duration, setDuration] = useState(10);
+
+  useEffect(() => {
+    let alive = true;
+    const measure = () => {
+      const wrap = wrapRef.current, seg = segRef.current;
+      if (!wrap || !seg) return;
+      const over = seg.scrollWidth - wrap.clientWidth > 2;
+      setOverflow(over);
+      if (over) setDuration(Math.max(6, (seg.scrollWidth + gap) / pxPerSecond));
+    };
+    measure();
+    // Re-measure once the custom webfont finishes loading: text is first painted
+    // with a fallback font (FOUT), so an initial measurement can be briefly wrong
+    // (too wide or too narrow) and the container's own size never changes to
+    // trigger a re-check via ResizeObserver once the real font swaps in.
+    if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { if (alive) measure(); }).catch(() => {});
+    }
+    // Extra safety net: some webviews report fonts.ready before a swap has
+    // actually repainted, so double-check a moment later too.
+    const t1 = setTimeout(measure, 400);
+    let ro;
+    if (typeof ResizeObserver !== "undefined" && wrapRef.current) {
+      ro = new ResizeObserver(measure);
+      ro.observe(wrapRef.current);
+    }
+    window.addEventListener("resize", measure);
+    return () => { alive = false; clearTimeout(t1); ro && ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [text, gap, pxPerSecond]);
+
+  const animate = isMobile && overflow;
+
+  return (
+    <Tag className={`aivy-marquee-row ${className}`}>
+      {prefix}
+      <span ref={wrapRef} className="aivy-marquee">
+        <span
+          className={`aivy-marquee-track ${animate ? "is-animating" : ""}`}
+          style={animate ? { animationDuration: `${duration}s` } : undefined}
+        >
+          <span ref={segRef} className="aivy-marquee-seg">{text}</span>
+          {animate && <span className="aivy-marquee-seg" aria-hidden="true">{text}</span>}
+        </span>
+      </span>
+      {suffix}
+    </Tag>
+  );
+}
+
 export function CardAlbum({ album }) {
   const { navigate } = useRouter();
   const { playList } = usePlayer();
@@ -691,10 +762,66 @@ export function CardArtist({ artist }) {
   return (
     <div className="aivy-card" onClick={() => navigate("artist", { params: { id: artist.id } })} style={{ cursor: "pointer" }}>
       <div className="art-wrap round">
-        <SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={128} radius={999} style={{ width: "100%", height: "auto", borderRadius: "50%" }} />
+        <SmartCover src={artist.image} seed={"artist" + artist.id + artist.name} size={128} radius={999} style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", borderRadius: "50%" }} />
       </div>
       <div className="title" style={{ textAlign: "center" }}>{artist.name}</div>
       <div className="sub" style={{ textAlign: "center" }}>{t("artistLabel")}</div>
+    </div>
+  );
+}
+
+/**
+ * Rail horizontal dengan tombol panah yang muncul saat kursor hover.
+ * Menggantikan scroll geser manual: konten digeser per "halaman" penuh.
+ */
+export function HoverRail({ children, className = "", step = 0.86 }) {
+  const ref = useRef(null);
+  const [edge, setEdge] = useState({ start: true, end: true });
+
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setEdge({ start: el.scrollLeft <= 2, end: max <= 2 || el.scrollLeft >= max - 2 });
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", measure); ro.disconnect(); };
+  }, [measure, children]);
+
+  const scrollBy = (dir) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * el.clientWidth * step, behavior: "smooth" });
+  };
+
+  return (
+    <div className={`aivy-hoverrail ${className}`}>
+      <button
+        type="button"
+        className="aivy-hoverrail-btn prev"
+        onClick={() => scrollBy(-1)}
+        disabled={edge.start}
+        aria-label="Sebelumnya"
+      >
+        <ChevronLeft size={20} />
+      </button>
+      <div className="aivy-hoverrail-track" ref={ref}>{children}</div>
+      <button
+        type="button"
+        className="aivy-hoverrail-btn next"
+        onClick={() => scrollBy(1)}
+        disabled={edge.end}
+        aria-label="Berikutnya"
+      >
+        <ChevronRight size={20} />
+      </button>
     </div>
   );
 }
@@ -876,14 +1003,14 @@ export function PlayerBar({ onOpenNowPlaying }) {
         {currentTrack ? (
           <>
             <span
-              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false && !settings.cdCoverSpin ? "living-cover" : ""}`}
+              className={`aivy-player-cover ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.noRoundCover ? "no-round" : ""}`}
               onClick={handleCoverClick} role="button" tabIndex={0} style={{ cursor: "pointer" }}
               onKeyDown={(e) => { if (e.key === "Enter") handleCoverClick(); }}
             >
               <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={52} radius={settings.noRoundCover ? 0 : 8} />
             </span>
             <div className="meta">
-              <span className="t">{currentTrack.title}</span>
+              <MarqueeText as="span" className="t" text={currentTrack.title} />
               <span className="a" onClick={() => currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } })} style={{ cursor: "pointer" }}>
                 {currentTrack.artist?.name}{isPreviewClip && <span className="preview-tag">{` \u00b7 ${t("previewTag")}`}</span>}
               </span>
@@ -922,16 +1049,10 @@ export function PlayerBar({ onOpenNowPlaying }) {
 export function MiniPlayer({ onExpand }) {
   const { currentTrack, isPlaying, togglePlay, next, loadingAudio } = usePlayer();
   const { registerFill } = useScrubberBinding();
-  const { t, settings, toggleLyrics } = useUI();
-  const { navigate } = useRouter();
+  const { t, settings } = useUI();
   const [pulsing, setPulsing] = useState(false);
   const miniRef = useRef(null);
-  const handleExpand = () => {
-    const mode = settings.nowPlayingView || "fullscreen";
-    if (mode === "lyrics") toggleLyrics();
-    else if (mode === "album" && currentTrack?.album?.id) navigate("album", { params: { id: currentTrack.album.id } });
-    else onExpand?.();
-  };
+  const handleExpand = () => onExpand?.();
   const swipe = useVerticalSwipe({ active: !!currentTrack, direction: "up", onTrigger: handleExpand, dragRef: miniRef, threshold: 36, velocityThreshold: 0.35 });
   if (!currentTrack) return null;
   return (
@@ -939,10 +1060,10 @@ export function MiniPlayer({ onExpand }) {
       className={`aivy-mini-player ${isPlaying ? "is-playing" : ""}`} ref={miniRef} onClick={handleExpand} role="button" tabIndex={0} aria-label={t("openNowPlaying")}
       onPointerDown={swipe.onPointerDown} onPointerMove={swipe.onPointerMove} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
     >
-      <span className={`aivy-mini-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.livingCover !== false ? "living-cover" : ""}`}>
+      <span className={`aivy-mini-cover ${settings.noRoundCover ? "no-round" : ""}`}>
         <SmartCover src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={40} radius={settings.noRoundCover ? 0 : 6} />
       </span>
-      <div className="meta"><span className="t">{currentTrack.title}</span><span className="a">{currentTrack.artist?.name}</span></div>
+      <div className="meta"><MarqueeText as="span" className="t" text={currentTrack.title} /><span className="a">{currentTrack.artist?.name}</span></div>
       <button className="aivy-icon-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={isPlaying ? t("pause") : t("play")}>
         {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
       </button>
@@ -983,50 +1104,66 @@ function useHeroFlip(mode, targets) {
   const firstRects = useRef(null);
   const cleanupTimer = useRef(null);
 
+  const resetStyles = () => {
+    targets.forEach(({ ref }) => {
+      const el = ref.current;
+      if (!el) return;
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.transformOrigin = "";
+      el.style.backfaceVisibility = "";
+      el.style.willChange = "";
+    });
+  };
+
   const capture = () => {
     const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) { firstRects.current = null; return; }
-    firstRects.current = targets.map(({ ref }) => (ref.current ? ref.current.getBoundingClientRect() : null));
+    const rects = targets.map(({ ref }) => (ref.current ? ref.current.getBoundingClientRect() : null));
+    targets.forEach(({ ref }) => {
+      const el = ref.current;
+      if (!el) return;
+      el.style.willChange = "transform";
+      el.style.backfaceVisibility = "hidden";
+    });
+    firstRects.current = rects;
   };
 
   useLayoutEffect(() => {
     const firstRectsList = firstRects.current;
     firstRects.current = null;
     if (!firstRectsList) return undefined;
-
-    const play = (el, firstRect, { uniform = false } = {}) => {
+    const plans = [];
+    targets.forEach(({ ref, uniform }, i) => {
+      const el = ref.current;
+      const firstRect = firstRectsList[i];
       if (!el || !firstRect || !firstRect.width || !firstRect.height) return;
       const last = el.getBoundingClientRect();
       if (!last.width || !last.height) return;
-      const dx = firstRect.left - last.left;
-      const dy = firstRect.top - last.top;
-      let sx = firstRect.width / last.width;
-      let sy = firstRect.height / last.height;
-      if (uniform) {
-        sx = sy;
-      }
-      el.style.willChange = "transform";
+      const sy = firstRect.height / last.height;
+      plans.push({
+        el,
+        dx: firstRect.left - last.left,
+        dy: firstRect.top - last.top,
+        sx: uniform ? sy : firstRect.width / last.width,
+        sy,
+      });
+    });
+
+    if (!plans.length) { resetStyles(); return undefined; }
+    plans.forEach(({ el, dx, dy, sx, sy }) => {
       el.style.transition = "none";
       el.style.transformOrigin = "top left";
       el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
-      void el.offsetWidth;
+    });
+    void plans[0].el.offsetWidth;
+    plans.forEach(({ el }) => {
       el.style.transition = `transform ${HERO_FLIP_MS}ms cubic-bezier(.22,.85,.32,1)`;
       el.style.transform = "translate(0px, 0px) scale(1, 1)";
-    };
-
-    targets.forEach(({ ref, uniform }, i) => play(ref.current, firstRectsList[i], { uniform }));
+    });
 
     clearTimeout(cleanupTimer.current);
-    cleanupTimer.current = setTimeout(() => {
-      targets.forEach(({ ref }) => {
-        const el = ref.current;
-        if (!el) return;
-        el.style.transition = "";
-        el.style.transform = "";
-        el.style.transformOrigin = "";
-        el.style.willChange = "";
-      });
-    }, HERO_FLIP_MS + 40);
+    cleanupTimer.current = setTimeout(resetStyles, HERO_FLIP_MS + 40);
 
     return () => clearTimeout(cleanupTimer.current);
   }, [mode]);
@@ -1091,9 +1228,19 @@ function useTilt({ enabled, distance = 10, speed = 240 }) {
   useEffect(() => { if (!enabled) setStyle({}); }, [enabled]);
   return { ref, style, onMove, onLeave };
 }
+function themeColorSet() {
+  if (typeof window === "undefined") return ["#B5B5B5", "#E6E6E6", "#FFFFFF"];
+  const cs = getComputedStyle(document.body);
+  const pick = (name, fallback) => (cs.getPropertyValue(name) || "").trim() || fallback;
+  return [
+    pick("--artist-accent", pick("--ink-dim", "#A6A6A6")),
+    pick("--accent", "#E6E6E6"),
+    pick("--accent-strong", "#FFFFFF"),
+  ];
+}
 
 const VISUALIZER_COLOR_SETS = {
-  auto: ["#7fd18c", "#9fe6ac", "#e8f5e3"],
+  auto: null,
   ocean: ["#4fa3e3", "#7fd3ff", "#dfe9f5"],
   martian: ["#e36f4f", "#ffb27f", "#f5ded0"],
   sunset: ["#e35f8a", "#ffb27f", "#fff0d6"],
@@ -1101,7 +1248,7 @@ const VISUALIZER_COLOR_SETS = {
   matrix: ["#39ff88", "#0fae4f", "#0a2a12"],
 };
 
-export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brightness = 100, preset = "auto", height = 220 }) {
+export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brightness = 100, preset = "auto", height = 220, running = true }) {
   const { getAnalyser, isPlaying } = usePlayer();
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
@@ -1111,9 +1258,10 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
+    if (!running) return undefined;
     const ctx2d = canvas.getContext("2d");
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const colors = VISUALIZER_COLOR_SETS[preset] || VISUALIZER_COLOR_SETS.auto;
+    const colors = VISUALIZER_COLOR_SETS[preset] || themeColorSet();
     const sens = Math.max(0.1, sensitivity / 60);
     const bright = Math.max(0.2, brightness / 100);
 
@@ -1125,6 +1273,8 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
+    let freqBuf = null;
+    let timeBuf = null;
 
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
@@ -1132,8 +1282,13 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
       const analyser = getAnalyser?.();
       let freq = null, time = null;
       if (analyser) {
-        freq = new Uint8Array(analyser.frequencyBinCount);
-        time = new Uint8Array(analyser.frequencyBinCount);
+        const bins = analyser.frequencyBinCount;
+        if (!freqBuf || freqBuf.length !== bins) {
+          freqBuf = new Uint8Array(bins);
+          timeBuf = new Uint8Array(bins);
+        }
+        freq = freqBuf;
+        time = timeBuf;
         analyser.getByteFrequencyData(freq);
         analyser.getByteTimeDomainData(time);
       }
@@ -1239,17 +1394,18 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
     };
     draw();
     return () => { cancelAnimationFrame(rafRef.current); ro.disconnect(); };
-  }, [style, mode, sensitivity, brightness, preset, getAnalyser, isPlaying]);
+  }, [style, mode, sensitivity, brightness, preset, getAnalyser, isPlaying, running]);
 
   return <canvas ref={canvasRef} className={`aivy-visualizer-canvas ${mode}`} style={{ ...style, height }} />;
 }
 
-export function NowPlayingVisualizer() {
+export function NowPlayingVisualizer({ running = true }) {
   const { settings } = useUI();
   const [cyclePreset, setCyclePreset] = useState(settings.visualizerPreset || "auto");
   const presets = Object.keys(VISUALIZER_COLOR_SETS);
 
   useEffect(() => {
+    if (!running) return undefined;
     if (!settings.cyclePresets) { setCyclePreset(settings.visualizerPreset || "auto"); return undefined; }
     const durMs = Math.max(3, Number(settings.cycleDuration) || 30) * 1000;
     const id = setInterval(() => {
@@ -1263,7 +1419,7 @@ export function NowPlayingVisualizer() {
       });
     }, durMs);
     return () => clearInterval(id);
-  }, [settings.cyclePresets, settings.cycleDuration, settings.randomizePresets, settings.visualizerPreset]);
+  }, [running, settings.cyclePresets, settings.cycleDuration, settings.randomizePresets, settings.visualizerPreset]);
 
   if (!settings.visualizerEnabled) return null;
   return (
@@ -1273,9 +1429,12 @@ export function NowPlayingVisualizer() {
       sensitivity={Number(settings.visualizerSensitivity) || 60}
       brightness={Number(settings.visualizerBrightness) || 100}
       preset={cyclePreset}
+      running={running}
     />
   );
 }
+
+const NPX_COVER_FILL_STYLE = { width: "100%", height: "100%" };
 
 export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const {
@@ -1314,6 +1473,9 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     else if (status === "not_found") pushToast(t("npArtworkReloadFailed"));
     else pushToast(t("npArtworkReloadError"));
   };
+  const reloadResultRef = useRef(handleArtworkReloadResult);
+  reloadResultRef.current = handleArtworkReloadResult;
+  const onReloadResultStable = useCallback((status) => reloadResultRef.current(status), []);
   const handleFullscreenCoverClick = () => {
     const action = settings.fullscreenCoverClick || "exit";
     if (action === "exit") onClose();
@@ -1348,6 +1510,19 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const trackKey = currentTrack?.id;
   useEffect(() => { setSingMode(false); setLyricsUnsynced(false); }, [trackKey]);
   useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
+  useEffect(() => {
+    if (!open || lyricsMounted || lyricsDisabled) return undefined;
+    let idleId = null;
+    const idle = typeof window !== "undefined" && window.requestIdleCallback;
+    const timer = setTimeout(() => {
+      if (idle) idleId = window.requestIdleCallback(() => setLyricsMounted(true), { timeout: 2000 });
+      else setLyricsMounted(true);
+    }, 500);
+    return () => {
+      clearTimeout(timer);
+      if (idleId != null && window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+    };
+  }, [open, lyricsMounted, lyricsDisabled]);
 
   const handleLyricsToggle = () => { captureHeroFlip(); toggleLyrics(); };
 
@@ -1387,6 +1562,27 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   }, [lyricsMounted, trackKey]);
 
   const remaining = Math.max(0, (duration || 0) - (currentTime || 0));
+  const coverArt = useMemo(() => (
+    <AnimatedCover
+      src={currentTrack?.cover} seed={(currentTrack?.id || "") + (currentTrack?.title || "")} size={320} radius={10}
+      style={NPX_COVER_FILL_STYLE}
+      song={currentTrack?.title} artist={currentTrack?.artist?.name}
+      animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
+      onColor={setServerDominantColor}
+      reloadToken={artworkReloadToken}
+      onReloadResult={onReloadResultStable}
+      active={open}
+    />
+  ), [currentTrack?.cover, currentTrack?.id, currentTrack?.title, currentTrack?.artist?.name, settings.animatedArtwork, reduceMotion, artworkReloadToken, onReloadResultStable, open]);
+
+  const showSheetVisualizer = !!settings.visualizerEnabled && settings.visualizerMode === "solid";
+  const showCoverVisualizer = !!settings.visualizerEnabled && settings.visualizerMode === "blended";
+  const sheetVisualizer = useMemo(() => (
+    showSheetVisualizer ? <div className="aivy-sheet-visualizer" aria-hidden="true"><NowPlayingVisualizer running={open} /></div> : null
+  ), [showSheetVisualizer, open]);
+  const coverVisualizer = useMemo(() => (
+    showCoverVisualizer ? <div className="npx-cover-visualizer" aria-hidden="true"><NowPlayingVisualizer running={open} /></div> : null
+  ), [showCoverVisualizer, open]);
 
   return (
     <>
@@ -1399,9 +1595,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
             aria-hidden="true"
           />
         )}
-        {settings.visualizerEnabled && settings.visualizerMode === "solid" && (
-          <div className="aivy-sheet-visualizer" aria-hidden="true"><NowPlayingVisualizer /></div>
-        )}
+        {sheetVisualizer}
         <div
           className="aivy-sheet-grabber-row"
           onPointerDown={swipeDown.onPointerDown} onPointerMove={swipeDown.onPointerMove}
@@ -1417,7 +1611,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
               onPointerUp={swipeDown.onPointerUp} onPointerCancel={swipeDown.onPointerCancel}
             >
               <div
-                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""} ${settings.livingCover !== false && !settings.cdCoverSpin ? "living-cover" : ""}`}
+                className={`npx-cover ${settings.noRoundCover ? "no-round" : ""} ${settings.cdCoverSpin ? "cd-spin" : ""} ${settings.tiltCover ? "has-tilt" : ""}`}
                 ref={(el) => { coverRef.current = el; tilt.ref.current = el; }}
                 style={{ ...tilt.style, ...(dynamicColor ? { "--npx-dynamic": dynamicColor, boxShadow: `0 24px 60px rgba(0,0,0,.5), 0 0 60px -12px ${dynamicColor}` } : {}) }}
                 onPointerMove={settings.tiltCover ? tilt.onMove : undefined}
@@ -1425,22 +1619,15 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                 onClick={handleFullscreenCoverClick}
                 role="button" tabIndex={0}
               >
-                {settings.visualizerEnabled && settings.visualizerMode === "blended" && (
-                  <div className="npx-cover-visualizer" aria-hidden="true"><NowPlayingVisualizer height={320} /></div>
-                )}
-                <AnimatedCover
-                  src={currentTrack.cover} seed={currentTrack.id + currentTrack.title} size={320} radius={10}
-                  style={{ width: "100%", height: "100%" }}
-                  song={currentTrack.title} artist={currentTrack.artist?.name}
-                  animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
-                  onColor={setServerDominantColor}
-                  reloadToken={artworkReloadToken}
-                  onReloadResult={handleArtworkReloadResult}
-                />
+                {coverVisualizer}
+                {coverArt}
               </div>
               <div className="npx-metarow">
                 <div className="npx-titles" ref={metaRef}>
-                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}{formatLabel && <span className="badge badge-opus">{formatLabel}</span>}</div>
+                  <MarqueeText
+                    as="div" className="t" text={currentTrack.title}
+                    suffix={<>{isPreviewClip && <span className="badge">{t("preview30")}</span>}{formatLabel && <span className="badge badge-opus">{formatLabel}</span>}</>}
+                  />
                   <div
                     className="a"
                     onClick={() => { if (lyricsMode) return; currentTrack.artist?.id && navigate("artist", { params: { id: currentTrack.artist.id } }); onClose(); }}
@@ -1649,10 +1836,10 @@ export function TrackOptionsSheet({ open, track, formatLabel, onClose, onOpenDet
           <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={8} style={{ width: 44, height: 44 }} />
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="aivy-optsheet-eyebrow">{t("nowPlaying")}</div>
-            <div className="t">
-              {track.title}
-              {formatLabel && <span className="badge badge-opus" style={{ marginLeft: 6 }}>{formatLabel}</span>}
-            </div>
+            <MarqueeText
+              as="div" className="t" text={track.title}
+              suffix={formatLabel ? <span className="badge badge-opus" style={{ marginLeft: 6 }}>{formatLabel}</span> : null}
+            />
             <div className="a">{track.artist?.name || "\u2014"}</div>
           </div>
         </div>
@@ -1839,7 +2026,7 @@ export function TrackDetailSheet({ open, track, isPreviewClip, onClose }) {
             <SmartCover src={track.cover} seed={track.id + track.title} size={52} radius={10} style={{ width: 52, height: 52 }} />
             <div style={{ minWidth: 0 }}>
               <div className="eyebrow">{t("npDetail")}</div>
-              <div className="ttl" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.title}</div>
+              <MarqueeText as="div" className="ttl" text={track.title} />
               <div className="sub" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.artist?.name || "\u2014"}</div>
             </div>
           </div>
@@ -1884,7 +2071,7 @@ export function AlwaysOnDisplay({ open, track, onClose, animated = false, reduce
           animated={animated && open} reduceMotion={reduceMotion} reloadToken={reloadToken}
         />
         <div className="aivy-aod-meta">
-          <div className="t">{track.title}</div>
+          <MarqueeText as="div" className="t" text={track.title} />
           <div className="a">{track.artist?.name || "\u2014"}</div>
         </div>
         <span className={`aivy-aod-dot ${isPlaying ? "is-playing" : ""}`} aria-hidden="true" />
@@ -2268,7 +2455,7 @@ function QueueTrackMeta({ track }) {
     <div className="aivy-queue-meta">
       <SmartCover src={track.cover} seed={track.id + track.title} size={44} radius={6} style={{ width: 44, height: 44 }} />
       <div className="txt">
-        <span className="t">{track.title}</span>
+        <MarqueeText as="span" className="t" text={track.title} />
         <span className="a">{track.artist?.name || "\u2014"}</span>
       </div>
     </div>
@@ -2487,7 +2674,7 @@ function NowPlayingPane() {
         song={currentTrack.title} artist={currentTrack.artist?.name}
         animated={!!settings.animatedArtwork} reduceMotion={reduceMotion}
       />
-      <div className="t">{currentTrack.title}</div>
+      <MarqueeText as="div" className="t" text={currentTrack.title} />
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
       <AboutArtistSection track={currentTrack} />
@@ -3271,7 +3458,10 @@ export function LyricsOverlay() {
               </div>
               <div className="row">
                 <div className="meta">
-                  <div className="t">{currentTrack.title}{isPreviewClip && <span className="badge">{t("preview30")}</span>}</div>
+                  <MarqueeText
+                    as="div" className="t" text={currentTrack.title}
+                    suffix={isPreviewClip ? <span className="badge">{t("preview30")}</span> : null}
+                  />
                   <div className="a">{currentTrack.artist?.name}</div>
                 </div>
                 <div className="aivy-lyrics-actions">
@@ -3607,5 +3797,295 @@ export function AiAssistantWidget() {
         </div>
       )}
     </>
+  );
+}
+
+/* ---------- Music Video viewer: tampilan khusus untuk video musik (PC & mobile) ---------- */
+export function MusicVideoView({ video, onClose, onAudioPlay }) {
+  const { t } = useUI();
+  const stageRef = useRef(null);
+  const videoRef = useRef(null);
+  const hlsRef = useRef(null);
+  const controlsTimer = useRef(null);
+  const playingRef = useRef(false);
+
+  const [src, setSrc] = useState(null);
+  const [streamType, setStreamType] = useState("mp4");
+  const [status, setStatus] = useState("idle"); // loading | ready | error
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [controlsHidden, setControlsHidden] = useState(false);
+
+  const vId = video?.videoId || video?.id || null;
+
+  const markPlaying = useCallback((v) => {
+    playingRef.current = v;
+    setPlaying(v);
+  }, []);
+
+  const pokeControls = useCallback(() => {
+    setControlsHidden(false);
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = setTimeout(() => {
+      if (playingRef.current) setControlsHidden(true);
+    }, 2600);
+  }, []);
+
+  // tutup modal: Esc (saat fullscreen, Esc keluar fullscreen dulu) + scroll lock
+  useEffect(() => {
+    if (!video) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (document.fullscreenElement) {
+          const p = document.exitFullscreen?.();
+          if (p && typeof p.catch === "function") p.catch(() => {});
+          return;
+        }
+        onClose?.();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.classList.add("aivy-video-open");
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.classList.remove("aivy-video-open");
+    };
+  }, [video, onClose]);
+
+  // pantau state fullscreen (termasuk keluar via Esc/browser)
+  useEffect(() => {
+    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
+
+  // bersihkan player saat modal ditutup
+  useEffect(() => () => {
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    if (videoRef.current) { videoRef.current.pause(); videoRef.current.removeAttribute("src"); }
+  }, []);
+
+  // resolve stream video (tiket kind=video + meta type)
+  const reload = useCallback(() => {
+    setStatus("loading");
+    setErrorMsg(null);
+    setSrc(null);
+    setStreamType("mp4");
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    if (videoRef.current) { videoRef.current.pause(); videoRef.current.removeAttribute("src"); videoRef.current.load(); }
+    Api.musicVideoStream(vId)
+      .then(({ url, type }) => { setSrc(url); setStreamType(type); setStatus("ready"); })
+      .catch(() => { setStatus("error"); setErrorMsg(t("videoUnavailable")); });
+  }, [vId, t]);
+
+  useEffect(() => {
+    if (!video) return undefined;
+    if (!vId) {
+      setStatus("error");
+      setErrorMsg(t("videoUnavailable"));
+      return undefined;
+    }
+    reload();
+    return undefined;
+  }, [video, vId, reload]);
+
+  // attach stream ke <video> (native mp4) atau hls.js (m3u8)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (status !== "ready" || !src || !video) return undefined;
+
+    let cancelled = false;
+    const tryPlay = () => {
+      const p = video.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => { if (!cancelled) markPlaying(true); }).catch(() => { if (!cancelled) markPlaying(false); });
+      } else if (!cancelled) {
+        markPlaying(!video.paused);
+      }
+    };
+
+    if (streamType === "hls") {
+      let hls = null;
+      import("hls.js")
+        .then((mod) => {
+          if (cancelled) return;
+          const HlsClass = mod.default || mod;
+          if (!HlsClass.isSupported()) {
+            setStatus("error");
+            setErrorMsg(t("videoUnavailable"));
+            return;
+          }
+          hls = new HlsClass({ enableWorker: true, lowLatencyMode: false, backBufferLength: 60 });
+          hlsRef.current = hls;
+          hls.loadSource(src);
+          hls.attachMedia(video);
+          hls.on(HlsClass.Events.MANIFEST_PARSED, () => { if (!cancelled) tryPlay(); });
+          hls.on(HlsClass.Events.ERROR, (_e, data) => {
+            if (!data?.fatal || cancelled) return;
+            console.error("[aivy-mv] hls.js fatal:", data.details);
+            setStatus("error");
+            setErrorMsg(t("videoUnavailable"));
+          });
+        })
+        .catch(() => {
+          if (!cancelled) { setStatus("error"); setErrorMsg(t("videoUnavailable")); }
+        });
+      return () => {
+        cancelled = true;
+        if (hls) { hls.destroy(); hlsRef.current = null; }
+      };
+    }
+
+    video.src = src;
+    tryPlay();
+    return () => { cancelled = true; };
+  }, [status, src, streamType, t, markPlaying]);
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v || v.readyState === 0) return;
+    if (v.paused) v.play().then(() => markPlaying(true)).catch(() => {});
+    else v.pause();
+  };
+  const onSeek = (e) => {
+    const v = videoRef.current;
+    if (!v || !Number.isFinite(v.duration)) return;
+    const next = Math.min(Math.max(Number(e.target.value) || 0, 0), v.duration);
+    v.currentTime = next;
+    setCurrentTime(next);
+  };
+  const toggleMute = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMuted(v.muted);
+  };
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      const p = document.exitFullscreen?.();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } else {
+      const el = stageRef.current;
+      if (el?.requestFullscreen) el.requestFullscreen().catch(() => {});
+    }
+  };
+
+  if (!video) return null;
+  const artistName = video.artist?.name || video.artists?.[0]?.name || "";
+  const year = video.year || (video.releaseDate ? String(video.releaseDate).slice(0, 4) : null);
+  const meta = [video.views, year, video.duration ? formatDuration(video.duration) : null]
+    .filter(Boolean)
+    .join(" \u00b7 ");
+  const poster = video.cover || video.thumbnail || null;
+
+  return (
+    <div className="aivy-mv-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={video.title || t("musicVideos")}>
+      <div className="aivy-mv-card" onClick={(e) => e.stopPropagation()}>
+        <div className="aivy-mv-top">
+          <span className="aivy-mv-badge"><Film size={15} /> {t("musicVideos")}</span>
+          <button className="aivy-mv-close" onClick={onClose} aria-label={t("close")}><X size={22} /></button>
+        </div>
+        <div className="aivy-mv-stage" ref={stageRef} onMouseMove={pokeControls} onTouchStart={pokeControls}>
+          {vId ? (
+            <>
+              <video
+                ref={videoRef}
+                className="aivy-mv-video"
+                poster={poster || undefined}
+                playsInline
+                preload="auto"
+                onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                onPlay={() => { markPlaying(true); pokeControls(); }}
+                onPause={() => { markPlaying(false); setControlsHidden(false); }}
+                onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime || 0)}
+                onLoadedMetadata={(e) => setDuration(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
+                onDurationChange={(e) => setDuration(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
+                onEnded={() => markPlaying(false)}
+              />
+              {status === "loading" && (
+                <div className="aivy-mv-loading">
+                  <div className="aivy-mv-spinner" />
+                  <span>{t("loadingVideo")}</span>
+                </div>
+              )}
+              {status === "error" && (
+                <div className="aivy-mv-error">
+                  {poster ? <img src={poster} alt="" /> : null}
+                  <span className="aivy-mv-error-msg">{errorMsg || t("videoUnavailable")}</span>
+                  <div className="aivy-mv-error-acts">
+                    <button type="button" className="aivy-mv-retry" onClick={reload}>
+                      <RefreshCw size={14} /> {t("retry")}
+                    </button>
+                    {onAudioPlay ? (
+                      <button type="button" className="aivy-mv-audio-inline" onClick={onAudioPlay}>
+                        <Music2 size={14} /> {t("playAudio")}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+              {status === "ready" && !playing && (
+                <button type="button" className="aivy-mv-big-play" onClick={togglePlay} aria-label={t("play")}>
+                  <Play size={34} fill="currentColor" style={{ marginLeft: 4 }} />
+                </button>
+              )}
+              {status === "ready" && (
+                <div className={`aivy-mv-controls${controlsHidden ? " is-hidden" : ""}`} onClick={(e) => e.stopPropagation()}>
+                  <button type="button" className="aivy-mv-cbtn" onClick={togglePlay} aria-label={playing ? t("pause") : t("play")}>
+                    {playing ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}
+                  </button>
+                  <span className="aivy-mv-time">{formatTime(currentTime)} <em>/</em> {formatTime(duration)}</span>
+                  <input
+                    className="aivy-mv-seek"
+                    type="range"
+                    min={0}
+                    max={duration > 0 ? Math.floor(duration * 10) / 10 : 0}
+                    step={0.1}
+                    value={Math.min(currentTime, duration || 0)}
+                    onChange={onSeek}
+                    disabled={!duration}
+                    aria-label={t("play")}
+                  />
+                  <button type="button" className="aivy-mv-cbtn" onClick={toggleMute} aria-label={muted ? t("unmute") : t("mute")}>
+                    {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                  </button>
+                  <button type="button" className="aivy-mv-cbtn" onClick={toggleFullscreen} aria-label={fullscreen ? t("exitFullscreen") : t("fullscreen")}>
+                    {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="aivy-mv-na">
+              {poster ? <img src={poster} alt="" /> : null}
+              <span>{t("videoUnavailable")}</span>
+            </div>
+          )}
+        </div>
+        <div className="aivy-mv-info">
+          <div className="aivy-mv-titles">
+            <div className="aivy-mv-title">{video.title || t("unknownTitle")}</div>
+            {artistName ? <div className="aivy-mv-artist">{artistName}</div> : null}
+            {meta ? <div className="aivy-mv-meta">{meta}</div> : null}
+          </div>
+          <div className="aivy-mv-acts">
+            {onAudioPlay ? (
+              <button type="button" className="aivy-mv-audio-btn" onClick={onAudioPlay}>
+                <Music2 size={16} /> {t("playAudio")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
