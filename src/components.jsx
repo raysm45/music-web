@@ -1506,6 +1506,8 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   const [singMode, setSingMode] = useState(false);
   const [lyricsMounted, setLyricsMounted] = useState(false);
   const [lyricsUnsynced, setLyricsUnsynced] = useState(false);
+  const [suppressLyricsBlur, setSuppressLyricsBlur] = useState(isHeavyTransition());
+  useEffect(() => subscribeHeavyTransition(setSuppressLyricsBlur), []);
 
   const coverRef = useRef(null);
   const metaRef = useRef(null);
@@ -1667,6 +1669,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                     onSeek={seekTo}
                     highlightColor="#f5f5f5"
                     fontSize="md"
+                    suppressBlur={suppressLyricsBlur}
                   />
                   {lyricsUnsynced && (
                     <button type="button" className="aivy-lyr2-pill" onClick={scrollToActiveLyric}>
@@ -3123,8 +3126,27 @@ const AM_LYRICS_FONT_SIZES = {
   md: { "--am-lyrics-compact-font-size": "28px", "--lyplus-font-size-base": "34px", "--am-lyrics-wide-font-size": "48px" },
   lg: { "--am-lyrics-compact-font-size": "34px", "--lyplus-font-size-base": "42px", "--am-lyrics-wide-font-size": "58px" },
 };
-function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize, id }) {
+function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize, id, suppressBlur }) {
   const elRef = useRef(null);
+
+  useEffect(() => {
+    let tries = 0;
+    let timer = null;
+    const inject = () => {
+      const el = elRef.current;
+      if (!el || !el.shadowRoot) {
+        if (tries++ < 25) timer = setTimeout(inject, 200);
+        return;
+      }
+      if (el.shadowRoot.querySelector("style[data-perf-layer]")) return;
+      const st = document.createElement("style");
+      st.setAttribute("data-perf-layer", "");
+      st.textContent = ".lyrics-line-container{ will-change: transform; } .lyrics-line{ will-change: filter; }";
+      el.shadowRoot.appendChild(st);
+    };
+    inject();
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const el = elRef.current;
@@ -3213,12 +3235,18 @@ function AppleLyricsPane({ track, currentTime, onSeek, highlightColor, fontSize,
     return () => el.removeEventListener("line-click", handler);
   }, [onSeek]);
 
+  const style = useMemo(() => {
+    const base = AM_LYRICS_FONT_SIZES[fontSize] || AM_LYRICS_FONT_SIZES.md;
+    if (!suppressBlur) return base;
+    return { ...base, "--lyplus-blur-amount": "0em", "--lyplus-blur-amount-near": "0em" };
+  }, [fontSize, suppressBlur]);
+
   return (
     <am-lyrics
       ref={elRef}
       class="aivy-am-lyrics"
       id={id || undefined}
-      style={AM_LYRICS_FONT_SIZES[fontSize] || AM_LYRICS_FONT_SIZES.md}
+      style={style}
     />
   );
 }
