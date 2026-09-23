@@ -1254,6 +1254,7 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
     if (!canvas) return undefined;
     if (!running) return undefined;
     const ctx2d = canvas.getContext("2d");
+    if (!ctx2d) return undefined;
     const dpr = Math.min(isLowEndDevice() ? 1 : 2, window.devicePixelRatio || 1);
     const colors = VISUALIZER_COLOR_SETS[preset] || themeColorSet();
     const sens = Math.max(0.1, sensitivity / 60);
@@ -1276,6 +1277,16 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
       // skip render frame visualizer ini, biar GPU fokus ke animasi transisi.
       // Frame terakhir tetap nampil di layar, jadi ga ada visual yang "hilang".
       if (heavyRef.current) return;
+      try {
+        drawFrame();
+      } catch (err) {
+        // Jangan biarkan error rendering visualizer (data audio ga terduga, dst)
+        // nge-crash seluruh app. Cukup stop loop-nya, halaman lain tetap normal.
+        console.error("visualizer draw error:", err);
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+    const drawFrame = () => {
       const w = canvas.width, h = canvas.height;
       const analyser = getAnalyser?.();
       let freq = null, time = null;
@@ -1394,7 +1405,7 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
     return () => { cancelAnimationFrame(rafRef.current); ro.disconnect(); };
   }, [style, mode, sensitivity, brightness, preset, getAnalyser, isPlaying, running]);
 
-  return <canvas ref={canvasRef} className={`aivy-visualizer-canvas ${mode}`} style={{ ...style, height }} />;
+  return <canvas ref={canvasRef} className={`aivy-visualizer-canvas ${mode}`} style={{ height }} />;
 }
 
 export function NowPlayingVisualizer({ running = true }) {
