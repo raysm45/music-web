@@ -5,6 +5,7 @@ import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
 import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems, HoverRail, MusicVideoView, MarqueeText } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
+import { isLowEndDevice } from "../lib/perf.js";
 
 const TOP_SONGS_PREVIEW = 15;
 
@@ -207,6 +208,25 @@ export function ArtistPage() {
   const mediaRef = useRef(null);
   const pageRef = useRef(null);
   const heroRef = useRef(null);
+  const heroVideoRef = useRef(null);
+  const [lowEndSkipVideo] = useState(() => isLowEndDevice());
+
+  // Hero video cuma perlu decode selagi ada di viewport. Halaman artist bisa panjang
+  // (scroll ke bawah buat liat semua lagu/album), jadi kalau hero-nya udah lewat,
+  // video di-pause biar decoder ga jalan sia-sia di background.
+  useEffect(() => {
+    const el = heroVideoRef.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) { el.play?.().catch(() => {}); }
+        else { el.pause?.(); }
+      },
+      { threshold: 0.01 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [heroVideoUrl]);
   const { playList, playSingle } = usePlayer();
   const { pushToast, t, settings } = useUI();
 
@@ -272,18 +292,36 @@ export function ArtistPage() {
     const scroller = document.getElementById("aivy-content-scroll");
     if (!scroller) return undefined;
     let raf = 0;
+    let lastBlurStep = -1;
+    let lastProgStep = -1;
+    // filter: blur() dan backdrop-filter: blur() itu paling mahal buat GPU low-end.
+    // shift/zoom (transform) aman di-update tiap frame, tapi kedua nilai blur cukup
+    // di-quantize ke step kasar — browser skip repaint blur kalau nilai CSS var-nya
+    // sama persis, dan mata ga bisa bedain step sehalus ini pas lagi scroll cepat.
+    const BLUR_STEPS = 14;
     const apply = () => {
       raf = 0;
       const heroH = heroRef.current?.offsetHeight || Math.round((window.innerHeight || 800) * 0.78);
       const top = scroller.scrollTop;
       const shift = Math.min(top, heroH);
       const progress = Math.min(1, top / Math.max(1, heroH * 0.82));
+      const step = Math.round(progress * BLUR_STEPS) / BLUR_STEPS;
       if (mediaRef.current) {
         mediaRef.current.style.setProperty("--am-shift", `${-shift}px`);
-        mediaRef.current.style.setProperty("--am-blur", `${(progress * 26).toFixed(1)}px`);
+        const blurStep = Math.round(progress * BLUR_STEPS);
+        if (blurStep !== lastBlurStep) {
+          lastBlurStep = blurStep;
+          mediaRef.current.style.setProperty("--am-blur", `${(step * 26).toFixed(1)}px`);
+        }
         mediaRef.current.style.setProperty("--am-zoom", (1 + progress * 0.06).toFixed(4));
       }
-      if (pageRef.current) pageRef.current.style.setProperty("--am-progress", progress.toFixed(3));
+      if (pageRef.current) {
+        const progStep = Math.round(progress * BLUR_STEPS);
+        if (progStep !== lastProgStep) {
+          lastProgStep = progStep;
+          pageRef.current.style.setProperty("--am-progress", step.toFixed(3));
+        }
+      }
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
     apply();
@@ -346,7 +384,10 @@ export function ArtistPage() {
   if (!artist) return <div className="aivy-am-fallback"><ViewNotFound label={t("artistLabel")} /></div>;
 
   const songs = showAllSongs ? topTracks : topTracks.slice(0, TOP_SONGS_PREVIEW);
-  const showHeroVideo = heroVideoUrl && !videoBroken;
+  // Device/koneksi lemah (RAM kecil, save-data aktif, dsb): pakai poster diam aja.
+  // Tampilan buat mayoritas device tetap persis sama; ini cuma fallback ringan
+  // khusus device yang emang bakal ngos-ngosan decode video di background.
+  const showHeroVideo = heroVideoUrl && !videoBroken && !lowEndSkipVideo;
   const heroLogoUrl = heroInfo?.customName?.url ? Api.appleMusicVideoUrl(heroInfo.customName.url) : null;
   const showLogo = heroLogoUrl && !logoBroken;
   const hasAbout = !!(artist.bio || artist.tags?.length || artist.listeners);
@@ -357,6 +398,7 @@ export function ArtistPage() {
       <div ref={mediaRef} className="aivy-am-media" aria-hidden="true">
         {showHeroVideo ? (
           <video
+            ref={heroVideoRef}
             key={heroVideoUrl}
             src={heroVideoUrl}
             poster={posterImg || undefined}
