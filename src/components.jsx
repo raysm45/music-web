@@ -19,6 +19,7 @@ import { CoverArt, SmartCover, AnimatedCover, StarMark, StarLoader, prefetchAnim
 import { formatTime, formatDuration, relativeTime, formatClockTime, clamp, isRelevantArtistMatch, cleanTrackTitleForLyrics } from "./lib/utils.js";
 import { runAiAssistantTurn } from "./lib/aiAssistant.js";
 import { Api } from "./lib/api.js";
+import { beginHeavyTransition, subscribeHeavyTransition, isHeavyTransition, isLowEndDevice } from "./lib/perf.js";
 function usePanelResize({ width, setWidth, min, max, side }) {
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, width: 0 });
@@ -1122,6 +1123,7 @@ function useHeroFlip(mode, targets) {
     const firstRectsList = firstRects.current;
     firstRects.current = null;
     if (!firstRectsList) return undefined;
+    const endHeavy = beginHeavyTransition(HERO_FLIP_MS + 200);
     const plans = [];
     targets.forEach(({ ref, uniform }, i) => {
       const el = ref.current;
@@ -1139,7 +1141,7 @@ function useHeroFlip(mode, targets) {
       });
     });
 
-    if (!plans.length) { resetStyles(); return undefined; }
+    if (!plans.length) { resetStyles(); endHeavy(); return undefined; }
     plans.forEach(({ el, dx, dy, sx, sy }) => {
       el.style.transition = "none";
       el.style.transformOrigin = "top left";
@@ -1152,9 +1154,9 @@ function useHeroFlip(mode, targets) {
     });
 
     clearTimeout(cleanupTimer.current);
-    cleanupTimer.current = setTimeout(resetStyles, HERO_FLIP_MS + 40);
+    cleanupTimer.current = setTimeout(() => { resetStyles(); endHeavy(); }, HERO_FLIP_MS + 40);
 
-    return () => clearTimeout(cleanupTimer.current);
+    return () => { clearTimeout(cleanupTimer.current); endHeavy(); };
   }, [mode]);
 
   return capture;
@@ -1243,13 +1245,16 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
   const rafRef = useRef(null);
   const phaseRef = useRef(0);
   const historyRef = useRef([]);
+  const heavyRef = useRef(isHeavyTransition());
+
+  useEffect(() => subscribeHeavyTransition((active) => { heavyRef.current = active; }), []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     if (!running) return undefined;
     const ctx2d = canvas.getContext("2d");
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.min(isLowEndDevice() ? 1 : 2, window.devicePixelRatio || 1);
     const colors = VISUALIZER_COLOR_SETS[preset] || themeColorSet();
     const sens = Math.max(0.1, sensitivity / 60);
     const bright = Math.max(0.2, brightness / 100);
@@ -1267,6 +1272,10 @@ export function VisualizerCanvas({ style, mode = "solid", sensitivity = 60, brig
 
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
+      // Ada animasi transform berat lagi jalan (buka sheet / FLIP ke lyrics dst) —
+      // skip render frame visualizer ini, biar GPU fokus ke animasi transisi.
+      // Frame terakhir tetap nampil di layar, jadi ga ada visual yang "hilang".
+      if (heavyRef.current) return;
       const w = canvas.width, h = canvas.height;
       const analyser = getAnalyser?.();
       let freq = null, time = null;
@@ -1474,6 +1483,12 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
     else if (action === "prev") prev();
   };
   useEffect(() => { if (!open) setUiHidden(false); }, [open]);
+  // Sheet buka/tutup pakai transition transform ~360ms (--dur-slow) di atas layer
+  // blur + visualizer canvas. Kunci sementara biar GPU fokus ke satu animasi transform dulu.
+  useEffect(() => {
+    const end = beginHeavyTransition(500);
+    return end;
+  }, [open]);
   useEffect(() => { setUiHidden(false); }, [currentTrack?.id]);
 
   const lyricsMode = !!(open && lyricsOpen);
