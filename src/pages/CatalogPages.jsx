@@ -5,7 +5,6 @@ import { usePlayer, useUI } from "../context.jsx";
 import { useRouter } from "../router.jsx";
 import { TrackRow, ViewNotFound, SkeletonHeroPage, filterExplicit, FlipList, shuffleArray, useTrackMenuItems, HoverRail, MusicVideoView, MarqueeText } from "../components.jsx";
 import { SmartCover } from "../lib/brand.jsx";
-import { isLowEndDevice } from "../lib/perf.js";
 
 const TOP_SONGS_PREVIEW = 15;
 
@@ -209,7 +208,6 @@ export function ArtistPage() {
   const pageRef = useRef(null);
   const heroRef = useRef(null);
   const heroVideoRef = useRef(null);
-  const [lowEndSkipVideo] = useState(() => isLowEndDevice());
 
   // Hero video cuma perlu decode selagi ada di viewport. Halaman artist bisa panjang
   // (scroll ke bawah buat liat semua lagu/album), jadi kalau hero-nya udah lewat,
@@ -384,10 +382,11 @@ export function ArtistPage() {
   if (!artist) return <div className="aivy-am-fallback"><ViewNotFound label={t("artistLabel")} /></div>;
 
   const songs = showAllSongs ? topTracks : topTracks.slice(0, TOP_SONGS_PREVIEW);
-  // Device/koneksi lemah (RAM kecil, save-data aktif, dsb): pakai poster diam aja.
-  // Tampilan buat mayoritas device tetap persis sama; ini cuma fallback ringan
-  // khusus device yang emang bakal ngos-ngosan decode video di background.
-  const showHeroVideo = heroVideoUrl && !videoBroken && !lowEndSkipVideo;
+  // Video hero selalu ditampilkan (autoplay seperti semula) — deteksi "low-end device"
+  // pakai navigator.deviceMemory/hardwareConcurrency ternyata gak reliable (banyak HP
+  // normal ikut ke-flag gara-gara browser nge-cap nilai itu), jadi cuma dipakai IO
+  // buat pause pas di luar viewport, bukan buat matiin videonya sama sekali.
+  const showHeroVideo = heroVideoUrl && !videoBroken;
   const heroLogoUrl = heroInfo?.customName?.url ? Api.appleMusicVideoUrl(heroInfo.customName.url) : null;
   const showLogo = heroLogoUrl && !logoBroken;
   const hasAbout = !!(artist.bio || artist.tags?.length || artist.listeners);
