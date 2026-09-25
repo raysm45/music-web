@@ -49,24 +49,35 @@ function useArtworkTint(src) {
         }
         if (!w) return;
         const [h, s] = rgbToHsl(r / w, g / w, b / w);
-        const hue = Math.round(h);
-        const sat = Math.round(Math.min(46, Math.max(14, s * 100)));
-        if (alive) {
-          setTint({
-            bg: `hsl(${hue} ${sat}% 9%)`,
-            accent: `hsl(${hue} ${Math.min(70, sat + 26)}% 76%)`,
-            accentInk: `hsl(${hue} ${Math.min(60, sat + 10)}% 12%)`,
-          });
-        }
-      } catch {}
+        if (alive) setTint(tintFromHsl(h, s * 100));
+      } catch {
+        // Canvas ke-taint (gambar cross-origin tanpa header CORS) atau gagal decode.
+        // Daripada diem-diem gak pasang tint sama sekali (sidebar jadi item polos),
+        // pasang fallback glass netral biar panel tetep keliatan kaca, bukan hitam.
+        if (alive) setTint(FALLBACK_TINT);
+      }
     };
-    img.onerror = () => {};
+    img.onerror = () => { if (alive) setTint(FALLBACK_TINT); };
     img.src = src;
     return () => { alive = false; };
   }, [src]);
   return tint;
 }
 
+// Lightness dinaikin dari 9% -> 15% dan saturation minimum dari 14 -> 22 biar tint-nya
+// kebaca sebagai kaca berwarna, bukan nyaris-hitam yang keliatan sama aja kayak panel polos.
+function tintFromHsl(h, satPct) {
+  const hue = Math.round(h);
+  const s = Math.round(Math.min(52, Math.max(22, satPct)));
+  return {
+    bg: `hsl(${hue} ${s}% 15%)`,
+    accent: `hsl(${hue} ${Math.min(72, s + 24)}% 78%)`,
+    accentInk: `hsl(${hue} ${Math.min(60, s + 10)}% 12%)`,
+  };
+}
+// Dipakai kalau ekstraksi warna dari artwork gagal (misal canvas ke-taint karena CORS)
+// supaya panel tetep kelihatan kaca (frosted), bukan jatuh balik ke hitam polos.
+const FALLBACK_TINT = tintFromHsl(230, 30);
 function hexToRgb(hex) {
   const m = String(hex || "").trim().replace("#", "");
   if (!/^[0-9a-fA-F]{6}$/.test(m)) return null;
@@ -76,13 +87,7 @@ function tintFromHex(hex) {
   const rgb = hexToRgb(hex);
   if (!rgb) return null;
   const [h, sat] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
-  const hue = Math.round(h);
-  const s = Math.round(Math.min(46, Math.max(14, sat * 100)));
-  return {
-    bg: `hsl(${hue} ${s}% 9%)`,
-    accent: `hsl(${hue} ${Math.min(70, s + 26)}% 76%)`,
-    accentInk: `hsl(${hue} ${Math.min(60, s + 10)}% 12%)`,
-  };
+  return tintFromHsl(h, sat * 100);
 }
 function pickHeroRendition(hero) {
   if (!hero) return null;
