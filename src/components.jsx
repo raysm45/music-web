@@ -1526,7 +1526,13 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
 
   const trackKey = currentTrack?.id;
   useEffect(() => { setSingMode(false); setLyricsUnsynced(false); }, [trackKey]);
-  useEffect(() => { if (lyricsOpen) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsOpen]);
+  // Penting: pakai `lyricsMode` (open && lyricsOpen), BUKAN `lyricsOpen` mentah.
+  // `lyricsOpen` adalah state global yang juga dipicu tombol lyric di mini player/overlay
+  // desktop, yang tidak ada hubungannya dengan sheet ini. Kalau dipakai langsung, sheet ini
+  // (yang selalu ter-mount di background, cuma digeser off-screen lewat transform) ikut
+  // me-mount <AppleLyricsPane> secara permanen dan terus di-drive oleh currentTime tiap tick,
+  // walau sheet-nya sendiri tidak pernah dibuka — inilah penyebab hover jadi patah-patah.
+  useEffect(() => { if (lyricsMode) setLyricsMounted(true); else setLyricsUnsynced(false); }, [lyricsMode]);
   useEffect(() => {
     if (!open || lyricsMounted || lyricsDisabled) return undefined;
     let idleId = null;
@@ -1579,6 +1585,14 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
   }, [lyricsMounted, trackKey]);
 
   const remaining = Math.max(0, (duration || 0) - (currentTime || 0));
+  // Bekukan waktu yang dikirim ke lyrics pane saat sheet ini tidak kelihatan (open=false).
+  // Node-nya tetap di-mount (buat prefetch supaya cepat waktu dibuka lagi), tapi kalau tetap
+  // dikasih `playerTime` yang jalan terus tiap tick, `am-lyrics` bakal terus ngitung ulang
+  // animasi/filter di background walau lagi disembunyikan lewat transform — itu yang bikin
+  // hover ke card lain (Recommended Albums/Artists/Continue Listening) jadi patah-patah.
+  const frozenLyricsTimeRef = useRef(0);
+  if (open) frozenLyricsTimeRef.current = playerTime;
+  const sheetLyricsTime = open ? playerTime : frozenLyricsTimeRef.current;
   const coverArt = useMemo(() => (
     <AnimatedCover
       src={currentTrack?.cover} seed={(currentTrack?.id || "") + (currentTrack?.title || "")} size={320} radius={10}
@@ -1665,7 +1679,7 @@ export function NowPlayingSheet({ open, onClose, onOpenQueue }) {
                   <AppleLyricsPane
                     id="aivy-am-lyrics-mobile"
                     track={currentTrack}
-                    currentTime={playerTime}
+                    currentTime={sheetLyricsTime}
                     onSeek={seekTo}
                     highlightColor="#f5f5f5"
                     fontSize="md"
@@ -2281,7 +2295,7 @@ function useArtistAbout(track) {
   return artist;
 }
 
-function AboutArtistSection({ track, onNavigate }) {
+function AboutArtistSection({ track, onNavigate, glass = false }) {
   const artist = useArtistAbout(track);
   const { navigate } = useRouter();
   const { pushToast, t, settings } = useUI();
@@ -2302,11 +2316,18 @@ function AboutArtistSection({ track, onNavigate }) {
     pushToast(following ? `${t("unfollowedToast")} ${artist.name}` : `${t("followedToast")} ${artist.name}`);
   };
 
+  const artBg = artist.banner || artist.image;
+
   return (
-    <div className="aivy-nowplaying-about">
+    <div className={`aivy-nowplaying-about ${glass ? "is-glass" : ""}`}>
+      {glass && artBg && (
+        <div className="aivy-nowplaying-about-glassbg" aria-hidden="true">
+          <SmartCover src={artBg} seed={"glassbg" + (artist.id || artist.name)} size={120} radius={0} style={{ width: "100%", height: "100%" }} />
+        </div>
+      )}
       <button type="button" className="aivy-nowplaying-about-banner" onClick={goToArtist} aria-label={artist.name}>
-        {(artist.banner || artist.image) && (
-          <SmartCover src={artist.banner || artist.image} seed={"banner" + (artist.id || artist.name)} size={480} radius={0} style={{ width: "100%", height: "100%" }} />
+        {artBg && (
+          <SmartCover src={artBg} seed={"banner" + (artist.id || artist.name)} size={480} radius={0} style={{ width: "100%", height: "100%" }} />
         )}
         <div className="aivy-nowplaying-about-banner-fade" />
         <span className="aivy-nowplaying-about-eyebrow">{t("aboutArtistLabel")}</span>
@@ -2379,7 +2400,7 @@ function useTrackDescription(track) {
     };
   }, [track, fetchedDescription, loading]);
 }
-function CreditsCard({ track }) {
+function CreditsCard({ track, glass = false }) {
   const { t, openCredits } = useUI();
   const { description, loading } = useTrackDescription(track);
 
@@ -2390,7 +2411,7 @@ function CreditsCard({ track }) {
     : description;
 
   return (
-    <div className="aivy-credits-card">
+    <div className={`aivy-credits-card ${glass ? "is-glass" : ""}`}>
       <div className="aivy-credits-card-head">
         <span className="aivy-credits-card-title">{t("descriptionLabel")}</span>
         <button type="button" className="aivy-credits-showall" onClick={() => openCredits(track)}>{t("showAllLabel")}</button>
@@ -2682,6 +2703,8 @@ export function QueueHistoryBody() {
 function NowPlayingPane() {
   const { currentTrack, isPreviewClip } = usePlayer();
   const { t, settings } = useUI();
+  const { name: routeName } = useRouter();
+  const isArtistView = routeName === "artist";
   const reduceMotion = !!settings.reducedMotion || (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   if (!currentTrack) return <div className="aivy-empty"><StarMark size={34} color="var(--ink-faint)" /><div className="title">{t("nothingPlaying")}</div></div>;
   return (
@@ -2695,8 +2718,8 @@ function NowPlayingPane() {
       <MarqueeText as="div" className="t" text={currentTrack.title} />
       <div className="a">{currentTrack.artist?.name}</div>
       {isPreviewClip && <div className="eyebrow" style={{ marginTop: 10 }}>{t("officialPreview")}</div>}
-      <AboutArtistSection track={currentTrack} />
-      <CreditsCard track={currentTrack} />
+      <AboutArtistSection track={currentTrack} glass={isArtistView} />
+      <CreditsCard track={currentTrack} glass={isArtistView} />
       <NextUpPreview compact />
     </div>
   );
